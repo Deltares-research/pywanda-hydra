@@ -2,6 +2,8 @@ name: Build-Test-Lint-etc (linux)
 
 on: [push]
 
+permissions: write-all
+
 jobs:
 
   flake8-lint:
@@ -22,8 +24,7 @@ jobs:
           plugins: Flake8-pyproject==1.2.3 flake8-docstrings==1.7.0 flake8-quotes==3.3.2 flake8-bugbear==23.9.16 flake8-mock==0.4 flake8-tuple==0.4.1
           # only_warn: 1  #causes action to always be succesful, but still provide annotations
 
-  test:
-    permissions: write-all
+  test:    
     runs-on: ubuntu-latest
     strategy:
       matrix:
