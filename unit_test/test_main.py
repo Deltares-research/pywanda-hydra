@@ -33,7 +33,7 @@ class MyTest(unittest.TestCase):
         current_time = datetime(1970, 1, 1, 13, 00)
 
         # Act
-        result = simulator_worker.testable_function(current_time)
+        result = pywandahydra.testable_function(current_time)
 
         # Assert
         expected_result = datetime(1970, 1, 1, 14, 00)
@@ -41,16 +41,16 @@ class MyTest(unittest.TestCase):
 
     def test_start_app_info(self) -> None:
         try:
-            simulator_worker.start_app(loglevel="INFO", colors=True)
+            pywandahydra.start_app(loglevel="INFO", colors=True)
         except Exception as e:
-            self.fail(f"simulator_worker.start_app() raised an exception: {e}")
+            self.fail(f"pywandahydra.start_app() raised an exception: {e}")
 
     def test_start_app_debug(self) -> None:
         try:
-            simulator_worker.start_app(loglevel="DEBUG", colors=False)
+            pywandahydra.start_app(loglevel="DEBUG", colors=False)
         except Exception as e:
-            self.fail(f"simulator_worker.start_app() raised an exception: {e}")
+            self.fail(f"pywandahydra.start_app() raised an exception: {e}")
 
     def test_start_app_wrong_logtype(self) -> None:
         with self.assertRaises(ValueError):
-            simulator_worker.start_app(loglevel="WRONG_LOG_TYPE", colors=False)
+            pywandahydra.start_app(loglevel="WRONG_LOG_TYPE", colors=False)
