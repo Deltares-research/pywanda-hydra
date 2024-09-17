@@ -33,7 +33,10 @@ jobs:
     steps:    
     - uses: actions/checkout@v3
     - name: Make script executable
-      run: chmod +x ./ci/linux/create_venv.sh
+      run: |
+        chmod +x ./ci/linux/create_venv.sh
+        chmod +x ./ci/linux/install_dependencies.sh
+        chmod +x ./ci/linux/test_unit.sh
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v4
       with:
