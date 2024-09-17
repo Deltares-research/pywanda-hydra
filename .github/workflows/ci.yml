@@ -2,6 +2,8 @@ name: Build-Test-Lint-etc (linux)
 
 on: [push]
 
+permissions: write-all
+
 jobs:
 
   flake8-lint:
@@ -22,14 +24,19 @@ jobs:
           plugins: Flake8-pyproject==1.2.3 flake8-docstrings==1.7.0 flake8-quotes==3.3.2 flake8-bugbear==23.9.16 flake8-mock==0.4 flake8-tuple==0.4.1
           # only_warn: 1  #causes action to always be succesful, but still provide annotations
 
-  test:
+  test:    
     runs-on: ubuntu-latest
     strategy:
       matrix:
         python-version: ["3.11"]
 #        python-version: [3.8, 3.9, 3.10, 3.11]
-    steps:
+    steps:    
     - uses: actions/checkout@v3
+    - name: Make script executable
+      run: |
+        chmod +x ./ci/linux/create_venv.sh
+        chmod +x ./ci/linux/install_dependencies.sh
+        chmod +x ./ci/linux/test_unit.sh
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v4
       with:
@@ -38,11 +45,9 @@ jobs:
     - run: |
         ./ci/linux/create_venv.sh
         ./ci/linux/install_dependencies.sh
-
     - name: run unit tests
       run: |
         ./ci/linux/test_unit.sh
-
     - name: Surface failing tests
       if: always()
       uses: pmeier/pytest-results-action@main
@@ -74,6 +79,11 @@ jobs:
 #        python-version: [3.8, 3.9, 3.10, 3.11]
     steps:
     - uses: actions/checkout@v3
+    - name: Make script executable
+      run: |
+        chmod +x ./ci/linux/create_venv.sh
+        chmod +x ./ci/linux/install_dependencies.sh
+        chmod +x ./ci/linux/typecheck.sh
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v4
       with:
@@ -98,6 +108,11 @@ jobs:
         python-version: [ "3.11" ]
     steps:
       - uses: actions/checkout@v3
+      - name: Make script executable
+        run: |
+            chmod +x ./ci/linux/create_venv.sh
+            chmod +x ./ci/linux/install_dependencies.sh
+            chmod +x ./ci/linux/build_python_package.sh
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
         with:
