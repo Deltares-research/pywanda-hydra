@@ -45,11 +45,9 @@ jobs:
     - run: |
         ./ci/linux/create_venv.sh
         ./ci/linux/install_dependencies.sh
-
     - name: run unit tests
       run: |
         ./ci/linux/test_unit.sh
-
     - name: Surface failing tests
       if: always()
       uses: pmeier/pytest-results-action@main
@@ -81,6 +79,11 @@ jobs:
 #        python-version: [3.8, 3.9, 3.10, 3.11]
     steps:
     - uses: actions/checkout@v3
+    - name: Make script executable
+      run: |
+        chmod +x ./ci/linux/create_venv.sh
+        chmod +x ./ci/linux/install_dependencies.sh
+        chmod +x ./ci/linux/typecheck.sh
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v4
       with:
@@ -105,6 +108,11 @@ jobs:
         python-version: [ "3.11" ]
     steps:
       - uses: actions/checkout@v3
+      - name: Make script executable
+        run: |
+            chmod +x ./ci/linux/create_venv.sh
+            chmod +x ./ci/linux/install_dependencies.sh
+            chmod +x ./ci/linux/build_python_package.sh
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
         with:
