@@ -1,14 +1,14 @@
 """Basic  abstract mapper class for transforming data from xlsx to pywanda-hydra object."""
 
 from abc import ABC, abstractmethod
-from typing import TypeVar
+from typing import TypeVar, Generic
 
 
 Entity = TypeVar("Entity")
 XlsxObject = TypeVar("XlsxObject")
 
 
-class MapperAbstract(ABC):
+class MapperAbstract(ABC, Generic[Entity, XlsxObject]):
     """Basic mapper abstract class for transforming data from one format to another."""
 
     @abstractmethod

@@ -7,6 +7,6 @@ class ParameterAbstract(ABC):
     """Abstract class to be used for storing parameters."""
 
     @abstractmethod
-    def __init__(self):
+    def __init__(self) -> None:
         """Initializes the ParameterAbstract object."""
         pass
