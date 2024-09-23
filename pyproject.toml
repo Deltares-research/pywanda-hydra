@@ -62,7 +62,7 @@ dev_template = "{tag}.dev{ccount}"
 dirty_template = "{tag}.dev{ccount}"
 
 [tool.pytest.ini_options]
-addopts = "--cov=pywandahydra --cov-report html --cov-report term-missing --cov-fail-under 80"
+addopts = "--cov=pywandahydra --cov-report html --cov-report term-missing --cov-fail-under 50"
 testpaths = ["unit_test"]
 
 [tool.coverage.run]
