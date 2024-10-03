@@ -1,0 +1,28 @@
+* Wanda Parameter Script, built by WPSrun.bas (info: Wanda.support@deltares.nl)
+* Input definitions:
+9
+"GENERAL","Simulation time"
+"PG1","Initial setting"
+"PG1","Initial speed"
+"PG1","Initial discharge"
+"PG2","Initial speed"
+"CHECKV C5","Initial state"
+"ESD","Disuse"
+"FPT","Disuse"
+"MSP C1","Ramp 1"
+* Output definitions:
+6
+"SAVEALL"
+"PG1","Pump speed","MAX"
+"PS-1 to plant","Pressure","MIN"
+"PS-1 to plant","Pressure","MAX"
+"PS-2 to plant","Pressure","MIN"
+"PS-2 to plant","Pressure","MAX"
+* Case/run definitions:
+6
+'case1',20,1,580,0,735,1,0,1,0.01
+'case2',20,4,580,3000,0,2,0,1,0.01
+'case3',200,1,580,0,735,1,1,0,0.01
+'case4',200,4,580,3000,0,2,1,0,0.01
+'case5',20,1,580,0,735,1,1,0,0.1
+'case6',20,4,580,3000,0,2,1,0,0.1

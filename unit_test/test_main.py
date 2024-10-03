@@ -28,6 +28,9 @@ class MyTest(unittest.TestCase):
         reload(logging)
         return super().tearDown()
 
+    def setUp(self) -> None:
+        self.test = 10
+
     def test__testable_function__is_correct(self) -> None:
         # Arrange
         current_time = datetime(1970, 1, 1, 13, 00)

@@ -222,3 +222,11 @@ unit_test_coverage/
 test-results.xml
 
 .env.*
+
+
+# Ignore Wanda model files
+
+unit_test/simulation/*.__I
+unit_test/simulation/*.__R
+unit_test/simulation/*._sm
+unit_test/simulation/*._um
