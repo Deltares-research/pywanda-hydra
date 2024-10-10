@@ -1,11 +1,18 @@
+"""Test script for runner object"""
+
+import unittest
+
 from pywandahydra.entities.runner_object import RunnerObject
 
-example = RunnerObject(
-    "Sewage_transient_WPS.wdi",
-    "unit_test\\simulation\\",
-    "c:\\Program Files (x86)\\Deltares\\Wanda 4.6\\Bin\\",
-)
 
-results = example.run_model()
+class MyTest(unittest.TestCase):
 
-print(results)
+    def test_runner_object(self):
+        try:
+            RunnerObject(model="Sewage_transient_WPS.wdi", dir_name="unit_test\\simulation\\")
+        except Exception as e:
+            self.fail(f"pywandahydra.runner_object() raised an exception: {e}")
+
+
+if __name__ == "__main__":
+    unittest.main()

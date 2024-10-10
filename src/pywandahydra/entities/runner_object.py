@@ -4,15 +4,22 @@ This class is used for running the different scenarios
 and creating their output."""
 
 from pathlib import Path
+
 import pywanda
-from parameter import input_object, output_object
+
+from pywandahydra.entities.parameter import input_object, output_object
 
 
 class RunnerObject:
     """Class used for running the different scenarios
     and creating their output."""
 
-    def __init__(self, model: str, dir_name: str, wanda_bin: str):
+    def __init__(
+        self,
+        model: str,
+        dir_name: str,
+        wanda_bin: str = "c:\\Program Files (x86)\\Deltares\\Wanda 4.6\\Bin\\",
+    ):
         # Set a path for the wanda model
         self.model_name = model
         self.model_path = dir_name
@@ -54,8 +61,4 @@ class RunnerObject:
                 model.run_unsteady()
             except RuntimeError as e:
                 print(e)
-        # get the results from the simulations
-        result = model.get_all_components_str()
-        model.close()
-        # It will return an array with all the components in the model
-        return result
+        return None
