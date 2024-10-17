@@ -38,11 +38,11 @@ jobs:
         python-version: ${{ matrix.python-version }}
         cache: 'pip'
     - run: |
-        ./ci/windows/create_venv.cmd
-        ./ci/windows/install_dependencies.cmd
+        ./ci/win32/create_venv.cmd
+        ./ci/win32/install_dependencies.cmd
     - name: run unit tests
       run: |
-        ./ci/windows/test_unit.cmd
+        ./ci/win32/test_unit.cmd
     - name: Surface failing tests
       if: always()
       uses: pmeier/pytest-results-action@main
@@ -80,15 +80,15 @@ jobs:
         python-version: ${{ matrix.python-version }}
         cache: 'pip'
     - run: |
-        ./ci/windows/create_venv.cmd
-        ./ci/windows/install_dependencies.cmd
+        ./ci/win32/create_venv.cmd
+        ./ci/win32/install_dependencies.cmd
 
     - name: Add mypy annotator
       uses: pr-annotators/mypy-pr-annotator@v1.0.0
 
     - name: run typechecker
       run: |
-        ./ci/windows/typecheck.cmd
+        ./ci/win32/typecheck.cmd
   build:
     name: Build the python package
     runs-on: windows-latest
@@ -103,9 +103,9 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: 'pip'
       - run: |
-          ./ci/windows/create_venv.cmd
-          ./ci/windows/install_dependencies.cmd
+          ./ci/win32/create_venv.cmd
+          ./ci/win32/install_dependencies.cmd
 
       - name: build
         run: |
-          ./ci/windows/build_python_package.sh
+          ./ci/win32/build_python_package.sh
