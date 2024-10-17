@@ -5,7 +5,7 @@ and creating their output."""
 
 from pathlib import Path
 
-import pywanda
+import pywanda  # type:ignore
 
 from pywandahydra.entities.parameter import input_object, output_object
 
