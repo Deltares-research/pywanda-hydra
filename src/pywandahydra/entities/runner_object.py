@@ -1,7 +1,9 @@
-"""Module containging the RunnerObject class.
+"""
+Module containging the RunnerObject class.
 
 This class is used for running the different scenarios
-and creating their output."""
+and creating their output.
+"""
 
 from pathlib import Path
 
@@ -11,8 +13,10 @@ from pywandahydra.entities.parameter import input_object, output_object
 
 
 class RunnerObject:
-    """Class used for running the different scenarios
-    and creating their output."""
+    """
+    Class used for running the different scenarios
+    and creating their output.
+    """
 
     def __init__(
         self,
@@ -20,6 +24,13 @@ class RunnerObject:
         dir_name: str,
         wanda_bin: str = "c:\\Program Files (x86)\\Deltares\\Wanda 4.6\\Bin\\",
     ):
+        """
+        Initializes the runner object
+        Parameters:
+        model (str): name of the wanda model
+        dir_name (str): path to the wanda model
+        wanda_bin (str): path to the wanda bin
+        """
         # Set a path for the wanda model
         self.model_name = model
         self.model_path = dir_name
@@ -27,18 +38,26 @@ class RunnerObject:
         # self.model: WandaModel
 
     def set_inputs(input: list[input_object]) -> None:  # type: ignore
+        """
+        Function to set the inputs for the wanda model
+        """
         pass
 
     def get_output(output: list[output_object]) -> list[output_object]:  # type: ignore
+        """
+        Function to get the outputs of the wanda model
+        """
         pass
 
     def run_model(self) -> None:
-        """Function to run the model
+        """
+        Function to run the model.
         Open de model, run both steady and unsteady
 
         Returns:
         --------
-        result: list of strings"""
+        result: list of strings
+        """
         # Open the model
 
         model = pywanda.WandaModel(str(Path(self.model_path, self.model_name)), self.bin)
