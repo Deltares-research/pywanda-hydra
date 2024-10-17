@@ -1,6 +1,6 @@
 """Module containging the RunnerObject class.
 
-This class is used for running the different scenarios 
+This class is used for running the different scenarios
 and creating their output."""
 
 from pathlib import Path
@@ -24,12 +24,12 @@ class RunnerObject:
         self.model_name = model
         self.model_path = dir_name
         self.bin = wanda_bin
-        self.model: WandaModel
+        # self.model: WandaModel
 
-    def set_inputs(input: list[input_object]) -> None:
+    def set_inputs(input: list[input_object]) -> None:  # type: ignore
         pass
 
-    def get_output(output: list[output_object]) -> list[output_object]:
+    def get_output(output: list[output_object]) -> list[output_object]:  # type: ignore
         pass
 
     def run_model(self) -> None:
