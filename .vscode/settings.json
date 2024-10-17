@@ -25,4 +25,5 @@
   "terminal.integrated.env.windows": {
     "PYTHONPATH": "${workspaceFolder}/src"
   },
+  "restructuredtext.pythonRecommendation.disabled": true,
 }
