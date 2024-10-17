@@ -91,4 +91,24 @@ jobs:
     - name: run typechecker
       run: |
         ./ci/windows/typecheck.cmd
+  build:
+    name: Build the python package
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        python-version: [ "3.10" ]
+    steps:
+      - uses: actions/checkout@v3
+      - name: Make script executable
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+      - run: |
+          ./ci/windows/create_venv.cmd
+          ./ci/windows/install_dependencies.cmd
 
+      - name: build
+        run: |
+          ./ci/windows/build_python_package.sh
