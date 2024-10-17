@@ -25,7 +25,7 @@ jobs:
           # only_warn: 1  #causes action to always be succesful, but still provide annotations
 
   test:    
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     strategy:
       matrix:
         python-version: ["3.10"]
@@ -33,21 +33,17 @@ jobs:
     steps:    
     - uses: actions/checkout@v3
     - name: Make script executable
-      run: |
-        chmod +x ./ci/linux/create_venv.sh
-        chmod +x ./ci/linux/install_dependencies.sh
-        chmod +x ./ci/linux/test_unit.sh
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.python-version }}
         cache: 'pip'
     - run: |
-        ./ci/linux/create_venv.sh
-        ./ci/linux/install_dependencies.sh
+        ./ci/windows/create_venv.cmd
+        ./ci/windows/install_dependencies.cmd
     - name: run unit tests
       run: |
-        ./ci/linux/test_unit.sh
+        ./ci/windows/test_unit.cmd
     - name: Surface failing tests
       if: always()
       uses: pmeier/pytest-results-action@main
@@ -72,7 +68,7 @@ jobs:
         fail-on-empty: true
 
   typecheck:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     strategy:
       matrix:
         python-version: ["3.10"]
@@ -80,48 +76,19 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Make script executable
-      run: |
-        chmod +x ./ci/linux/create_venv.sh
-        chmod +x ./ci/linux/install_dependencies.sh
-        chmod +x ./ci/linux/typecheck.sh
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.python-version }}
         cache: 'pip'
     - run: |
-        ./ci/linux/create_venv.sh
-        ./ci/linux/install_dependencies.sh
+        ./ci/windows/create_venv.cmd
+        ./ci/windows/install_dependencies.cmd
 
     - name: Add mypy annotator
       uses: pr-annotators/mypy-pr-annotator@v1.0.0
 
     - name: run typechecker
       run: |
-        ./ci/linux/typecheck.sh
+        ./ci/windows/typecheck.cmd
 
-  build:
-    name: Build the python package
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: [ "3.10" ]
-    steps:
-      - uses: actions/checkout@v3
-      - name: Make script executable
-        run: |
-            chmod +x ./ci/linux/create_venv.sh
-            chmod +x ./ci/linux/install_dependencies.sh
-            chmod +x ./ci/linux/build_python_package.sh
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ matrix.python-version }}
-          cache: 'pip'
-      - run: |
-          ./ci/linux/create_venv.sh
-          ./ci/linux/install_dependencies.sh
-
-      - name: build
-        run: |
-          ./ci/linux/build_python_package.sh
