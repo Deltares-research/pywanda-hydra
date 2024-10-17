@@ -14,7 +14,8 @@ from pywandahydra.entities.parameter import input_object, output_object
 
 class RunnerObject:
     """
-    Class used for running the different scenarios
+    Class used for running the different scenarios.
+
     and creating their output.
     """
 
@@ -25,7 +26,8 @@ class RunnerObject:
         wanda_bin: str = "c:\\Program Files (x86)\\Deltares\\Wanda 4.6\\Bin\\",
     ):
         """
-        Initializes the runner object
+        Initializes the runner object.
+
         Parameters:
         model (str): name of the wanda model
         dir_name (str): path to the wanda model
@@ -38,20 +40,17 @@ class RunnerObject:
         # self.model: WandaModel
 
     def set_inputs(input: list[input_object]) -> None:  # type: ignore
-        """
-        Function to set the inputs for the wanda model
-        """
+        """Function to set the inputs for the wanda model."""
         pass
 
     def get_output(output: list[output_object]) -> list[output_object]:  # type: ignore
-        """
-        Function to get the outputs of the wanda model
-        """
+        """Function to get the outputs of the wanda model"""
         pass
 
     def run_model(self) -> None:
         """
         Function to run the model.
+
         Open de model, run both steady and unsteady
 
         Returns:
