@@ -44,7 +44,7 @@ class RunnerObject:
         pass
 
     def get_output(output: list[output_object]) -> list[output_object]:  # type: ignore
-        """Function to get the outputs of the wanda model"""
+        """Function to get the outputs of the wanda model."""
         pass
 
     def run_model(self) -> None:
