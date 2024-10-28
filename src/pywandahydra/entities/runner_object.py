@@ -55,17 +55,12 @@ class RunnerObject:
 
         Returns:
         --------
-        result: list of strings
+        result: None
         """
         # Open the model
 
         model = pywanda.WandaModel(str(Path(self.model_path, self.model_name)), self.bin)
-        # Store all the input information
-        print("Save model input")
-        try:
-            model.save_model_input
-        except MemoryError as e:
-            print(e)
+
         # Run the steady state
         print("Run steady model")
         try:

@@ -230,3 +230,5 @@ unit_test/simulation/*.__I
 unit_test/simulation/*.__R
 unit_test/simulation/*._sm
 unit_test/simulation/*._um
+unit_test/simulation/*.rtf
+unit_test/simulation/*.wdd

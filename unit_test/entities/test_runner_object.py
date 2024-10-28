@@ -5,7 +5,7 @@ import unittest
 from pywandahydra.entities.runner_object import RunnerObject
 
 
-class MyTest(unittest.TestCase):
+class RunnerObjectTest(unittest.TestCase):
     """Class for testing of the running object."""
 
     def test_runner_object(self) -> None:
