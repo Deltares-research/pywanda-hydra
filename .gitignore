@@ -222,3 +222,7 @@ unit_test_coverage/
 test-results.xml
 
 .env.*
+
+# Ignore requirements files that may contain secrets
+dev-requirements*.txt
+requirements*.txt

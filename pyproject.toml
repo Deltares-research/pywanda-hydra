@@ -19,22 +19,38 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Physics",
 ]
 
-dependencies = ["coloredlogs~=15.0.1"]
+dependencies = [
+    "coloredlogs~=15.0.1",
+    "numpy~=2.1.0",
+    "pandas~=2.2.2",
+    "scipy~=1.14.1",
+    "pydantic~=2.12.5",
+    "openpyxl~=3.1.5",
+    "pyyaml~=6.0.3",
+    "xlrd~=2.0.1",
+]
 
 [project.optional-dependencies]
 dev = [
-    "setuptools ~= 69.0.3",
-    "wheel ~= 0.40.0",
-    "setuptools-git-versioning < 2",
-    "black~=22.1.0",
-    "flake8==6.0.0",
-    "Flake8-pyproject==1.2.3",
-    "pytest ~=7.3.1",
-    "pytest-cov ~=4.0.0",
-    "bump2version==1.0.1",
-    "mypy ~= 1.5.1",
-    "isort==5.13.2",
-    "build ~= 1.0.3",
+    "setuptools ~= 75.6.0",
+    "wheel ~= 0.45.1",
+    "setuptools-git-versioning >= 2.0, < 3",
+    "black == 24.10.0",
+    "flake8 == 7.1.1",
+    "flake8-pyproject ~= 1.2.3",
+    "flake8-docstrings ~= 1.7.0",
+    "flake8-quotes ~= 3.4.0",
+    "flake8-bugbear ~= 24.10.31",
+    "flake8-mock ~= 0.4",
+    "flake8-tuple ~= 0.4.1",
+    "pytest ~= 8.3.4",
+    "pytest-cov ~= 6.0.0",
+    "mypy ~= 1.13.0",
+    "isort == 6.1.0",
+    "build ~= 1.2.2",
+    "sphinx~=8.0.2",    
+    "snakeviz==2.2.0",
+    "types-requests ~= 2.28.11",
 ]
 
 [project.urls]
@@ -69,23 +85,33 @@ testpaths = ["unit_test"]
 source = ["src"]
 
 [tool.flake8]
-exclude = ['.venv/*', 'venv/*', 'doc/*']
-ignore = [
-    'Q000', # Remove bad quotes
-    'D401', # Docstring First line should be imperative
-    'E203', # Space before colon (not PEP-8 compliant, and conflicts with black)
-    'C408', # Suggestion to use dict() over {}
-    'W503', # Starting lines with operators.
-]
-per-file-ignores = ['__init__.py:F401', 'test_main.py:D100,D101,D102,D103']
 max-line-length = 100
 count = true
+ignore = [
+    'Q000',  # Remove bad quotes
+    'D401',  # Docstring First line should be imperative
+    'E203',  # Space before colon (not PEP-8 compliant, and conflicts with black)
+    'C408',  # Suggestion to use dict() over {}
+    'W503',  # Starting lines with operators.
+    'PT009', # use a regular assert instead of unittest-style assertion
+    'PT027', # pytest.raises() should be used instead of assertRaises()
+]
+exclude = [
+    '.venv/*',
+    'venv/*',
+    'doc/*',
+]
+per-file-ignores = [
+    '__init__.py:F401',
+    'unit_test/*:D100,D101,D102,D103,D104,D105,D106',
+]
 
 [tool.black]
 line-length = 100
 
 [tool.isort]
 profile = "black"
+line_length = 100
 
 [tool.mypy]
 python_version = "3.11"
@@ -93,10 +119,14 @@ warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
 disallow_incomplete_defs = true
+ignore_missing_imports = true
+follow_imports_for_stubs = true
 exclude = ['.venv/*', 'venv/*', 'doc/*', 'ci/*']
 
 # mypy per-module options:
 [[tool.mypy.overrides]]
-module = ["unit_test.*", "coloredlogs.*"]
-check_untyped_defs = true
-ignore_missing_imports = true
+module = ["unit_test.*"]
+disallow_incomplete_defs = false
+disallow_untyped_defs = false
+check_untyped_defs = false
+ignore_missing_imports = false
