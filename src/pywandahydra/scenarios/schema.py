@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any, Dict, Iterable, List, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -147,6 +148,27 @@ class ScenarioMeta(BaseModel):
     appendix: Optional[str] = Field(None, alias="Appendix")
     chapter: Optional[int] = Field(None, alias="Chapter")
     date: Optional[Any] = Field(None, alias="Date")
+
+    @field_validator("date", mode="before")
+    @classmethod
+    def normalize_date(cls, v: Any) -> Any:
+        """Convert datetime objects to ISO format strings for JSON serialization.
+
+        Parameters
+        ----------
+        v : Any
+            The input date value.
+
+        Returns
+        -------
+        Any
+            The date as a string (if datetime) or the original value.
+        """
+        if v is None:
+            return None
+        if isinstance(v, datetime):
+            return v.isoformat()
+        return v
 
     @field_validator("name")
     @classmethod

@@ -101,7 +101,7 @@ def _extract_analysis_meta(
         # Find the full column tuple where the first level matches col
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", category=pd.errors.PerformanceWarning)
-            return input_data.loc[:, (col, "")].iloc[prop_row, 0]  # type: ignore
+            return input_data.loc[:, (col, "")].values[prop_row]
 
     return AnalysisMeta(
         analysis_description=_as_str_or_none(get_cell(opts.global_description_col)),
@@ -166,7 +166,7 @@ def read_scenarios_from_excel(
         number_col = ("Number", "")
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", category=pd.errors.PerformanceWarning)
-            if _is_nan(input_data.iloc[i, :][number_col].values[0]):
+            if _is_nan(input_data.iloc[i, :][number_col]):
                 continue
 
         # Extract metadata
