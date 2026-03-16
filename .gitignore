@@ -226,3 +226,26 @@ test-results.xml
 # Ignore requirements files that may contain secrets
 dev-requirements*.txt
 requirements*.txt
+
+# Ignore LOGS
+*.json
+
+# Ignore WANDA files not part of [.wdi, .wdx]
+*.__i
+*._sm
+*._um
+*.rtf
+*.wdd
+*.wdo
+
+# Ignore non-"base_model" test data
+test_data/**/*
+
+# Wanda base model files
+!test_data/wanda/base_model.wdi
+!test_data/wanda/base_model.wdx
+
+# Execution folder
+!test_data/execution/model/*
+
+

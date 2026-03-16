@@ -125,7 +125,7 @@ class RunContext(BaseModel):
     )
 
     # Optional description and metadata
-    description: Optional[str] = Field(None, description="Optional description of the run.")
+    description: Optional[str] = Field(default=None, description="Optional description of the run.")
     metadata: Dict[str, Any] = Field(
         default_factory=dict,
         description="Additional metadata for the run.",

@@ -12,7 +12,7 @@ from pywandahydra.wanda.api import (
     get_item,
     resolve_items,
 )
-from pywandahydra.wanda.model_io import prepare_scenario_model
+from pywandahydra.wanda.create_scenario import prepare_scenario_model
 from pywandahydra.wanda.session import wanda_session
 
 

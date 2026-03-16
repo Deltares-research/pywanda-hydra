@@ -19,6 +19,7 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Physics",
 ]
 
+
 dependencies = [
     "coloredlogs~=15.0.1",
     "numpy~=2.1.0",
@@ -76,6 +77,9 @@ version_file = "VERSION"
 count_commits_from_version_file = true
 dev_template = "{tag}.dev{ccount}"
 dirty_template = "{tag}.dev{ccount}"
+
+[tool.setuptools.package-data]
+"pywandahydra.postprocessing.plotting.image_data" = ["*.png"]
 
 [tool.pytest.ini_options]
 addopts = "--cov=pywandahydra --cov-report html --cov-report term-missing --cov-fail-under 50"

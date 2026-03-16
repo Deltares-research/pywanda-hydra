@@ -1,0 +1,35 @@
+"""Unit tests for wanda.session module."""
+
+import unittest
+from pathlib import Path
+
+from pywandahydra.config.models import ModelSpecification
+from pywandahydra.wanda.session import wanda_session
+
+
+class TestWandaSession(unittest.TestCase):
+    """Unit tests for wanda.session functions."""
+
+    def setUp(self) -> None:
+        """Set up a Wanda model for testing."""
+        self.model_spec = ModelSpecification(
+            model_path=Path(__file__).parents[2] / "test_data" / "wanda" / "base_model.wdi",
+            wanda_bin=r"c:\Program Files (x86)\Deltares\Wanda 4.7\Bin\\",
+            base_model_name="base_model",
+            run_steady=False,
+            run_unsteady=False,
+            readonly=False,
+        )
+
+    def test_wanda_session_context_manager(self):
+        """Test the wanda_session context manager."""
+        # Arrange & Act
+        with wanda_session(spec=self.model_spec) as model:
+            # Assert
+            self.assertIsNotNone(model)
+            self.assertEqual(len(model.get_all_components()), 24)
+            self.assertEqual(len(model.get_all_pipes()), 3)
+
+        # Assert closing the session
+        with self.assertRaises(Exception):
+            model.get_model_name()

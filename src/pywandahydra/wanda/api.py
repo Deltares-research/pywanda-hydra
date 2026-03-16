@@ -100,28 +100,6 @@ def find_items_with_keyword(model: pywanda.WandaModel, keyword: str) -> list[Wan
     return matched_items
 
 
-def signal_line_exists(model: pywanda.WandaModel, name: str) -> bool:
-    """Check if a signal line exists in the Wanda model.
-
-    Parameters
-    ----------
-    model : pywanda.WandaModel
-        The Wanda model instance.
-    name : str
-        The name of the signal line.
-
-    Returns
-    -------
-    bool
-        True if the signal line exists, False otherwise.
-    """
-    try:
-        model.get_signal_line(name)
-        return True
-    except Exception:
-        return False
-
-
 def resolve_items(
     model: pywanda.WandaModel,
     identifier: str,
@@ -159,7 +137,7 @@ def resolve_items(
         return [WandaItemRef(node.get_complete_name_spec(), "node")]
 
     # Signal line (heuristic; adapt to your naming conventions)
-    if type_identifier.startswith("Signal") and signal_line_exists(model, identifier):
+    if type_identifier.startswith("Signal") and model.sig_line_exists(identifier):
         sig = model.get_signal_line(identifier)
         return [WandaItemRef(sig.get_complete_name_spec(), "signal_line")]
 

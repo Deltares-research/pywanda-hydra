@@ -7,7 +7,7 @@ from pywandahydra.config.models import ModelSpecification, RunContext
 from pywandahydra.execution.artifacts import create_run_directories, write_run_log
 from pywandahydra.scenarios.mapper import load_scenarios
 from pywandahydra.wanda.api import apply_parameter_change
-from pywandahydra.wanda.model_io import prepare_scenario_model
+from pywandahydra.wanda.create_scenario import prepare_scenario_model
 from pywandahydra.wanda.session import wanda_session
 
 

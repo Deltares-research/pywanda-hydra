@@ -10,7 +10,7 @@ from pyexpat import model
 from ..config.models import ModelSpecification, RunContext
 from ..scenarios.schema import ScenarioSpecification
 from ..wanda.api import apply_parameter_change
-from ..wanda.model_io import copy_model_to_directory
+from ..wanda.create_scenario import copy_model_to_directory
 from ..wanda.session import wanda_session
 
 
