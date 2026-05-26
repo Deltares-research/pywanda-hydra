@@ -8,10 +8,10 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from pywandahydra.postprocessing.plotting.specifications import AxisSpec
 
-from .base import PlotSpec
+from .base import PlotSpecification
 
 
-class RoutePlotSpec(PlotSpec):
+class RoutePlotSpec(PlotSpecification):
     """
     Declarative specification for a route plot.
     """

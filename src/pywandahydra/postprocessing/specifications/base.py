@@ -3,7 +3,7 @@
 from pydantic import BaseModel
 
 
-class PlotSpec(BaseModel):
+class PlotSpecification(BaseModel):
     """Base class for plot specifications in post-processing."""
 
     name: str

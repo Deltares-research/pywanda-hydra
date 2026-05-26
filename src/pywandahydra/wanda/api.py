@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Any, Callable, Literal
 
 import pywanda
 
@@ -100,6 +100,34 @@ def find_items_with_keyword(model: pywanda.WandaModel, keyword: str) -> list[Wan
     return matched_items
 
 
+# ---------------------------------------------------------------------------
+# Bulk selectors: special identifiers that expand to groups of items
+# ---------------------------------------------------------------------------
+
+
+def _all_pipes(model: pywanda.WandaModel) -> list[WandaItemRef]:
+    """Return references to all pipe components in the model."""
+    return [
+        WandaItemRef(pipe.get_complete_name_spec(), "component") for pipe in model.get_all_pipes()
+    ]
+
+
+def _all_components(model: pywanda.WandaModel) -> list[WandaItemRef]:
+    """Return references to all components in the model."""
+    return [
+        WandaItemRef(comp.get_complete_name_spec(), "component")
+        for comp in model.get_all_components()
+    ]
+
+
+_BulkSelector = Callable[[pywanda.WandaModel], list[WandaItemRef]]
+
+_BULK_SELECTORS: dict[str, _BulkSelector] = {
+    "PALL": _all_pipes,
+    "CALL": _all_components,
+}
+
+
 def resolve_items(
     model: pywanda.WandaModel,
     identifier: str,
@@ -107,6 +135,7 @@ def resolve_items(
     """Resolve item references from an identifier.
 
     Methodology:
+    0. Bulk selectors: ``PALL`` (all pipes), ``CALL`` (all components).
     1. Exact node match if identifier matches node style (e.g. "H-node" in name).
     2. Exact signal line match if identifier matches signal line style (e.g. "Signal" in name).
     3. Exact component match.
@@ -127,6 +156,11 @@ def resolve_items(
     identifier = str(identifier).strip()
     if not identifier:
         return []
+
+    # Bulk selectors (e.g. "PALL" = all pipes)
+    upper = identifier.upper()
+    if upper in _BULK_SELECTORS:
+        return _BULK_SELECTORS[upper](model)
 
     # Determine type hint from identifier pattern
     type_identifier = identifier.split(" ", maxsplit=1)[0]

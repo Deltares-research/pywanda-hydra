@@ -7,6 +7,8 @@ from typing import Any, Dict, Iterable, List, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from pywandahydra.postprocessing.plotting.specifications import AxisSpec
+
 ChangeMode = Literal["set", "scale", "offset"]
 
 
@@ -318,6 +320,12 @@ class ScenarioSpecification(BaseModel):
     # Parameter changes applied for this scenario
     parameters: List[ParameterChange] = Field(default_factory=list)
 
+    # Post-processing: table exports (from "Output" sheet)
+    outputs: List[ExportTableSpecification] = Field(default_factory=list)
+
+    # Post-processing: route plot specifications (from "RPlots" sheet)
+    route_plots: List[RoutePlotSpecification] = Field(default_factory=list)
+
     # Provenance, traceability, and source-specific context
     source: Dict[str, Any] = Field(default_factory=dict)
 
@@ -325,3 +333,100 @@ class ScenarioSpecification(BaseModel):
         """Convenience iterator for execution layer."""
         for p in self.parameters:
             yield p.component, p.property, p.value, p.mode
+
+
+class ExportTableSpecification(BaseModel):
+    """Data model representing specifications for exporting a table.
+
+    Attributes
+    ----------
+    component : str
+        The name of the component to export.
+    property : str
+        The name of the property to export.
+    mode : str
+        The mode of the table export: ``"MIN"`` or ``"MAX"``.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    component: str
+    property: str
+    mode: Literal["MIN", "MAX"]
+
+    @field_validator("component", "property")
+    @classmethod
+    def non_empty(cls, v: str) -> str:
+        """Ensure the string is non-empty after stripping whitespace.
+
+        Parameters
+        ----------
+        v : str
+            The input string to validate.
+
+        Returns
+        -------
+        str: The validated non-empty string.
+        """
+        v = str(v).strip()
+        if not v:
+            raise ValueError("must be a non-empty string")
+        return v
+
+    @field_validator("mode")
+    @classmethod
+    def validate_mode(cls, v: str) -> str:
+        """Validate that the mode is either "MIN" or "MAX".
+
+        Parameters
+        ----------
+        v : str
+            The input mode string to validate.
+
+        Returns
+        -------
+        str: The validated mode string.
+        """
+        v = str(v).strip().upper()
+        if v not in ("MIN", "MAX"):
+            raise ValueError("mode must be either 'MIN' or 'MAX'")
+        return v
+
+
+class RoutePlotSpecification(BaseModel):
+    """Data model representing a route-plot specification loaded from a scenario file.
+
+    Attributes
+    ----------
+    component : str
+        The name of the component to plot.
+    route_id : str
+        The ID of the route to plot.
+    title : Optional[str]
+        Plot title.
+    legend : Optional[str]
+        Legend label or description.
+    x_axis : AxisSpec
+        X-axis specification (label, limits, tick interval, scale factor).
+    y_axis : AxisSpec
+        Y-axis specification (label, limits, tick interval, scale factor).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    route_id: str
+    property: str
+
+    title: Optional[str] = None
+    legend: Optional[str] = None
+    x_axis: AxisSpec = Field(default_factory=lambda: AxisSpec(label=""))
+    y_axis: AxisSpec = Field(default_factory=lambda: AxisSpec(label=""))
+
+    @field_validator("title")
+    @classmethod
+    def non_empty(cls, v: str) -> str:
+        """Ensure the string is non-empty after stripping whitespace."""
+        v = str(v).strip()
+        if not v:
+            raise ValueError("must be a non-empty string")
+        return v

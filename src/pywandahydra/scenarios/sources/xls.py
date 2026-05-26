@@ -4,13 +4,22 @@ from __future__ import annotations
 
 import warnings
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, List
+from typing import TYPE_CHECKING, Any, List, cast
 
 import numpy as np
 import pandas as pd
 from pydantic import ValidationError
 
-from ..schema import AnalysisMeta, ParameterChange, ScenarioMeta, ScenarioSpecification
+from pywandahydra.postprocessing.plotting.specifications import AxisSpec
+
+from ..schema import (
+    AnalysisMeta,
+    ExportTableSpecification,
+    ParameterChange,
+    RoutePlotSpecification,
+    ScenarioMeta,
+    ScenarioSpecification,
+)
 
 if TYPE_CHECKING:
     from ..mapper import ScenarioLoadOptions
@@ -110,10 +119,146 @@ def _extract_analysis_meta(
     )
 
 
+def _read_output_sheet(
+    path: str | Path,
+    opts: ScenarioLoadOptions,
+) -> List[ExportTableSpecification]:
+    """Read the *Output* sheet and return a list of export-table specifications.
+
+    Expected sheet layout (no header row, columns by position)::
+
+        PIPE P1   | Head     | MAX
+        PIPE P2   | Pressure | MIN
+
+    Column 0 = component, column 1 = property, column 2 = mode.
+
+    The sheet is silently skipped (returns ``[]``) when it does not exist.
+
+    Parameters
+    ----------
+    path : str | Path
+        The path to the Excel file.
+    opts : ScenarioLoadOptions
+        Scenario load options (provides sheet name).
+
+    Returns
+    -------
+    List[ExportTableSpecification]
+        Parsed export-table specifications.
+    """
+    try:
+        df = cast(pd.DataFrame, pd.read_excel(path, opts.output_sheet, header=None))
+    except ValueError:
+        # Sheet does not exist
+        return []
+
+    # Skip if there are fewer than 3 columns (component, property, mode)
+    if df.shape[1] < 3:
+        return []
+
+    specs: List[ExportTableSpecification] = []
+    for _, row in df.iterrows():
+        comp = _as_str_or_none(row.iloc[0])
+        prop = _as_str_or_none(row.iloc[1])
+        mode_str = _as_str_or_none(row.iloc[2])
+
+        if comp is None or prop is None or mode_str is None:
+            continue
+
+        mode = cast(Any, mode_str)
+        specs.append(ExportTableSpecification(component=comp, property=prop, mode=mode))
+
+    return specs
+
+
+def _read_rplots_sheet(
+    path: str | Path,
+    opts: ScenarioLoadOptions,
+) -> List[RoutePlotSpecification]:
+    """Read the *RPlots* sheet and return a list of route-plot specifications.
+
+    Expected sheet layout (with a header row)::
+
+        title | Legend | Xlabel | Ylabel | Xmin | Xtick
+        Xmax  | Xscale | Ymin  | Ytick  | Ymax | Yscale
+
+    The sheet is silently skipped (returns ``[]``) when it does not exist.
+
+    Parameters
+    ----------
+    path : str | Path
+        The path to the Excel file.
+    opts : ScenarioLoadOptions
+        Scenario load options (provides sheet name).
+
+    Returns
+    -------
+    List[RoutePlotSpecification]
+        Parsed route-plot specifications.
+    """
+    try:
+        df = cast(pd.DataFrame, pd.read_excel(path, opts.rplots_sheet))
+    except ValueError:
+        # Sheet does not exist
+        return []
+
+    if "title" not in df.columns:
+        return []
+
+    def _float_or_none(val: Any) -> float | None:
+        if _is_nan(val) or val is None:
+            return None
+        try:
+            return float(val)
+        except (TypeError, ValueError):
+            return None
+
+    specs: List[RoutePlotSpecification] = []
+    for _, row in df.iterrows():
+        comp = _as_str_or_none(row.get("component"))
+        prop = _as_str_or_none(row.get("property"))
+
+        if comp is None or prop is None:
+            continue
+
+        title = _as_str_or_none(row.get("title"))
+
+        x_axis = AxisSpec(
+            label=_as_str_or_none(row.get("Xlabel")) or "",
+            min=_float_or_none(row.get("Xmin")),
+            max=_float_or_none(row.get("Xmax")),
+            tick_interval=_float_or_none(row.get("Xtick")),
+            factor=_float_or_none(row.get("Xscale")) or 1.0,
+        )
+        y_axis = AxisSpec(
+            label=_as_str_or_none(row.get("Ylabel")) or "",
+            min=_float_or_none(row.get("Ymin")),
+            max=_float_or_none(row.get("Ymax")),
+            tick_interval=_float_or_none(row.get("Ytick")),
+            factor=_float_or_none(row.get("Yscale")) or 1.0,
+        )
+
+        specs.append(
+            RoutePlotSpecification(
+                route_id=comp or "",
+                property=prop or "",
+                title=title,
+                legend=_as_str_or_none(row.get("Legend")),
+                x_axis=x_axis,
+                y_axis=y_axis,
+            )
+        )
+
+    return specs
+
+
 def read_scenarios_from_excel(
     path: str | Path, opts: ScenarioLoadOptions
 ) -> List[ScenarioSpecification]:
     """Read scenarios from an Excel file.
+
+    Reads the *Cases* sheet for scenario parameters, and optionally the
+    *Output* and *RPlots* sheets for post-processing specifications.
 
     Parameters
     ----------
@@ -158,6 +303,10 @@ def read_scenarios_from_excel(
 
     # Extract analysis-level metadata
     analysis_context = _extract_analysis_meta(input_data, prop_row, opts)
+
+    # Load post-processing specifications from optional sheets
+    output_specs = _read_output_sheet(path, opts) if opts.output_sheet else []
+    rplot_specs = _read_rplots_sheet(path, opts) if opts.rplots_sheet else []
 
     # Construct scenarios
     scenarios: List[ScenarioSpecification] = []
@@ -210,6 +359,8 @@ def read_scenarios_from_excel(
             ScenarioSpecification(
                 meta=meta,
                 parameters=parameters,
+                outputs=output_specs,
+                route_plots=rplot_specs,
                 analysis_meta=analysis_context,
                 source={
                     "file": path,

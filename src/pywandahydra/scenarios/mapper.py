@@ -25,6 +25,10 @@ class ScenarioLoadOptions:
     global_wanda_version_col: str = "Extra"
     global_project_number_col: str = "Include"
 
+    # Post-processing sheet names (set to None to skip)
+    output_sheet: Optional[str] = "Output"
+    rplots_sheet: Optional[str] = "Rplots"
+
 
 def load_scenarios(
     path: Path | str,

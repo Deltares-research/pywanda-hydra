@@ -5,6 +5,7 @@ from pathlib import Path
 
 from pywandahydra.config.models import ModelSpecification, RunContext
 from pywandahydra.execution.artifacts import create_run_directories, write_run_log
+from pywandahydra.postprocessing.extract import extract_all
 from pywandahydra.scenarios.mapper import load_scenarios
 from pywandahydra.wanda.api import apply_parameter_change
 from pywandahydra.wanda.create_scenario import prepare_scenario_model
@@ -65,7 +66,7 @@ def main() -> None:
                 apply_parameter_change(model, change)
 
             model.save_model_input()
-            # Run steady simulation if specified
+            # Run steady simul ation if specified
             if model_spec.run_steady:
                 model.run_steady()
 
@@ -75,6 +76,10 @@ def main() -> None:
                 and model.get_property("Simulation time").get_scalar_float() > 0
             ):
                 model.run_unsteady()
+
+            # Extract results
+            # TODO Move to external post-processing function
+            results = extract_all(model, scenario)
 
     # # For this example, run ONLY the first scenario
     # scenario = scenarios[0]

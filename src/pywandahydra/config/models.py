@@ -166,4 +166,3 @@ class RunContext(BaseModel):
             The normalized path as a string.
         """
         return str(Path(v).expanduser()).strip()
-        return str(Path(v).expanduser()).strip()
