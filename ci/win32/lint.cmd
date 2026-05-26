@@ -1,8 +1,5 @@
 rem Short script to run linting
-rem @echo off
+@echo off
 
-pushd .
-cd /D "%~dp0"
-cd ..\..\
-flake8 .\src\pywandahydra
-popd
+cd /D "%~dp0"..\..
+uv run flake8 .\src\pywandahydra

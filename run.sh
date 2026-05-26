@@ -1,5 +1,3 @@
 #!/usr/bin/env sh
 
-. .venv/bin/activate
-cd src/
-python -m pywandahydra
+uv run python -m pywandahydra

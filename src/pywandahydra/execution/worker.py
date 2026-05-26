@@ -1,67 +1,213 @@
-"""Worker module to execute a single scenario on a given model using Wanda."""
+"""Worker module — executes a single scenario case.
+
+Responsible for:
+- Creating the per-case directory
+- Copying the base model
+- Opening the model via the adapter
+- Applying global overrides and scenario parameters
+- Running steady/unsteady simulations
+- Extracting results and writing to Parquet cache
+- Journaling status transitions (state.json + events.jsonl)
+"""
 
 from __future__ import annotations
 
+import logging
+import os
+import time
 from pathlib import Path
 from typing import Any, Dict
 
-from pyexpat import model
-
-from ..config.models import ModelSpecification, RunContext
+from ..config.models import ModelSpecification
+from ..execution.case_plan import CasePlan
+from ..execution.journal import CaseJournal, _now_iso
+from ..postprocessing.cache import ParquetCache
+from ..postprocessing.extract import extract_all
+from ..postprocessing.pipeline import PostProcessingContext, run_postprocessing
 from ..scenarios.schema import ScenarioSpecification
 from ..wanda.api import apply_parameter_change
-from ..wanda.create_scenario import copy_model_to_directory
+from ..wanda.create_scenario import prepare_scenario_model
 from ..wanda.session import wanda_session
+
+logger = logging.getLogger(__name__)
+
+
+def run_one_case(plan: CasePlan) -> Dict[str, Any]:
+    """Execute a single case according to its CasePlan.
+
+    This is the atomic unit of work dispatched by the runner — either
+    sequentially or via multiprocessing.
+
+    Args:
+        plan: Immutable case plan containing all execution parameters.
+
+    Returns:
+        Dict with keys: case_id, success, error (if failed), scenario_dir.
+    """
+    journal = CaseJournal(plan.case_dir)
+
+    # --- Check idempotency (already completed with same config?) ---
+    if journal.is_completed(plan.config_hash):
+        logger.info("Case %s already completed — skipping.", plan.case_id)
+        return {
+            "case_id": plan.case_id,
+            "success": True,
+            "skipped": True,
+            "scenario_dir": str(plan.case_dir),
+        }
+
+    # --- Transition: RUNNING ---
+    with journal:
+        journal.transition(
+            "RUNNING",
+            started_at=_now_iso(),
+            worker_pid=os.getpid(),
+            attempt=plan.attempt,
+            config_hash=plan.config_hash,
+        )
+
+    start_time = time.perf_counter()
+
+    try:
+        # --- Prepare scenario model copy ---
+        scenario_model_path = prepare_scenario_model(
+            base_model_path=str(plan.model_spec.model_path),
+            scenario_dir=plan.case_dir,
+            scenario_name=plan.scenario.meta.name,
+            readonly=plan.model_spec.readonly,
+        )
+        journal.event("model_prepared", path=scenario_model_path)
+
+        # --- Open WANDA session (single open per case) ---
+        with wanda_session(plan.model_spec, model_path=scenario_model_path) as model:
+            # Apply global overrides
+            for change in plan.model_spec.global_overrides:
+                apply_parameter_change(model, change)
+
+            # Apply scenario-specific parameter changes
+            for change in plan.scenario.parameters:
+                apply_parameter_change(model, change)
+
+            journal.event(
+                "params_applied",
+                global_count=len(plan.model_spec.global_overrides),
+                scenario_count=len(plan.scenario.parameters),
+            )
+
+            # Save and run
+            model.save_model_input()
+
+            if plan.model_spec.run_steady:
+                model.run_steady()
+                journal.event("steady_done")
+
+            if plan.model_spec.run_unsteady:
+                sim_time = model.get_property("Simulation time").get_scalar_float()
+                if sim_time > 0:
+                    model.run_unsteady()
+                    journal.event("unsteady_done")
+
+            # --- Extract results while model is open (single pass) ---
+            extracted = extract_all(model, plan.scenario)
+            journal.event(
+                "extracted",
+                has_components=not extracted["components"].empty,
+                n_routes=len(extracted["routes"]),
+            )
+
+        # --- Cache extracted data to Parquet ---
+        cache = ParquetCache(plan.case_dir)
+        artefacts = cache.write(extracted)
+        journal.event("cached", artefacts=artefacts)
+
+        # --- Post-processing: run all registered steps ---
+        # Import steps to trigger auto-registration
+        import pywandahydra.postprocessing.steps  # noqa: F401
+
+        pp_ctx = PostProcessingContext(
+            cache=cache,
+            scenario=plan.scenario,
+            case_dir=plan.case_dir,
+        )
+        with journal:
+            journal.transition("RUNNING", postprocess_status="RUNNING")
+        pp_results = run_postprocessing(pp_ctx)
+
+        pp_success = all(pp_results.values())
+        pp_status = "DONE" if pp_success else "FAILED"
+
+        journal.event(
+            "postprocessed",
+            steps={name: ok for name, ok in pp_results.items()},
+        )
+
+        # --- Transition: SUCCEEDED ---
+        duration = time.perf_counter() - start_time
+        with journal:
+            journal.transition(
+                "SUCCEEDED",
+                finished_at=_now_iso(),
+                duration_s=round(duration, 2),
+                postprocess_status=pp_status,
+                artefacts=artefacts,
+            )
+
+        logger.info("Case %s succeeded in %.1fs", plan.case_id, duration)
+        return {
+            "case_id": plan.case_id,
+            "success": True,
+            "duration_s": round(duration, 2),
+            "scenario_dir": str(plan.case_dir),
+        }
+
+    except Exception as e:
+        # --- Transition: FAILED ---
+        duration = time.perf_counter() - start_time
+        error_msg = f"{type(e).__name__}: {e}"
+        with journal:
+            journal.transition(
+                "FAILED",
+                finished_at=_now_iso(),
+                duration_s=round(duration, 2),
+                error=error_msg,
+            )
+        logger.error("Case %s failed: %s", plan.case_id, error_msg)
+        return {
+            "case_id": plan.case_id,
+            "success": False,
+            "error": error_msg,
+            "duration_s": round(duration, 2),
+            "scenario_dir": str(plan.case_dir),
+        }
+
+
+# ---------------------------------------------------------------------------
+# Legacy compatibility shim
+# ---------------------------------------------------------------------------
 
 
 def run_one_scenario(
-    model_specifications: ModelSpecification, scenario: ScenarioSpecification, ctx: RunContext
+    model_specifications: ModelSpecification,
+    scenario: ScenarioSpecification,
+    ctx: Any,
 ) -> Dict[str, Any]:
-    # Create scenario directory
-    scenario_dir = Path(ctx.root_dir) / "scenarios" / scenario.meta.name
-    scenario_dir.mkdir(parents=True, exist_ok=True)
+    """Legacy entry point — wraps run_one_case for backwards compatibility.
 
-    # Createa a scenario-specific model copy
-    scenario_model_path = copy_model_to_directory(
-        base_model_path=model_specifications.model_path,
-        scenario_dir=scenario_dir,
-        scenario_name=scenario.meta.name,
+    Args:
+        model_specifications: Model specification.
+        scenario: Scenario specification.
+        ctx: RunContext (used for root_dir).
+
+    Returns:
+        Per-case result dict.
+    """
+    case_id = f"{scenario.meta.number:03d}_{scenario.meta.name}"
+    case_dir = Path(ctx.root_dir) / "scenarios" / case_id
+
+    plan = CasePlan(
+        case_id=case_id,
+        case_dir=case_dir,
+        model_spec=model_specifications,
+        scenario=scenario,
     )
-
-    try:
-        with wanda_session(model_specifications, model_path=str(scenario_model_path)) as wmodel:
-            # Apply global overrides (optional list)
-            for ch in model_specifications.global_overrides:
-                apply_parameter_change(wmodel, ch)
-
-            # Apply scenario parameters
-            for ch in scenario.parameters:
-                apply_parameter_change(wmodel, ch)
-
-            # Run
-            if model_specifications.run_steady:
-                wmodel.save_model_input()
-                wmodel.run_steady()
-
-            if (
-                model_specifications.run_unsteady
-                and wmodel.get_property("Simulation time").get_scalar_float() > 0
-            ):
-                wmodel.run_unsteady()
-
-            # Persist minimal outcome; expand later (KPIs, series, PDFs)
-            return {
-                "scenario": scenario.meta.name,
-                "number": scenario.meta.number,
-                "success": True,
-                "scenario_dir": str(scenario_dir),
-            }
-
-    except Exception as e:
-        return {
-            "scenario": scenario.meta.name,
-            "number": scenario.meta.number,
-            "success": False,
-            "error": str(e),
-            "scenario_dir": str(scenario_dir),
-        }
+    return run_one_case(plan)

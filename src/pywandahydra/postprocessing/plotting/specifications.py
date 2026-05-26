@@ -30,7 +30,7 @@ class AxisSpec(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    label: str = None
+    label: Optional[str] = None
 
     # Axis limits
     min: Optional[float] = None
@@ -45,5 +45,7 @@ class AxisSpec(BaseModel):
 
     @field_validator("label")
     @classmethod
-    def strip_label(cls, v: str) -> str:
-        return (v or "").strip()
+    def strip_label(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return None
+        return v.strip()

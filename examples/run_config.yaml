@@ -1,0 +1,22 @@
+# Example run configuration for pywandahydra
+# Usage: pywandahydra run examples/run_config.yaml --workers 4
+
+run_id: example_run
+output_root: ./runs
+description: "Example multi-scenario WANDA run"
+
+execution:
+  mode: sequential        # or "multiprocessing"
+  n_workers: 1
+  resume: false
+
+model:
+  model_path: ./test_data/execution/model/base_model.wdi
+  wanda_bin: 'C:\Program Files (x86)\Deltares\Wanda 4.7\Bin\\'
+  base_model_name: base_model
+  run_steady: true
+  run_unsteady: true
+  readonly: false
+  global_overrides: []
+
+scenario_file: ./test_data/execution/parameters/cases.xls

@@ -162,16 +162,8 @@ def extract_route_outputs(
     results: Dict[str, pd.DataFrame] = {}
 
     for spec in specs:
-        # Get identifier
         route_id = spec.route_id.strip()
-
-        # legend = spec.legend
-        # if not legend:
-        #     logger.warning(
-        #         "Route plot '%s' has no legend (route identifier) – " "skipping.",
-        #         spec.title,
-        #     )
-        #     continue
+        prop_name = spec.property.strip()
 
         # Resolve the route identifier from the legend field
         item_refs = resolve_items(model, route_id)
@@ -188,16 +180,6 @@ def extract_route_outputs(
         for ref in item_refs:
             item = get_item(model, ref)
 
-            # Derive property name from the y-axis label when available
-            prop_name = spec.y_axis.label if spec.y_axis.label else ""
-            if not prop_name:
-                logger.warning(
-                    "No property (ylabel) defined for route plot " "'%s', item '%s' – skipping.",
-                    spec.title,
-                    ref.name,
-                )
-                continue
-
             prop = item.get_property(prop_name)
             series: list[float] = prop.get_series()
 
@@ -213,7 +195,8 @@ def extract_route_outputs(
             frames.append(df)
 
         if frames:
-            results[spec.title] = pd.concat(frames, axis=1)
+            key = spec.title or f"{spec.route_id}_{spec.property}"
+            results[key] = pd.concat(frames, axis=1)
 
     return results
 

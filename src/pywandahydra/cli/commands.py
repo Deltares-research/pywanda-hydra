@@ -1,0 +1,265 @@
+"""CLI commands for pywandahydra — run, status, validate, plot."""
+
+from __future__ import annotations
+
+import json
+import logging
+from pathlib import Path
+from typing import Optional
+
+import typer
+
+from ..app_logging import LogLevel, setup_logging
+
+app = typer.Typer(
+    name="pywandahydra",
+    help="Orchestrate multiple WANDA simulations via pywanda.",
+    no_args_is_help=True,
+)
+
+
+# ---------------------------------------------------------------------------
+# run
+# ---------------------------------------------------------------------------
+
+
+@app.command()
+def run(
+    config: Path = typer.Argument(
+        ..., help="Path to the run configuration file (.yaml).", exists=True
+    ),
+    workers: Optional[int] = typer.Option(
+        None, "--workers", "-w", help="Override number of workers."
+    ),
+    resume: bool = typer.Option(
+        False, "--resume", "-r", help="Skip already-completed cases."
+    ),
+    mode: Optional[str] = typer.Option(
+        None, "--mode", "-m", help="Execution mode: sequential or multiprocessing."
+    ),
+    log_level: str = typer.Option(
+        "INFO", "--log-level", "-l", help="Log level (DEBUG, INFO, WARNING, ERROR)."
+    ),
+) -> None:
+    """Run WANDA scenarios from a configuration file."""
+    setup_logging(LogLevel.parse(log_level))
+    logger = logging.getLogger(__name__)
+
+    from ..config.loader import build_run_context, load_run_config, Provenance
+    from ..execution.runner import run as run_scenarios
+    from ..scenarios.mapper import load_scenarios
+
+    # Load and validate config
+    try:
+        cfg = load_run_config(config)
+    except (ValueError, FileNotFoundError) as e:
+        typer.echo(f"Error loading config: {e}", err=True)
+        raise typer.Exit(code=1)
+
+    # Apply CLI overrides
+    if workers is not None:
+        cfg.execution.n_workers = workers
+    if resume:
+        cfg.execution.resume = True
+    if mode is not None:
+        if mode not in ("sequential", "multiprocessing"):
+            typer.echo(f"Invalid mode: '{mode}'. Use 'sequential' or 'multiprocessing'.", err=True)
+            raise typer.Exit(code=1)
+        cfg.execution.mode = mode  # type: ignore[assignment]
+
+    # Load scenarios from the scenario file
+    scenario_path = Path(cfg.scenario_file)
+    if not scenario_path.is_absolute():
+        scenario_path = config.parent / scenario_path
+
+    try:
+        scenarios = load_scenarios(scenario_path)
+    except (ValueError, FileNotFoundError) as e:
+        typer.echo(f"Error loading scenarios: {e}", err=True)
+        raise typer.Exit(code=1)
+
+    logger.info(
+        "Loaded %d scenarios from %s (%d included)",
+        len(scenarios),
+        scenario_path.name,
+        sum(1 for s in scenarios if s.meta.include),
+    )
+
+    # Build run context
+    ctx = build_run_context(cfg)
+
+    # Write provenance
+    from ..execution.artifacts import create_run_directories
+
+    run_root = Path(ctx.root_dir)
+    create_run_directories(ctx)
+    provenance = Provenance()
+    prov_path = run_root / "provenance.json"
+    prov_path.write_text(
+        json.dumps(provenance.model_dump(), indent=2, default=str),
+        encoding="utf-8",
+    )
+
+    # Execute
+    result = run_scenarios(
+        model=cfg.model,
+        ctx=ctx,
+        scenarios=scenarios,
+        n_workers=cfg.execution.n_workers,
+        resume=cfg.execution.resume,
+    )
+
+    # Summary
+    typer.echo(
+        f"\nRun complete: {result.n_success} succeeded, "
+        f"{result.n_failed} failed, {result.n_skipped} skipped "
+        f"(of {result.n_selected} selected / {result.n_total} total)"
+    )
+    if result.n_failed > 0:
+        raise typer.Exit(code=1)
+
+
+# ---------------------------------------------------------------------------
+# status
+# ---------------------------------------------------------------------------
+
+
+@app.command()
+def status(
+    run_dir: Path = typer.Argument(
+        ..., help="Path to the run output directory.", exists=True
+    ),
+) -> None:
+    """Show status of all cases in a run directory."""
+    from ..execution.journal import CaseJournal
+
+    scenarios_dir = run_dir / "scenarios"
+    if not scenarios_dir.exists():
+        typer.echo("No scenarios directory found.", err=True)
+        raise typer.Exit(code=1)
+
+    case_dirs = sorted(
+        d for d in scenarios_dir.iterdir() if d.is_dir()
+    )
+
+    if not case_dirs:
+        typer.echo("No cases found.")
+        return
+
+    typer.echo(f"{'Case ID':<30} {'Status':<12} {'PP Status':<12} {'Duration':<10} {'Error'}")
+    typer.echo("-" * 90)
+
+    for case_dir in case_dirs:
+        journal = CaseJournal(case_dir)
+        state = journal.read_state()
+        if state is None:
+            typer.echo(f"{case_dir.name:<30} {'UNKNOWN':<12} {'-':<12} {'-':<10}")
+            continue
+
+        duration = f"{state.duration_s:.1f}s" if state.duration_s else "-"
+        error = (state.error or "")[:40]
+        typer.echo(
+            f"{state.case_id:<30} {state.status:<12} "
+            f"{state.postprocess_status:<12} {duration:<10} {error}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# validate
+# ---------------------------------------------------------------------------
+
+
+@app.command()
+def validate(
+    config: Path = typer.Argument(
+        ..., help="Path to the configuration file to validate.", exists=True
+    ),
+) -> None:
+    """Validate a configuration file without running anything."""
+    from ..config.loader import load_run_config
+    from ..scenarios.mapper import load_scenarios
+
+    try:
+        cfg = load_run_config(config)
+        typer.echo(f"Config OK: run_id={cfg.run_id}, mode={cfg.execution.mode}")
+    except (ValueError, FileNotFoundError) as e:
+        typer.echo(f"Config INVALID: {e}", err=True)
+        raise typer.Exit(code=1)
+
+    scenario_path = Path(cfg.scenario_file)
+    if not scenario_path.is_absolute():
+        scenario_path = config.parent / scenario_path
+
+    try:
+        scenarios = load_scenarios(scenario_path)
+        n_included = sum(1 for s in scenarios if s.meta.include)
+        typer.echo(f"Scenarios OK: {len(scenarios)} total, {n_included} included")
+    except (ValueError, FileNotFoundError) as e:
+        typer.echo(f"Scenarios INVALID: {e}", err=True)
+        raise typer.Exit(code=1)
+
+    typer.echo("Validation passed.")
+
+
+# ---------------------------------------------------------------------------
+# plot
+# ---------------------------------------------------------------------------
+
+
+@app.command()
+def plot(
+    run_dir: Path = typer.Argument(
+        ..., help="Path to the run output directory.", exists=True
+    ),
+    case_id: Optional[str] = typer.Option(
+        None, "--case", "-c", help="Specific case ID to plot. Plots all if omitted."
+    ),
+    fmt: str = typer.Option("png", "--format", "-f", help="Output format (png, pdf, svg)."),
+) -> None:
+    """Render plots from cached extraction data (no WANDA required)."""
+    from ..postprocessing.cache import ParquetCache
+    from ..postprocessing.plots.renderer import render_route_plot
+
+    scenarios_dir = run_dir / "scenarios"
+    if not scenarios_dir.exists():
+        typer.echo("No scenarios directory found.", err=True)
+        raise typer.Exit(code=1)
+
+    if case_id:
+        case_dirs = [scenarios_dir / case_id]
+        if not case_dirs[0].exists():
+            typer.echo(f"Case not found: {case_id}", err=True)
+            raise typer.Exit(code=1)
+    else:
+        case_dirs = sorted(d for d in scenarios_dir.iterdir() if d.is_dir())
+
+    for case_dir in case_dirs:
+        cache = ParquetCache(case_dir)
+        if not cache.exists():
+            typer.echo(f"  {case_dir.name}: no cached data — skipping")
+            continue
+
+        figures_dir = case_dir / "figures"
+        typer.echo(f"  {case_dir.name}: rendering plots...")
+
+        # For route plots, we'd need the specs — read from post_process.json
+        pp_json = case_dir / "post_process.json"
+        if pp_json.exists():
+            # TODO: render from specs stored in post_process.json
+            pass
+        else:
+            # Render all available routes from cache
+            for route_title in cache.list_routes():
+                from ..scenarios.schema import RoutePlotSpecification
+                from ..postprocessing.plotting.specifications import AxisSpec
+
+                spec = RoutePlotSpecification(
+                    route_id=route_title,
+                    property="",
+                    title=route_title,
+                    x_axis=AxisSpec(label="Distance [m]"),
+                    y_axis=AxisSpec(label=""),
+                )
+                render_route_plot(spec, cache, output_dir=figures_dir, fmt=fmt)
+
+    typer.echo("Plotting complete.")

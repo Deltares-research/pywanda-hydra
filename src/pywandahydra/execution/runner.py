@@ -1,25 +1,52 @@
+"""Scenario runner — orchestrates sequential or parallel execution.
+
+This module builds CasePlans from scenarios, dispatches them to workers
+(sequentially or via multiprocessing), and aggregates results.
+"""
+
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from multiprocessing import get_context
-from typing import Any, Dict, List, Optional, Sequence
+from pathlib import Path
+from typing import Any, Dict, List, Sequence
 
 from ..config.models import ModelSpecification, RunContext
 from ..execution.artifacts import create_run_directories, write_run_log
-from ..execution.worker import run_one_scenario
+from ..execution.case_plan import CasePlan, build_case_plans
+from ..execution.journal import CaseJournal
+from ..execution.worker import run_one_case
 from ..scenarios.schema import ScenarioSpecification
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
 class RunResult:
-    """Serializable aggregated run result."""
+    """Serializable aggregated run result.
+
+    Attributes:
+        run_id: The unique run identifier.
+        n_total: Total number of scenarios in the input.
+        n_selected: Number of scenarios marked for inclusion.
+        n_success: Number of cases that succeeded.
+        n_failed: Number of cases that failed.
+        n_skipped: Number of cases skipped (resume mode).
+        results: Per-case result dictionaries.
+    """
 
     run_id: str
     n_total: int
     n_selected: int
     n_success: int
     n_failed: int
-    results: List[Dict[str, Any]]
+    n_skipped: int = 0
+    results: List[Dict[str, Any]] = None  # type: ignore[assignment]
+
+    def __post_init__(self) -> None:  # noqa: D105
+        if self.results is None:
+            object.__setattr__(self, "results", [])
 
 
 def run(
@@ -29,31 +56,27 @@ def run(
     scenarios: Sequence[ScenarioSpecification],
     n_workers: int = 1,
     persist_manifest: bool = True,
+    resume: bool = False,
 ) -> RunResult:
     """Run scenarios with the specified model and context.
 
-    Notes
-    -----
-    - This function performs orchestration only.
-    - The worker function is responsible for:
-        * creating per-scenario directories
-        * copying the base model into scenario directory
-        * opening the copied model
-        * applying overrides/parameters and running WANDA
+    This function performs orchestration only. The worker function handles
+    per-case execution (model copy, parameter application, simulation,
+    extraction, journaling).
 
-    Parameters
-    ----------
-    model : ModelSpecification
-        The model specification to use for the run.
-    ctx : RunContext
-        The run context containing directory paths.
-    scenarios : Sequence[ScenarioSpecification]
-        The list of scenario specifications to run.
-    n_workers : int, optional
-        Number of parallel workers to use (default is 1, meaning no parallelism).
-    persist_manifest : bool, optional
-        Store run manifest/log file (default is True) of scenario, model, and context details.
+    Args:
+        model: The model specification for the run.
+        ctx: The run context containing directory paths.
+        scenarios: The list of scenario specifications to run.
+        n_workers: Number of parallel workers (default 1 = sequential).
+        persist_manifest: Write run-level manifest/log file.
+        resume: Skip already-completed cases with matching config hash.
+
+    Returns:
+        Aggregated RunResult.
     """
+    run_root = Path(ctx.root_dir)
+
     # Create run directories and write log manifest
     create_run_directories(ctx)
     if persist_manifest:
@@ -63,73 +86,79 @@ def run(
             scenarios=list(scenarios),
         )
 
-    # Only run scenarios marked as included
-    selected = [s for s in scenarios if s.meta.include]
-    if not selected:
+    # Build case plans for included scenarios
+    plans = build_case_plans(model, list(scenarios), run_root)
+    if not plans:
         return RunResult(
             run_id=ctx.run_id,
             n_total=len(scenarios),
             n_selected=0,
             n_success=0,
             n_failed=0,
+            n_skipped=0,
             results=[],
         )
 
-    # Execute scenarios
-    if n_workers <= 1:
-        results = [
-            run_one_scenario(model_specifications=model, scenario=s, ctx=ctx) for s in selected
-        ]
+    # Filter plans if resume mode is active
+    plans_to_run = plans
+    n_skipped = 0
+    if resume:
+        plans_to_run = []
+        for plan in plans:
+            journal = CaseJournal(plan.case_dir)
+            if journal.is_completed(plan.config_hash):
+                logger.info("Skipping completed case: %s", plan.case_id)
+                n_skipped += 1
+            else:
+                plans_to_run.append(plan)
+
+    # Execute
+    if n_workers <= 1 or len(plans_to_run) <= 1:
+        results = [run_one_case(plan) for plan in plans_to_run]
     else:
-        results = _run_multiprocess(model=model, ctx=ctx, scenarios=selected, n_workers=n_workers)
+        results = _run_multiprocess(plans=plans_to_run, n_workers=n_workers)
 
     # Aggregate results
     n_success = sum(1 for r in results if r.get("success") is True)
-    n_failed = len(results) - n_success
+    n_failed = sum(1 for r in results if r.get("success") is False)
+
+    # --- Aggregate per-case tables into a run-level summary ---
+    if n_success > 0:
+        from ..postprocessing.plots.renderer import aggregate_tables
+
+        scenarios_dir = run_root / "scenarios"
+        tables_dir = run_root / "tables"
+        aggregate_tables(scenarios_dir, tables_dir, run_id=ctx.run_id)
 
     return RunResult(
         run_id=ctx.run_id,
         n_total=len(scenarios),
-        n_selected=len(selected),
+        n_selected=len(plans),
         n_success=n_success,
         n_failed=n_failed,
+        n_skipped=n_skipped,
         results=results,
     )
 
 
 def _run_multiprocess(
     *,
-    model: ModelSpecification,
-    ctx: RunContext,
-    scenarios: List[ScenarioSpecification],
+    plans: List[CasePlan],
     n_workers: int,
 ) -> List[Dict[str, Any]]:
-    """Run scenarios in parallel using multiprocessing.
+    """Run case plans in parallel using multiprocessing (spawn context).
 
-    Parameters
-    ----------
-    model : ModelSpecification
-        The model specification to use for the run.
-    ctx : RunContext
-        The run context containing directory paths.
-    scenarios : List[ScenarioSpecification]
-        The list of scenario specifications to run.
-    n_workers : int
-        Number of parallel workers to use.
+    Args:
+        plans: List of CasePlan objects to execute.
+        n_workers: Number of parallel worker processes.
 
-    Returns
-    -------
-    List[Dict[str, Any]]
-        List of results from each scenario execution.
+    Returns:
+        List of per-case result dictionaries, sorted by case_id.
     """
-    # Spawn a new Python process for each worker
     mp = get_context("spawn")
-
-    # Create argument tuples
-    jobs = [(model, s, ctx) for s in scenarios]
-
     with mp.Pool(processes=n_workers) as pool:
-        # starmap calls run_one_scenario(model, scenario, ctx)
-        results = pool.starmap(run_one_scenario, jobs)
+        results = pool.map(run_one_case, plans)
 
+    # Sort by case_id for deterministic output ordering
+    results.sort(key=lambda r: r.get("case_id", ""))
     return results

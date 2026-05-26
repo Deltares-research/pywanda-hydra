@@ -17,5 +17,6 @@
     "--cov-fail-under 50"
   ],
   "python.testing.pytestEnabled": false,
-  "python.testing.unittestEnabled": true
+  "python.testing.unittestEnabled": true,
+  "python-envs.defaultEnvManager": "ms-python.python:system"
 }

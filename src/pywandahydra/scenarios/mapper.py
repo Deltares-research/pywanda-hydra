@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional
 
 from .schema import ScenarioSpecification
+from .sources.base import get_source_for_extension
 from .sources.xls import read_scenarios_from_excel
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -37,27 +41,39 @@ def load_scenarios(
 ) -> List[ScenarioSpecification]:
     """Load scenarios from a scenario definition file.
 
-    Method is auto-selected based on file extension.
+    Auto-selects the parser based on file extension via the ScenarioSource
+    registry. Currently supports .xls/.xlsx/.xlsm. The registry is
+    extensible — new sources can be added by implementing the ScenarioSource
+    protocol and decorating with @register_source.
 
-    Parameters
-    ----------
-    path
-        Path to the scenario file (.xlsx/.xlsm for source='xls', .yaml/.yml for source='yaml').
-    options
-        Optional ScenarioLoadOptions. If None, defaults are used.
+    Args:
+        path: Path to the scenario file.
+        options: Optional ScenarioLoadOptions (used by the XLS source).
 
-    Returns
-    -------
-    List[ScenarioSpecification]
+    Returns:
         Canonical scenario definitions (source-agnostic).
+
+    Raises:
+        ValueError: If the file extension is unsupported.
+        FileNotFoundError: If the file does not exist.
     """
     opts = options or ScenarioLoadOptions()
-
-    # Ensure path is a Path object
     path = Path(path) if isinstance(path, str) else path
 
-    # Auto-select source based on file extension
-    if path.suffix in {".xls", ".xlsx", ".xlsm"}:
-        return read_scenarios_from_excel(path, opts)
-    else:
-        raise ValueError(f"Unsupported file extension: {path.suffix}")
+    if not path.exists():
+        raise FileNotFoundError(f"Scenario file not found: {path}")
+
+    # Use registry to find the appropriate source
+    try:
+        source_cls = get_source_for_extension(path.suffix)
+    except ValueError:
+        # Fallback: direct call for backwards compatibility with XLS
+        if path.suffix in {".xls", ".xlsx", ".xlsm"}:
+            return read_scenarios_from_excel(path, opts)
+        raise
+
+    # Instantiate and load
+    source = source_cls(options=opts)  # type: ignore[call-arg]
+    scenarios = source.load(path)
+    logger.info("Loaded %d scenarios from %s", len(scenarios), path.name)
+    return scenarios

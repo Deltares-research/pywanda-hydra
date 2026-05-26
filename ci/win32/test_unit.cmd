@@ -1,9 +1,4 @@
+@echo off
 
-pushd .
-cd /D "%~dp0"
-
-cd ..\..\
-call .\venv\Scripts\activate
-set PYTHONPATH=.\src\;%$PYTHONPATH%
-pytest unit_test/
-popd
+cd /D "%~dp0"..\..
+uv run pytest unit_test/

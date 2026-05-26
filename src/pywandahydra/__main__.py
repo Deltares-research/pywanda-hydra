@@ -1,4 +1,6 @@
-"""__main__.py file for testing/running application."""
-from pywandahydra.pywandahydra import start_app
+"""Entry point for `python -m pywandahydra`."""
 
-start_app(loglevel="DEBUG", colors=True)
+from pywandahydra.cli.commands import app
+
+if __name__ == "__main__":
+    app()

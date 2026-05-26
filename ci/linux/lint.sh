@@ -1,4 +1,3 @@
 #!/usr/bin/env sh
 
-. .venv/bin/activate
-flake8 ./src/pywandahydra
+uv run flake8 ./src/pywandahydra

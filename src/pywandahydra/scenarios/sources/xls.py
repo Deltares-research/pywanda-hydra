@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import logging
 import warnings
+
+logger = logging.getLogger(__name__)
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, List, cast
 
@@ -352,7 +355,7 @@ def read_scenarios_from_excel(
 
         # Construct ScenarioSpecification only if included
         if not meta.include:
-            print(f"Scenario '{meta.name}' (Number={meta.number}) is not included.")
+            logger.debug("Scenario '%s' (Number=%d) is not included.", meta.name, meta.number)
             continue
 
         scenarios.append(
