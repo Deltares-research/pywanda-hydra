@@ -57,6 +57,7 @@ def run(
     n_workers: int = 1,
     persist_manifest: bool = True,
     resume: bool = False,
+    methodology: str = "default",
 ) -> RunResult:
     """Run scenarios with the specified model and context.
 
@@ -71,6 +72,7 @@ def run(
         n_workers: Number of parallel workers (default 1 = sequential).
         persist_manifest: Write run-level manifest/log file.
         resume: Skip already-completed cases with matching config hash.
+        methodology: Post-processing methodology name.
 
     Returns:
         Aggregated RunResult.
@@ -87,7 +89,7 @@ def run(
         )
 
     # Build case plans for included scenarios
-    plans = build_case_plans(model, list(scenarios), run_root)
+    plans = build_case_plans(model, list(scenarios), run_root, methodology=methodology)
     if not plans:
         return RunResult(
             run_id=ctx.run_id,

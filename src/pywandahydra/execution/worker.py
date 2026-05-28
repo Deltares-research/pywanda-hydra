@@ -120,9 +120,9 @@ def run_one_case(plan: CasePlan) -> Dict[str, Any]:
         artefacts = cache.write(extracted)
         journal.event("cached", artefacts=artefacts)
 
-        # --- Post-processing: run all registered steps ---
-        # Import steps to trigger auto-registration
-        import pywandahydra.postprocessing.steps  # noqa: F401
+        # --- Post-processing: run methodology-driven steps ---
+        # Ensure default methodology is registered
+        import pywandahydra.postprocessing.methodologies.default  # noqa: F401
 
         pp_ctx = PostProcessingContext(
             cache=cache,
@@ -131,7 +131,7 @@ def run_one_case(plan: CasePlan) -> Dict[str, Any]:
         )
         with journal:
             journal.transition("RUNNING", postprocess_status="RUNNING")
-        pp_results = run_postprocessing(pp_ctx)
+        pp_results = run_postprocessing(pp_ctx, methodology=plan.methodology)
 
         pp_success = all(pp_results.values())
         pp_status = "DONE" if pp_success else "FAILED"

@@ -6,7 +6,7 @@ permissions: write-all
 
 jobs:
 
-  flake8-lint:
+  ruff-lint:
     runs-on: ubuntu-latest
     name: Lint
     steps:
@@ -18,11 +18,10 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: 3.11
-      - name: flake8 Lint
-        uses: TrueBrain/actions-flake8@v2
-        with:
-          plugins: Flake8-pyproject==1.2.3 flake8-docstrings==1.7.0 flake8-quotes==3.3.2 flake8-bugbear==23.9.16 flake8-mock==0.4 flake8-tuple==0.4.1
-          # only_warn: 1  #causes action to always be succesful, but still provide annotations
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+      - name: Ruff lint
+        run: uv run ruff check ./src/pywandahydra
 
   test:    
     runs-on: ubuntu-latest

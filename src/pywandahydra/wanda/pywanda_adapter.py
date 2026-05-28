@@ -8,7 +8,6 @@ import numpy as np
 import pywanda
 
 from ..scenarios.schema import ParameterChange
-from .adapter import WandaAdapter
 from .api import apply_parameter_change, get_item, resolve_items
 
 
@@ -46,9 +45,7 @@ class PywandaAdapter:
         """
         handle.save_model_input()
 
-    def apply_parameter_change(
-        self, handle: pywanda.WandaModel, change: ParameterChange
-    ) -> None:
+    def apply_parameter_change(self, handle: pywanda.WandaModel, change: ParameterChange) -> None:
         """Apply a parameter change using the existing api module.
 
         Args:
@@ -115,9 +112,7 @@ class PywandaAdapter:
         prop = item.get_property(property_name)
         return np.array(prop.get_series(), dtype=np.float64)
 
-    def get_scalar(
-        self, handle: pywanda.WandaModel, component: str, property_name: str
-    ) -> float:
+    def get_scalar(self, handle: pywanda.WandaModel, component: str, property_name: str) -> float:
         """Get scalar value for a component property.
 
         Args:
@@ -135,9 +130,7 @@ class PywandaAdapter:
         prop = item.get_property(property_name)
         return float(prop.get_scalar_float())
 
-    def resolve_route_components(
-        self, handle: pywanda.WandaModel, route_id: str
-    ) -> list[str]:
+    def resolve_route_components(self, handle: pywanda.WandaModel, route_id: str) -> list[str]:
         """Resolve route identifier into component names.
 
         Args:
@@ -149,15 +142,3 @@ class PywandaAdapter:
         """
         item_refs = resolve_items(handle, route_id)
         return [ref.name for ref in item_refs]
-
-
-# Module-level singleton for convenience
-_default_adapter: PywandaAdapter | None = None
-
-
-def get_default_adapter() -> PywandaAdapter:
-    """Get or create the default PywandaAdapter singleton."""
-    global _default_adapter
-    if _default_adapter is None:
-        _default_adapter = PywandaAdapter()
-    return _default_adapter

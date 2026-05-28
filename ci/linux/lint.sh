@@ -1,3 +1,3 @@
 #!/usr/bin/env sh
 
-uv run flake8 ./src/pywandahydra
+uv run ruff check ./src/pywandahydra

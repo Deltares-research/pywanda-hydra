@@ -26,14 +26,12 @@ app = typer.Typer(
 @app.command()
 def run(
     config: Path = typer.Argument(
-        ..., help="Path to the run configuration file (.yaml).", exists=True
+        ..., help="Path to the run configuration file (.yaml or .json).", exists=True
     ),
     workers: Optional[int] = typer.Option(
         None, "--workers", "-w", help="Override number of workers."
     ),
-    resume: bool = typer.Option(
-        False, "--resume", "-r", help="Skip already-completed cases."
-    ),
+    resume: bool = typer.Option(False, "--resume", "-r", help="Skip already-completed cases."),
     mode: Optional[str] = typer.Option(
         None, "--mode", "-m", help="Execution mode: sequential or multiprocessing."
     ),
@@ -45,7 +43,7 @@ def run(
     setup_logging(LogLevel.parse(log_level))
     logger = logging.getLogger(__name__)
 
-    from ..config.loader import build_run_context, load_run_config, Provenance
+    from ..config.loader import Provenance, build_run_context, load_run_config
     from ..execution.runner import run as run_scenarios
     from ..scenarios.mapper import load_scenarios
 
@@ -107,6 +105,7 @@ def run(
         scenarios=scenarios,
         n_workers=cfg.execution.n_workers,
         resume=cfg.execution.resume,
+        methodology=cfg.execution.methodology,
     )
 
     # Summary
@@ -126,9 +125,7 @@ def run(
 
 @app.command()
 def status(
-    run_dir: Path = typer.Argument(
-        ..., help="Path to the run output directory.", exists=True
-    ),
+    run_dir: Path = typer.Argument(..., help="Path to the run output directory.", exists=True),
 ) -> None:
     """Show status of all cases in a run directory."""
     from ..execution.journal import CaseJournal
@@ -138,9 +135,7 @@ def status(
         typer.echo("No scenarios directory found.", err=True)
         raise typer.Exit(code=1)
 
-    case_dirs = sorted(
-        d for d in scenarios_dir.iterdir() if d.is_dir()
-    )
+    case_dirs = sorted(d for d in scenarios_dir.iterdir() if d.is_dir())
 
     if not case_dirs:
         typer.echo("No cases found.")
@@ -208,9 +203,7 @@ def validate(
 
 @app.command()
 def plot(
-    run_dir: Path = typer.Argument(
-        ..., help="Path to the run output directory.", exists=True
-    ),
+    run_dir: Path = typer.Argument(..., help="Path to the run output directory.", exists=True),
     case_id: Optional[str] = typer.Option(
         None, "--case", "-c", help="Specific case ID to plot. Plots all if omitted."
     ),
@@ -242,16 +235,31 @@ def plot(
         figures_dir = case_dir / "figures"
         typer.echo(f"  {case_dir.name}: rendering plots...")
 
-        # For route plots, we'd need the specs — read from post_process.json
+        # Build export props from requested format
+        from ..postprocessing.export import build_figure_export_props
+
+        export_props = build_figure_export_props(
+            include_pdf=(fmt == "pdf"),
+            include_png=(fmt == "png"),
+            include_svg=(fmt == "svg"),
+        )
+
+        # Load plot specs from post_process.json if available, else from cache
         pp_json = case_dir / "post_process.json"
         if pp_json.exists():
-            # TODO: render from specs stored in post_process.json
-            pass
+            import json as _json
+
+            pp_data = _json.loads(pp_json.read_text(encoding="utf-8"))
+            for spec_data in pp_data.get("route_plots", []):
+                from ..scenarios.schema import RoutePlotSpecification
+
+                spec = RoutePlotSpecification.model_validate(spec_data)
+                render_route_plot(spec, cache, output_dir=figures_dir, export_props=export_props)
         else:
             # Render all available routes from cache
             for route_title in cache.list_routes():
-                from ..scenarios.schema import RoutePlotSpecification
                 from ..postprocessing.plotting.specifications import AxisSpec
+                from ..scenarios.schema import RoutePlotSpecification
 
                 spec = RoutePlotSpecification(
                     route_id=route_title,
@@ -260,6 +268,6 @@ def plot(
                     x_axis=AxisSpec(label="Distance [m]"),
                     y_axis=AxisSpec(label=""),
                 )
-                render_route_plot(spec, cache, output_dir=figures_dir, fmt=fmt)
+                render_route_plot(spec, cache, output_dir=figures_dir, export_props=export_props)
 
     typer.echo("Plotting complete.")

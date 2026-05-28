@@ -103,18 +103,35 @@ def clear_steps() -> None:
 # ---------------------------------------------------------------------------
 
 
-def run_postprocessing(ctx: PostProcessingContext) -> Dict[str, bool]:
-    """Run all registered post-processing steps.
+def run_postprocessing(
+    ctx: PostProcessingContext,
+    *,
+    methodology: str | None = None,
+) -> Dict[str, bool]:
+    """Run post-processing steps for a single case.
+
+    When *methodology* is provided, steps are sourced from the named
+    methodology plugin. Otherwise falls back to the global step registry
+    (legacy behaviour).
 
     Args:
         ctx: The post-processing context for a single case.
+        methodology: Optional methodology name. If None, uses registered steps.
 
     Returns:
         Dict mapping step name → success (True/False).
     """
+    if methodology is not None:
+        from .methodologies.base import get_methodology
+
+        meth = get_methodology(methodology)
+        steps = meth.get_steps(ctx)
+    else:
+        steps = list(_STEPS)
+
     results: Dict[str, bool] = {}
 
-    for step in _STEPS:
+    for step in steps:
         if not step.applicable(ctx):
             logger.debug("Skipping step '%s' (not applicable).", step.name)
             results[step.name] = True

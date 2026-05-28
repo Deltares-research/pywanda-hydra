@@ -20,9 +20,8 @@ class RoutePlotStep:
         return len(ctx.scenario.route_plots) > 0
 
     def run(self, ctx: PostProcessingContext) -> None:
-        """Render all route plots to the figures directory."""
-        run_root = ctx.case_dir.parent.parent
-        figures_dir = run_root / "figures" / run_root.name
+        """Render all route plots to the per-case figures directory."""
+        figures_dir = ctx.case_dir / "figures"
         case_id = ctx.case_dir.name
 
         for index, spec in enumerate(ctx.scenario.route_plots):

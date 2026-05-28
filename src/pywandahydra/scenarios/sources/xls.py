@@ -313,19 +313,30 @@ def read_scenarios_from_excel(
 
     # Construct scenarios
     scenarios: List[ScenarioSpecification] = []
+    number_col = ("Number", "")
+    # Find exact integer position for scalar access (MultiIndex get_loc may return a slice)
+    number_col_pos = list(input_data.columns).index(number_col)
     for i in range(prop_row + 1, len(input_data)):
-        # Access Number column using the MultiIndex tuple ("Number", "")
-        number_col = ("Number", "")
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", category=pd.errors.PerformanceWarning)
-            if _is_nan(input_data.iloc[i, :][number_col]):
-                continue
+        # Use positional integer access to guarantee a scalar value
+        number_value = input_data.iloc[i, number_col_pos]
+        if _is_nan(number_value):
+            continue
 
         # Extract metadata
         row_dict = input_data.iloc[i].to_dict()
         try:
-            # For meta fields, extract only the first level of the MultiIndex
-            meta_df = {k[0]: v for k, v in row_dict.items() if k[1] == ""}
+            # For meta fields, extract only the first level of the MultiIndex.
+            # Convert NaN → None and numpy scalars → Python natives.
+            meta_df = {}
+            for k, v in row_dict.items():
+                if k[1] != "":
+                    continue
+                if _is_nan(v):
+                    meta_df[k[0]] = None
+                elif isinstance(v, np.generic):
+                    meta_df[k[0]] = v.item()
+                else:
+                    meta_df[k[0]] = v
             meta = ScenarioMeta.model_validate(meta_df)
         except ValidationError as e:
             raise ValueError(
@@ -343,6 +354,10 @@ def read_scenarios_from_excel(
             value = row_dict[col_tuple]
             if opts.nan_means_skip_parameter and _is_nan(value):
                 continue
+
+            # Convert numpy scalars to Python natives
+            if isinstance(value, np.generic):
+                value = value.item()
 
             # Add parameter change
             parameters.append(

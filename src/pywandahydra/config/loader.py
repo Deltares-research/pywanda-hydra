@@ -33,6 +33,7 @@ class ExecutionConfig(BaseModel):
         mode: Execution strategy.
         n_workers: Number of parallel workers (only used when mode != sequential).
         resume: Whether to skip already-completed cases.
+        methodology: Post-processing methodology name (default uses standard pipeline).
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -40,6 +41,7 @@ class ExecutionConfig(BaseModel):
     mode: Literal["sequential", "multiprocessing"] = "sequential"
     n_workers: int = Field(default=1, ge=1)
     resume: bool = False
+    methodology: str = "default"
 
 
 # ---------------------------------------------------------------------------
@@ -125,10 +127,10 @@ class RunConfig(BaseModel):
 
 
 def load_run_config(path: Path | str) -> RunConfig:
-    """Load and validate a run configuration from a YAML file.
+    """Load and validate a run configuration from a YAML or JSON file.
 
     Args:
-        path: Path to the YAML configuration file.
+        path: Path to the configuration file (.yaml, .yml, or .json).
 
     Returns:
         Validated RunConfig instance.
@@ -142,12 +144,17 @@ def load_run_config(path: Path | str) -> RunConfig:
         raise FileNotFoundError(f"Config file not found: {path}")
 
     ext = path.suffix.lower()
-    if ext not in (".yaml", ".yml"):
-        raise ValueError(f"Unsupported config format: '{ext}'. Use .yaml or .yml.")
+    text = path.read_text(encoding="utf-8")
 
-    raw = yaml.safe_load(path.read_text(encoding="utf-8"))
+    if ext in (".yaml", ".yml"):
+        raw = yaml.safe_load(text)
+    elif ext == ".json":
+        raw = json.loads(text)
+    else:
+        raise ValueError(f"Unsupported config format: '{ext}'. Use .yaml, .yml, or .json.")
+
     if not isinstance(raw, dict):
-        raise ValueError(f"Config file must contain a YAML mapping, got: {type(raw).__name__}")
+        raise ValueError(f"Config file must contain a mapping, got: {type(raw).__name__}")
 
     return RunConfig.model_validate(raw)
 

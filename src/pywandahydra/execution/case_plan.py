@@ -24,6 +24,7 @@ class CasePlan:
         case_dir: Absolute path to the case output directory.
         model_spec: Model specification (paths, run flags, global overrides).
         scenario: The full scenario specification.
+        methodology: Post-processing methodology name.
         attempt: Current attempt number (for retries).
         config_hash: SHA-256 hash of the plan for idempotency checks.
     """
@@ -32,6 +33,7 @@ class CasePlan:
     case_dir: Path
     model_spec: ModelSpecification
     scenario: ScenarioSpecification
+    methodology: str = "default"
     attempt: int = 1
     config_hash: str = field(default="", repr=False)
 
@@ -63,6 +65,7 @@ def build_case_plans(
     model_spec: ModelSpecification,
     scenarios: list[ScenarioSpecification],
     run_root: Path,
+    methodology: str = "default",
 ) -> list[CasePlan]:
     """Build CasePlan objects for all included scenarios.
 
@@ -70,6 +73,7 @@ def build_case_plans(
         model_spec: The model specification for the run.
         scenarios: All loaded scenarios (filtering by include happens here).
         run_root: Root directory for the run output.
+        methodology: Post-processing methodology name.
 
     Returns:
         List of CasePlan objects for included scenarios.
@@ -88,6 +92,7 @@ def build_case_plans(
                 case_dir=case_dir,
                 model_spec=model_spec,
                 scenario=scenario,
+                methodology=methodology,
             )
         )
     return plans

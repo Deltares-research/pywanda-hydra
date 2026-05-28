@@ -151,6 +151,54 @@ class ScenarioMeta(BaseModel):
     chapter: Optional[int] = Field(None, alias="Chapter")
     date: Optional[Any] = Field(None, alias="Date")
 
+    @field_validator("description", "extra", "appendix", mode="before")
+    @classmethod
+    def nan_to_none_str(cls, v: Any) -> Any:
+        """Convert NaN float values to None for optional string fields.
+
+        Parameters
+        ----------
+        v : Any
+            The input value.
+
+        Returns
+        -------
+        Any
+            None if the value is NaN, else the original value.
+        """
+        if isinstance(v, float):
+            import math
+
+            if math.isnan(v):
+                return None
+        return v
+
+    @field_validator("chapter", mode="before")
+    @classmethod
+    def nan_to_none_int(cls, v: Any) -> Any:
+        """Convert NaN float values to None for optional int fields.
+
+        Parameters
+        ----------
+        v : Any
+            The input value.
+
+        Returns
+        -------
+        Any
+            None if NaN, coerced int if whole float, else original.
+        """
+        if v is None:
+            return None
+        if isinstance(v, float):
+            import math
+
+            if math.isnan(v):
+                return None
+            if v.is_integer():
+                return int(v)
+        return v
+
     @field_validator("date", mode="before")
     @classmethod
     def normalize_date(cls, v: Any) -> Any:
@@ -168,6 +216,11 @@ class ScenarioMeta(BaseModel):
         """
         if v is None:
             return None
+        if isinstance(v, float):
+            import math
+
+            if math.isnan(v):
+                return None
         if isinstance(v, datetime):
             return v.isoformat()
         return v
@@ -205,8 +258,15 @@ class ScenarioMeta(BaseModel):
         -------
         Any: The coerced integer value if applicable, else the original value.
         """
-        if isinstance(v, float) and v.is_integer():
-            return int(v)
+        if v is None:
+            return v
+        if isinstance(v, float):
+            import math
+
+            if math.isnan(v):
+                raise ValueError("Number must not be NaN")
+            if v.is_integer():
+                return int(v)
         return v
 
     @field_validator("include", mode="before")
@@ -223,8 +283,16 @@ class ScenarioMeta(BaseModel):
         -------
         bool: The coerced boolean value.
         """
-        if isinstance(v, (int, float)):
+        if v is None:
+            return True  # Default to included
+        if isinstance(v, float):
+            import math
+
+            if math.isnan(v):
+                return True  # NaN treated as default (included)
             return bool(int(v) == 1)
+        if isinstance(v, int):
+            return bool(v == 1)
         if isinstance(v, str):
             return v.strip().lower() in ("1", "true", "yes", "y")
         return bool(v)
