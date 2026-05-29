@@ -15,6 +15,7 @@ from .base import (
     list_methodologies,
     register_methodology,
 )
+from .default import DefaultMethodology  # noqa: F401
 
 __all__ = [
     "Methodology",

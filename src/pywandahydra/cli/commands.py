@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from pathlib import Path
 from typing import Optional
 
@@ -43,7 +44,7 @@ def run(
     setup_logging(LogLevel.parse(log_level))
     logger = logging.getLogger(__name__)
 
-    from ..config.loader import Provenance, build_run_context, load_run_config
+    from ..config.loader import Provenance, build_run_context, load_run_config, validate_run_paths
     from ..execution.runner import run as run_scenarios
     from ..scenarios.mapper import load_scenarios
 
@@ -55,15 +56,44 @@ def run(
         raise typer.Exit(code=1)
 
     # Apply CLI overrides
-    if workers is not None:
-        cfg.execution.n_workers = workers
-    if resume:
-        cfg.execution.resume = True
+    effective_mode = cfg.execution.mode
     if mode is not None:
         if mode not in ("sequential", "multiprocessing"):
             typer.echo(f"Invalid mode: '{mode}'. Use 'sequential' or 'multiprocessing'.", err=True)
             raise typer.Exit(code=1)
-        cfg.execution.mode = mode  # type: ignore[assignment]
+        effective_mode = mode
+
+    if workers is not None and workers < 1:
+        typer.echo("--workers must be >= 1", err=True)
+        raise typer.Exit(code=1)
+
+    # Keep worker selection deterministic and mode-driven.
+    if effective_mode == "sequential":
+        effective_workers = 1 if workers is None else workers
+        if effective_workers != 1:
+            typer.echo(
+                "Invalid worker selection: sequential mode requires --workers=1.",
+                err=True,
+            )
+            raise typer.Exit(code=1)
+    else:
+        default_workers = max(2, os.cpu_count() or 2)
+        effective_workers = workers if workers is not None else cfg.execution.n_workers
+        if effective_workers < 2:
+            effective_workers = default_workers
+
+    cfg.execution.mode = effective_mode  # type: ignore[assignment]
+    cfg.execution.n_workers = effective_workers
+
+    if resume:
+        cfg.execution.resume = True
+
+    # Validate runtime paths before loading scenarios/executing.
+    try:
+        validate_run_paths(cfg, config_dir=config.parent)
+    except ValueError as e:
+        typer.echo(f"Invalid runtime configuration: {e}", err=True)
+        raise typer.Exit(code=1)
 
     # Load scenarios from the scenario file
     scenario_path = Path(cfg.scenario_file)
@@ -104,6 +134,7 @@ def run(
         ctx=ctx,
         scenarios=scenarios,
         n_workers=cfg.execution.n_workers,
+        mode=cfg.execution.mode,
         resume=cfg.execution.resume,
         methodology=cfg.execution.methodology,
     )
@@ -171,7 +202,7 @@ def validate(
     ),
 ) -> None:
     """Validate a configuration file without running anything."""
-    from ..config.loader import load_run_config
+    from ..config.loader import load_run_config, validate_run_paths
     from ..scenarios.mapper import load_scenarios
 
     try:
@@ -179,6 +210,12 @@ def validate(
         typer.echo(f"Config OK: run_id={cfg.run_id}, mode={cfg.execution.mode}")
     except (ValueError, FileNotFoundError) as e:
         typer.echo(f"Config INVALID: {e}", err=True)
+        raise typer.Exit(code=1)
+
+    try:
+        validate_run_paths(cfg, config_dir=config.parent)
+    except ValueError as e:
+        typer.echo(f"Runtime paths INVALID: {e}", err=True)
         raise typer.Exit(code=1)
 
     scenario_path = Path(cfg.scenario_file)

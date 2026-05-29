@@ -4,6 +4,9 @@ from __future__ import annotations
 
 import logging
 
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_pdf import PdfPages
+
 from ..pipeline import PostProcessingContext, register_step
 from ..plots.renderer import render_route_plot
 
@@ -20,23 +23,30 @@ class RoutePlotStep:
         return len(ctx.scenario.route_plots) > 0
 
     def run(self, ctx: PostProcessingContext) -> None:
-        """Render all route plots to the per-case figures directory."""
+        """Render all route plots to one consolidated per-case PDF."""
         figures_dir = ctx.case_dir / "figures"
+        figures_dir.mkdir(parents=True, exist_ok=True)
         case_id = ctx.case_dir.name
+        case_pdf = figures_dir / f"{case_id}.pdf"
+        figures = []
+        for spec in ctx.scenario.route_plots:
+            fig = render_route_plot(spec, ctx.cache)
+            if fig is not None:
+                figures.append(fig)
 
-        for index, spec in enumerate(ctx.scenario.route_plots):
-            stem = case_id if index == 0 else f"{case_id}_{index:03d}"
-            render_route_plot(
-                spec,
-                ctx.cache,
-                output_dir=figures_dir,
-                filename=stem,
-                export_props=ctx.export_figure_props,
-            )
+        if not figures:
+            logger.info("No route figures rendered for case '%s'.", ctx.case_dir.name)
+            return
+
+        with PdfPages(case_pdf) as pdf:
+            for fig in figures:
+                pdf.savefig(fig)
+                plt.close(fig)
 
         logger.info(
-            "Rendered %d route plot(s) for case '%s'.",
-            len(ctx.scenario.route_plots),
+            "Rendered %d route plot(s) into %s for case '%s'.",
+            len(figures),
+            case_pdf,
             ctx.case_dir.name,
         )
 

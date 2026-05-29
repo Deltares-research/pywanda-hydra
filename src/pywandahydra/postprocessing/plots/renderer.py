@@ -80,7 +80,7 @@ def render_route_plot(
 
     if output_dir:
         safe_name = filename or title.replace(" ", "_").replace("/", "_")
-        savefig(fig, output_dir, safe_name, export_props=export_props, close=False)
+        savefig(fig, output_dir, safe_name, export_props=export_props, close=True)
 
     return fig
 
@@ -162,7 +162,7 @@ def render_time_series_plot(
 
     if output_dir:
         safe_name = filename or (title or property_name).replace(" ", "_").replace("/", "_")
-        savefig(fig, output_dir, safe_name, export_props=export_props, close=False)
+        savefig(fig, output_dir, safe_name, export_props=export_props, close=True)
 
     return fig
 

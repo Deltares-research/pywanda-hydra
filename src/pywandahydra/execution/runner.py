@@ -10,7 +10,7 @@ import logging
 from dataclasses import dataclass
 from multiprocessing import get_context
 from pathlib import Path
-from typing import Any, Dict, List, Sequence
+from typing import Any, Dict, List, Literal, Sequence
 
 from ..config.models import ModelSpecification, RunContext
 from ..execution.artifacts import create_run_directories, write_run_log
@@ -55,6 +55,7 @@ def run(
     ctx: RunContext,
     scenarios: Sequence[ScenarioSpecification],
     n_workers: int = 1,
+    mode: Literal["sequential", "multiprocessing"] = "sequential",
     persist_manifest: bool = True,
     resume: bool = False,
     methodology: str = "default",
@@ -70,6 +71,7 @@ def run(
         ctx: The run context containing directory paths.
         scenarios: The list of scenario specifications to run.
         n_workers: Number of parallel workers (default 1 = sequential).
+        mode: Execution mode used to select sequential vs multiprocessing.
         persist_manifest: Write run-level manifest/log file.
         resume: Skip already-completed cases with matching config hash.
         methodology: Post-processing methodology name.
@@ -115,7 +117,9 @@ def run(
                 plans_to_run.append(plan)
 
     # Execute
-    if n_workers <= 1 or len(plans_to_run) <= 1:
+    use_multiprocessing = mode == "multiprocessing" and n_workers > 1 and len(plans_to_run) > 1
+
+    if not use_multiprocessing:
         results = [run_one_case(plan) for plan in plans_to_run]
     else:
         results = _run_multiprocess(plans=plans_to_run, n_workers=n_workers)
@@ -126,11 +130,15 @@ def run(
 
     # --- Aggregate per-case tables into a run-level summary ---
     if n_success > 0:
+        from ..postprocessing.pdf_merge import merge_case_figure_pdfs
         from ..postprocessing.plots.renderer import aggregate_tables
 
         scenarios_dir = run_root / "scenarios"
         tables_dir = run_root / "tables"
+        merged_pdf = run_root / "figures" / f"{ctx.run_id}_merged.pdf"
+
         aggregate_tables(scenarios_dir, tables_dir, run_id=ctx.run_id)
+        merge_case_figure_pdfs(scenarios_dir, merged_pdf)
 
     return RunResult(
         run_id=ctx.run_id,

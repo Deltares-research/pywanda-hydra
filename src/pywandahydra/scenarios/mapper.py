@@ -7,9 +7,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional
 
+from . import sources as _sources  # noqa: F401
 from .schema import ScenarioSpecification
 from .sources.base import get_source_for_extension
-from .sources.xls import read_scenarios_from_excel
 
 logger = logging.getLogger(__name__)
 
@@ -63,14 +63,8 @@ def load_scenarios(
     if not path.exists():
         raise FileNotFoundError(f"Scenario file not found: {path}")
 
-    # Use registry to find the appropriate source
-    try:
-        source_cls = get_source_for_extension(path.suffix)
-    except ValueError:
-        # Fallback: direct call for backwards compatibility with XLS
-        if path.suffix in {".xls", ".xlsx", ".xlsm"}:
-            return read_scenarios_from_excel(path, opts)
-        raise
+    # Use the registry to find the appropriate source.
+    source_cls = get_source_for_extension(path.suffix)
 
     # Instantiate and load
     source = source_cls(options=opts)  # type: ignore[call-arg]

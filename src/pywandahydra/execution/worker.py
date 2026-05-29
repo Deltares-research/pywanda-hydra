@@ -15,12 +15,14 @@ from __future__ import annotations
 import logging
 import os
 import time
+import warnings
 from pathlib import Path
 from typing import Any, Dict
 
 from ..config.models import ModelSpecification
 from ..execution.case_plan import CasePlan
 from ..execution.journal import CaseJournal, _now_iso
+from ..postprocessing import methodologies  # noqa: F401
 from ..postprocessing.cache import ParquetCache
 from ..postprocessing.extract import extract_all
 from ..postprocessing.pipeline import PostProcessingContext, run_postprocessing
@@ -121,9 +123,6 @@ def run_one_case(plan: CasePlan) -> Dict[str, Any]:
         journal.event("cached", artefacts=artefacts)
 
         # --- Post-processing: run methodology-driven steps ---
-        # Ensure default methodology is registered
-        import pywandahydra.postprocessing.methodologies.default  # noqa: F401
-
         pp_ctx = PostProcessingContext(
             cache=cache,
             scenario=plan.scenario,
@@ -201,7 +200,13 @@ def run_one_scenario(
     Returns:
         Per-case result dict.
     """
-    case_id = f"{scenario.meta.number:03d}_{scenario.meta.name}"
+    warnings.warn(
+        "run_one_scenario is deprecated; use run_one_case with CasePlan instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+
+    case_id = scenario.meta.name
     case_dir = Path(ctx.root_dir) / "scenarios" / case_id
 
     plan = CasePlan(

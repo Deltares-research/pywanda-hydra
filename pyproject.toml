@@ -36,6 +36,7 @@ dependencies = [
     "pyarrow~=18.0.0",
     "pywanda~=4.7.0a3",
     "matplotlib>=3.7",
+    "pypdf>=5.0.0",
 ]
 
 [dependency-groups]

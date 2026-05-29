@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import platform
 import socket
 import sys
@@ -17,7 +18,7 @@ from pathlib import Path
 from typing import Any, Dict, Literal, Optional
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from .models import ModelSpecification, RunContext
 
@@ -42,6 +43,13 @@ class ExecutionConfig(BaseModel):
     n_workers: int = Field(default=1, ge=1)
     resume: bool = False
     methodology: str = "default"
+
+    @model_validator(mode="after")
+    def validate_mode_workers(self) -> "ExecutionConfig":
+        """Ensure execution mode and worker settings are coherent."""
+        if self.mode == "sequential" and self.n_workers != 1:
+            raise ValueError("execution.n_workers must be 1 when execution.mode='sequential'")
+        return self
 
 
 # ---------------------------------------------------------------------------
@@ -157,6 +165,45 @@ def load_run_config(path: Path | str) -> RunConfig:
         raise ValueError(f"Config file must contain a mapping, got: {type(raw).__name__}")
 
     return RunConfig.model_validate(raw)
+
+
+def validate_run_paths(config: RunConfig, *, config_dir: Path) -> None:
+    """Validate runtime-critical paths before executing a run.
+
+    Args:
+        config: Validated run configuration.
+        config_dir: Directory that contains the run config file.
+
+    Raises:
+        ValueError: If any path is invalid or not accessible.
+    """
+    model_path = Path(config.model.model_path)
+    if not model_path.is_absolute():
+        model_path = config_dir / model_path
+
+    if model_path.suffix.lower() != ".wdi":
+        raise ValueError(f"model.model_path must point to a .wdi file, got: {model_path}")
+    if not model_path.exists():
+        raise ValueError(f"model.model_path does not exist: {model_path}")
+
+    wanda_bin = Path(config.model.wanda_bin)
+    if not wanda_bin.is_absolute():
+        wanda_bin = config_dir / wanda_bin
+    if not wanda_bin.exists() or not wanda_bin.is_dir():
+        raise ValueError(f"model.wanda_bin must be an existing directory: {wanda_bin}")
+
+    scenario_file = Path(config.scenario_file)
+    if not scenario_file.is_absolute():
+        scenario_file = config_dir / scenario_file
+    if not scenario_file.exists():
+        raise ValueError(f"scenario_file does not exist: {scenario_file}")
+
+    output_root = Path(config.output_root)
+    if not output_root.is_absolute():
+        output_root = config_dir / output_root
+    output_root.mkdir(parents=True, exist_ok=True)
+    if not os.access(output_root, os.W_OK):
+        raise ValueError(f"output_root is not writable: {output_root}")
 
 
 def build_run_context(config: RunConfig) -> RunContext:

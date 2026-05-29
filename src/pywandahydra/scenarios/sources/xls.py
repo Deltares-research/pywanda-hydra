@@ -23,6 +23,7 @@ from ..schema import (
     ScenarioMeta,
     ScenarioSpecification,
 )
+from .base import register_source
 
 if TYPE_CHECKING:
     from ..mapper import ScenarioLoadOptions
@@ -218,7 +219,7 @@ def _read_rplots_sheet(
 
     specs: List[RoutePlotSpecification] = []
     for _, row in df.iterrows():
-        comp = _as_str_or_none(row.get("component"))
+        comp = _as_str_or_none(row.get("name"))
         prop = _as_str_or_none(row.get("property"))
 
         if comp is None or prop is None:
@@ -389,3 +390,19 @@ def read_scenarios_from_excel(
         )
 
     return scenarios
+
+
+@register_source
+class XlsScenarioSource:
+    """Scenario source for Excel files (.xls, .xlsx, .xlsm)."""
+
+    extensions: set[str] = {".xls", ".xlsx", ".xlsm"}
+
+    def __init__(self, options: "ScenarioLoadOptions | None" = None) -> None:
+        from ..mapper import ScenarioLoadOptions
+
+        self.options = options or ScenarioLoadOptions()
+
+    def load(self, path: Path) -> list[ScenarioSpecification]:
+        """Load scenarios from an Excel workbook."""
+        return read_scenarios_from_excel(path, self.options)

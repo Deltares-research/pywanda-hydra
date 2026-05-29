@@ -60,7 +60,7 @@ def setup_logging(log_level: LogLevel, colors: bool = True) -> None:
     """
     global LOG_LEVEL
     root_logger = logging.getLogger()
-    root_logger.info("Will use log level:", str(log_level))
+    root_logger.info("Will use log level: %s", log_level.name)
     root_logger.setLevel(log_level.value)
     LOG_LEVEL = log_level
     if colors:
@@ -72,4 +72,3 @@ def setup_logging(log_level: LogLevel, colors: bool = True) -> None:
         )
         log_handler.setFormatter(formatter)
         root_logger.addHandler(log_handler)
-    pass
