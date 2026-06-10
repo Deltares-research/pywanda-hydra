@@ -255,9 +255,17 @@ def _read_rplots_sheet(
 
     specs: List[RoutePlotSpecification] = []
     seen_titles: set[str] = set()
+
+    # Accept both lower-case and Excel-style capitalization.
+    columns_ci = {str(c).strip().lower(): c for c in df.columns}
+
+    def _row_get_ci(row: pd.Series, key: str) -> Any:
+        actual = columns_ci.get(key.lower())
+        return row.get(actual) if actual is not None else None
+
     for idx, row in df.iterrows():
-        comp = _as_str_or_none(row.get("name"))
-        prop = _as_str_or_none(row.get("property"))
+        comp = _as_str_or_none(_row_get_ci(row, "name"))
+        prop = _as_str_or_none(_row_get_ci(row, "property"))
 
         if comp is None or prop is None:
             if opts.strict_validation and not (comp is None and prop is None):
@@ -267,7 +275,7 @@ def _read_rplots_sheet(
                 )
             continue
 
-        title = _as_str_or_none(row.get("title"))
+        title = _as_str_or_none(_row_get_ci(row, "title"))
         if title is not None:
             if title in seen_titles and opts.strict_validation:
                 raise ValueError(
@@ -277,18 +285,18 @@ def _read_rplots_sheet(
             seen_titles.add(title)
 
         x_axis = AxisSpec(
-            label=_as_str_or_none(row.get("Xlabel")) or "",
-            min=_float_or_none(row.get("Xmin")),
-            max=_float_or_none(row.get("Xmax")),
-            tick_interval=_float_or_none(row.get("Xtick")),
-            factor=_float_or_none(row.get("Xscale")) or 1.0,
+            label=_as_str_or_none(_row_get_ci(row, "xlabel")) or "",
+            min=_float_or_none(_row_get_ci(row, "xmin")),
+            max=_float_or_none(_row_get_ci(row, "xmax")),
+            tick_interval=_float_or_none(_row_get_ci(row, "xtick")),
+            factor=_float_or_none(_row_get_ci(row, "xscale")) or 1.0,
         )
         y_axis = AxisSpec(
-            label=_as_str_or_none(row.get("Ylabel")) or "",
-            min=_float_or_none(row.get("Ymin")),
-            max=_float_or_none(row.get("Ymax")),
-            tick_interval=_float_or_none(row.get("Ytick")),
-            factor=_float_or_none(row.get("Yscale")) or 1.0,
+            label=_as_str_or_none(_row_get_ci(row, "ylabel")) or "",
+            min=_float_or_none(_row_get_ci(row, "ymin")),
+            max=_float_or_none(_row_get_ci(row, "ymax")),
+            tick_interval=_float_or_none(_row_get_ci(row, "ytick")),
+            factor=_float_or_none(_row_get_ci(row, "yscale")) or 1.0,
         )
 
         specs.append(
@@ -296,7 +304,9 @@ def _read_rplots_sheet(
                 route_id=comp or "",
                 property=prop or "",
                 title=title,
-                legend=_as_str_or_none(row.get("Legend")),
+                legend=_as_str_or_none(_row_get_ci(row, "legend")),
+                fig=_as_str_or_none(_row_get_ci(row, "fig")),
+                plot=_row_get_ci(row, "plot"),
                 x_axis=x_axis,
                 y_axis=y_axis,
             )

@@ -249,3 +249,4 @@ test_data/**/*
 !test_data/execution/model/*
 
 
+*.zip

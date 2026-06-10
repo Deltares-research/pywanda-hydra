@@ -484,6 +484,9 @@ class RoutePlotSpecification(BaseModel):
 
     title: Optional[str] = None
     legend: Optional[str] = None
+    # Optional report-page grouping metadata from RPlots (legacy-compatible).
+    fig: Optional[str] = None
+    plot: Optional[int] = None
     x_axis: AxisSpec = Field(default_factory=lambda: AxisSpec(label=""))
     y_axis: AxisSpec = Field(default_factory=lambda: AxisSpec(label=""))
 
@@ -495,6 +498,45 @@ class RoutePlotSpecification(BaseModel):
         if not v:
             raise ValueError("must be a non-empty string")
         return v
+
+    @field_validator("fig", mode="before")
+    @classmethod
+    def normalize_fig(cls, v: Any) -> Optional[str]:
+        if v is None:
+            return None
+        if isinstance(v, float):
+            import math
+
+            if math.isnan(v):
+                return None
+            if v.is_integer():
+                return str(int(v))
+        s = str(v).strip()
+        return s or None
+
+    @field_validator("plot", mode="before")
+    @classmethod
+    def normalize_plot(cls, v: Any) -> Optional[int]:
+        if v is None:
+            return None
+        if isinstance(v, float):
+            import math
+
+            if math.isnan(v):
+                return None
+            if v.is_integer():
+                return int(v)
+            raise ValueError("plot must be an integer")
+        if isinstance(v, str):
+            s = v.strip()
+            if not s:
+                return None
+            if s.isdigit():
+                return int(s)
+            raise ValueError("plot must be an integer")
+        if isinstance(v, int):
+            return v
+        return None
 
 
 class PostProcessingConfig(BaseModel):
