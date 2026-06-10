@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
@@ -28,6 +29,22 @@ from ..plotting.specifications import AxisSpec
 
 logger = logging.getLogger(__name__)
 
+
+def _configure_matplotlib_defaults() -> None:
+    """Apply module-level matplotlib defaults for post-processing plots.
+
+    These defaults are process-global (matplotlib rcParams) and ensure
+    route/time-series plots do not add extra horizontal padding.
+    """
+    plt.rcParams.update(
+        {
+            # Keep x-axis tight by default (no automatic side padding).
+            "axes.xmargin": 0.0,
+        }
+    )
+
+
+_configure_matplotlib_defaults()
 
 # ---------------------------------------------------------------------------
 # Route Plot Renderer
@@ -66,7 +83,12 @@ def render_route_plot(
 
     fig, ax = plt.subplots(figsize=(10, 6))
 
+    # Sort the envelope by s_location
     s_loc = envelope.index
+    sort_idx_s = np.argsort(s_loc)
+    s_loc = s_loc[sort_idx_s]
+    envelope = envelope.iloc[sort_idx_s]
+
     if "min" in envelope.columns:
         ax.plot(s_loc, envelope["min"], label="min", linewidth=1.2)
     if "max" in envelope.columns:

@@ -19,7 +19,7 @@ class RoutePlotStep:
     name = "route_plots"
 
     def applicable(self, ctx: PostProcessingContext) -> bool:
-        """Run only if the scenario defines route plot specifications and the step is enabled."""
+        """Run only when route plots are defined and this step is enabled."""
         pp = ctx.scenario.post_processing
         if pp.enabled_steps and self.name not in pp.enabled_steps:
             return False
@@ -32,19 +32,23 @@ class RoutePlotStep:
         case_id = ctx.case_dir.name
         case_pdf = figures_dir / f"{case_id}.pdf"
         figures = []
-        for spec in ctx.scenario.post_processing.routes:
-            fig = render_route_plot(spec, ctx.cache)
-            if fig is not None:
-                figures.append(fig)
+        with plt.ioff():
+            for spec in ctx.scenario.post_processing.routes:
+                fig = render_route_plot(spec, ctx.cache)
+                if fig is not None:
+                    figures.append(fig)
 
-        if not figures:
-            logger.info("No route figures rendered for case '%s'.", ctx.case_dir.name)
-            return
+            if not figures:
+                logger.info(
+                    "No route figures rendered for case '%s'.",
+                    ctx.case_dir.name,
+                )
+                return
 
-        with PdfPages(case_pdf) as pdf:
-            for fig in figures:
-                pdf.savefig(fig)
-                plt.close(fig)
+            with PdfPages(case_pdf) as pdf:
+                for fig in figures:
+                    pdf.savefig(fig)
+                    plt.close(fig)
 
         logger.info(
             "Rendered %d route plot(s) into %s for case '%s'.",

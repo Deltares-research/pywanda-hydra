@@ -180,7 +180,7 @@ def extract_route_outputs(
       and data columns flipped accordingly.
     * ``"envelope"`` – index ``s_location [m]`` (cumulative along the
       route), columns ``["min", "max"]`` derived from
-      :meth:`get_series_pipe_min` / :meth:`get_series_pipe_max`.
+            :meth:`get_extr_min_pipe` / :meth:`get_extr_max_pipe`.
 
     Parameters
     ----------
@@ -279,8 +279,8 @@ def extract_route_outputs(
 
             # --- Envelope (min / max along s_location) ---
             try:
-                min_vals = np.asarray(prop.get_series_pipe_min(), dtype=float).ravel()
-                max_vals = np.asarray(prop.get_series_pipe_max(), dtype=float).ravel()
+                min_vals = np.asarray(prop.get_extr_min_pipe(), dtype=float).ravel()
+                max_vals = np.asarray(prop.get_extr_max_pipe(), dtype=float).ravel()
                 n_s_env = min(len(min_vals), len(max_vals))
                 s_local_env = np.linspace(0.0, length, n_s_env)
                 s_env = s_offset + (s_local_env if direction > 0 else (length - s_local_env))
