@@ -71,6 +71,9 @@ requires = [
     "uv_build>=0.11.19,<0.12",
 ]
 
+[tool.uv.build-backend]
+module-name = "pywandahydra"
+
 [tool.pytest.ini_options]
 addopts = "-q --cov=pywandahydra --cov-report html --cov-report term-missing --cov-fail-under 50"
 testpaths = ["unit_test"]
@@ -135,7 +138,7 @@ exclude = [
 ]
 
 [[tool.mypy.overrides]]
-module = ["pywanda", "pywanda.*", "scipy", "scipy.*", "matplotlib", "matplotlib.*"]
+module = ["pywanda", "pywanda.*", "scipy", "scipy.*", "matplotlib", "matplotlib.*", "pandas", "pandas.*", "numpy", "numpy.*", "coloredlogs", "coloredlogs.*", "yaml", "yaml.*"]
 ignore_missing_imports = true
 
 # mypy per-module options:

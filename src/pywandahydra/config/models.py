@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -48,7 +48,7 @@ class ModelSpecification(BaseModel):
     run_unsteady: bool = False
 
     # Genneral settings to apply before scenarios (global tweaks)
-    global_overrides: List[ParameterChange] = Field(
+    global_overrides: list[ParameterChange] = Field(
         default_factory=list,
         description="Global parameter changes to apply before scenarios changes.",
     )
@@ -125,8 +125,8 @@ class RunContext(BaseModel):
     )
 
     # Optional description and metadata
-    description: Optional[str] = Field(default=None, description="Optional description of the run.")
-    metadata: Dict[str, Any] = Field(
+    description: str | None = Field(default=None, description="Optional description of the run.")
+    metadata: dict[str, Any] = Field(
         default_factory=dict,
         description="Additional metadata for the run.",
     )

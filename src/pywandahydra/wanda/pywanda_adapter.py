@@ -8,12 +8,7 @@ import numpy as np
 import pywanda
 
 from ..scenarios.schema import ParameterChange
-from .api import (
-    apply_parameter_change,
-    get_item,
-    resolve_items,
-    resolve_route_pipes,
-)
+from .api import apply_parameter_change, get_item, resolve_items, resolve_route_pipes
 
 
 class PywandaAdapter:
@@ -62,7 +57,9 @@ class PywandaAdapter:
         """
         handle.save_model_input()
 
-    def apply_parameter_change(self, handle: pywanda.WandaModel, change: ParameterChange) -> None:
+    def apply_parameter_change(
+        self, handle: pywanda.WandaModel, change: ParameterChange
+    ) -> None:
         """Apply a parameter change using the existing api module.
 
         Args:
@@ -96,7 +93,7 @@ class PywandaAdapter:
         Returns:
             Simulation time in seconds.
         """
-        return handle.get_property("Simulation time").get_scalar_float()
+        return float(handle.get_property("Simulation time").get_scalar_float())
 
     def get_time_steps(self, handle: pywanda.WandaModel) -> list[float]:
         """Get time steps vector from the simulated model.
@@ -107,7 +104,7 @@ class PywandaAdapter:
         Returns:
             List of time step values.
         """
-        return handle.get_time_steps()
+        return list(handle.get_time_steps())
 
     def get_series(
         self, handle: pywanda.WandaModel, component: str, property_name: str
@@ -131,9 +128,13 @@ class PywandaAdapter:
             handle.read_prop_output(prop)
         except Exception:
             pass
-        return np.array(prop.get_series(), dtype=np.float64) * prop.get_unit_factor()
+        return np.array(prop.get_series(), dtype=np.float64) * float(
+            prop.get_unit_factor()
+        )
 
-    def get_scalar(self, handle: pywanda.WandaModel, component: str, property_name: str) -> float:
+    def get_scalar(
+        self, handle: pywanda.WandaModel, component: str, property_name: str
+    ) -> float:
         """Get scalar value for a component property.
 
         Args:
@@ -151,7 +152,9 @@ class PywandaAdapter:
         prop = item.get_property(property_name)
         return float(prop.get_scalar_float())
 
-    def resolve_route_components(self, handle: pywanda.WandaModel, route_id: str) -> list[str]:
+    def resolve_route_components(
+        self, handle: pywanda.WandaModel, route_id: str
+    ) -> list[str]:
         """Resolve route identifier into component names.
 
         Args:
@@ -209,7 +212,9 @@ class PywandaAdapter:
             handle.read_prop_output(prop)
         except Exception:
             pass
-        return np.asarray(prop.get_series_pipe(), dtype=np.float64) * prop.get_unit_factor()
+        return np.asarray(prop.get_series_pipe(), dtype=np.float64) * float(
+            prop.get_unit_factor()
+        )
 
     def get_pipe_length(self, handle: pywanda.WandaModel, pipe_name: str) -> float:
         """Get pipe length for the named pipe."""

@@ -17,7 +17,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Protocol, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
 from ..scenarios.schema import ScenarioSpecification
 from .cache import ParquetCache
@@ -40,10 +40,10 @@ class PostProcessingContext:
     cache: ParquetCache
     scenario: ScenarioSpecification
     case_dir: Path
-    export_figure_props: Dict[str, Dict[str, Any]] = field(
+    export_figure_props: dict[str, dict[str, Any]] = field(
         default_factory=build_figure_export_props
     )
-    export_table_props: Dict[str, Dict[str, Any]] = field(
+    export_table_props: dict[str, dict[str, Any]] = field(
         default_factory=lambda: dict(DEFAULT_TABLE_EXPORT_PROPS)
     )
 
@@ -71,7 +71,7 @@ class PostProcessor(Protocol):
 # Registry
 # ---------------------------------------------------------------------------
 
-_STEPS: List[PostProcessor] = []
+_STEPS: list[PostProcessor] = []
 
 
 def register_step(step: PostProcessor) -> PostProcessor:
@@ -88,7 +88,7 @@ def register_step(step: PostProcessor) -> PostProcessor:
     return step
 
 
-def get_steps() -> List[PostProcessor]:
+def get_steps() -> list[PostProcessor]:
     """Return all registered post-processing steps in order."""
     return list(_STEPS)
 
@@ -107,7 +107,7 @@ def run_postprocessing(
     ctx: PostProcessingContext,
     *,
     methodology: str | None = None,
-) -> Dict[str, bool]:
+) -> dict[str, bool]:
     """Run post-processing steps for a single case.
 
     When *methodology* is provided, steps are sourced from the named
@@ -129,7 +129,7 @@ def run_postprocessing(
     else:
         steps = list(_STEPS)
 
-    results: Dict[str, bool] = {}
+    results: dict[str, bool] = {}
 
     for step in steps:
         if not step.applicable(ctx):

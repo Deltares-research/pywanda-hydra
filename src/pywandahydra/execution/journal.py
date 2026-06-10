@@ -10,7 +10,7 @@ import json
 import os
 import socket
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal
 
@@ -19,7 +19,7 @@ from filelock import FileLock
 
 def _now_iso() -> str:
     """Return current UTC time as ISO 8601 string."""
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 # ---------------------------------------------------------------------------
@@ -105,7 +105,7 @@ class CaseJournal:
         """Release the case lock."""
         self._lock.release()
 
-    def __enter__(self) -> "CaseJournal":
+    def __enter__(self) -> CaseJournal:
         self.acquire()
         return self
 

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 import pandas as pd
 from matplotlib.figure import Figure
@@ -17,11 +17,11 @@ from matplotlib.figure import Figure
 logger = logging.getLogger(__name__)
 
 # Default export properties per extension
-DEFAULT_FIGURE_EXPORT_PROPS: Dict[str, Dict[str, Any]] = {
+DEFAULT_FIGURE_EXPORT_PROPS: dict[str, dict[str, Any]] = {
     ".pdf": {},
 }
 
-OPTIONAL_FIGURE_EXPORT_PROPS: Dict[str, Dict[str, Any]] = {
+OPTIONAL_FIGURE_EXPORT_PROPS: dict[str, dict[str, Any]] = {
     ".png": {"transparent": False, "dpi": 300},
     ".svg": {"transparent": True},
 }
@@ -32,7 +32,7 @@ def build_figure_export_props(
     include_pdf: bool = True,
     include_png: bool = False,
     include_svg: bool = False,
-) -> Dict[str, Dict[str, Any]]:
+) -> dict[str, dict[str, Any]]:
     """Build a figure export map with PDF as the default format.
 
     Args:
@@ -43,7 +43,7 @@ def build_figure_export_props(
     Returns:
         A mapping of file extension to ``savefig`` keyword arguments.
     """
-    export_props: Dict[str, Dict[str, Any]] = {}
+    export_props: dict[str, dict[str, Any]] = {}
 
     if include_pdf:
         export_props.update(DEFAULT_FIGURE_EXPORT_PROPS)
@@ -55,7 +55,7 @@ def build_figure_export_props(
     return export_props
 
 
-DEFAULT_TABLE_EXPORT_PROPS: Dict[str, Dict[str, Any]] = {
+DEFAULT_TABLE_EXPORT_PROPS: dict[str, dict[str, Any]] = {
     ".csv": {},
 }
 
@@ -65,7 +65,7 @@ def savefig(
     output_dir: Path,
     filename: str,
     *,
-    export_props: Dict[str, Dict[str, Any]] | None = None,
+    export_props: dict[str, dict[str, Any]] | None = None,
     close: bool = True,
 ) -> list[Path]:
     """Save a matplotlib Figure to one or more formats.
@@ -115,7 +115,7 @@ def save_table(
     output_dir: Path,
     filename: str,
     *,
-    export_props: Dict[str, Dict[str, Any]] | None = None,
+    export_props: dict[str, dict[str, Any]] | None = None,
 ) -> list[Path]:
     """Save a DataFrame to one or more table formats.
 

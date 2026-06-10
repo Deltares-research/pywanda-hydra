@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 from ..config.models import ModelSpecification, RunContext
 from ..scenarios.schema import ScenarioSpecification
@@ -37,7 +37,7 @@ def create_run_directories(
 def write_run_log(
     context_object: RunContext,
     model_spec: ModelSpecification,
-    scenarios: List[ScenarioSpecification],
+    scenarios: list[ScenarioSpecification],
 ) -> None:
     """Write a JSON log file summarizing the run configuration.
 
@@ -50,7 +50,7 @@ def write_run_log(
     scenarios : List[ScenarioSpecification]
         The list of scenario specifications for the run.
     """
-    log_data: Dict[str, Any] = {
+    log_data: dict[str, Any] = {
         "run_context": context_object.model_dump(mode="json"),
         "model_specification": model_spec.model_dump(mode="json"),
         "scenarios": [scenario.model_dump(mode="json") for scenario in scenarios],

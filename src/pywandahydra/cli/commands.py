@@ -6,7 +6,6 @@ import json
 import logging
 import os
 from pathlib import Path
-from typing import Optional
 
 import typer
 
@@ -29,11 +28,13 @@ def run(
     config: Path = typer.Argument(
         ..., help="Path to the run configuration file (.yaml or .json).", exists=True
     ),
-    workers: Optional[int] = typer.Option(
+    workers: int | None = typer.Option(
         None, "--workers", "-w", help="Override number of workers."
     ),
-    resume: bool = typer.Option(False, "--resume", "-r", help="Skip already-completed cases."),
-    mode: Optional[str] = typer.Option(
+    resume: bool = typer.Option(
+        False, "--resume", "-r", help="Skip already-completed cases."
+    ),
+    mode: str | None = typer.Option(
         None, "--mode", "-m", help="Execution mode: sequential or multiprocessing."
     ),
     log_level: str = typer.Option(
@@ -44,7 +45,12 @@ def run(
     setup_logging(LogLevel.parse(log_level))
     logger = logging.getLogger(__name__)
 
-    from ..config.loader import Provenance, build_run_context, load_run_config, validate_run_paths
+    from ..config.loader import (
+        Provenance,
+        build_run_context,
+        load_run_config,
+        validate_run_paths,
+    )
     from ..execution.runner import run as run_scenarios
     from ..scenarios.mapper import load_scenarios
 
@@ -53,15 +59,18 @@ def run(
         cfg = load_run_config(config)
     except (ValueError, FileNotFoundError) as e:
         typer.echo(f"Error loading config: {e}", err=True)
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from None
 
     # Apply CLI overrides
     effective_mode = cfg.execution.mode
     if mode is not None:
         if mode not in ("sequential", "multiprocessing"):
-            typer.echo(f"Invalid mode: '{mode}'. Use 'sequential' or 'multiprocessing'.", err=True)
+            typer.echo(
+                f"Invalid mode: '{mode}'. Use 'sequential' or 'multiprocessing'.",
+                err=True,
+            )
             raise typer.Exit(code=1)
-        effective_mode = mode
+        effective_mode = mode  # type: ignore[assignment]
 
     if workers is not None and workers < 1:
         typer.echo("--workers must be >= 1", err=True)
@@ -93,7 +102,7 @@ def run(
         validate_run_paths(cfg, config_dir=config.parent)
     except ValueError as e:
         typer.echo(f"Invalid runtime configuration: {e}", err=True)
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from None
 
     # Load scenarios from the scenario file
     scenario_path = Path(cfg.scenario_file)
@@ -104,7 +113,7 @@ def run(
         scenarios = load_scenarios(scenario_path)
     except (ValueError, FileNotFoundError) as e:
         typer.echo(f"Error loading scenarios: {e}", err=True)
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from None
 
     logger.info(
         "Loaded %d scenarios from %s (%d included)",
@@ -156,7 +165,9 @@ def run(
 
 @app.command()
 def status(
-    run_dir: Path = typer.Argument(..., help="Path to the run output directory.", exists=True),
+    run_dir: Path = typer.Argument(
+        ..., help="Path to the run output directory.", exists=True
+    ),
 ) -> None:
     """Show status of all cases in a run directory."""
     from ..execution.journal import CaseJournal
@@ -172,7 +183,9 @@ def status(
         typer.echo("No cases found.")
         return
 
-    typer.echo(f"{'Case ID':<30} {'Status':<12} {'PP Status':<12} {'Duration':<10} {'Error'}")
+    typer.echo(
+        f"{'Case ID':<30} {'Status':<12} {'PP Status':<12} {'Duration':<10} {'Error'}"
+    )
     typer.echo("-" * 90)
 
     for case_dir in case_dirs:
@@ -210,13 +223,13 @@ def validate(
         typer.echo(f"Config OK: run_id={cfg.run_id}, mode={cfg.execution.mode}")
     except (ValueError, FileNotFoundError) as e:
         typer.echo(f"Config INVALID: {e}", err=True)
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from None
 
     try:
         validate_run_paths(cfg, config_dir=config.parent)
     except ValueError as e:
         typer.echo(f"Runtime paths INVALID: {e}", err=True)
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from None
 
     scenario_path = Path(cfg.scenario_file)
     if not scenario_path.is_absolute():
@@ -228,7 +241,7 @@ def validate(
         typer.echo(f"Scenarios OK: {len(scenarios)} total, {n_included} included")
     except (ValueError, FileNotFoundError) as e:
         typer.echo(f"Scenarios INVALID: {e}", err=True)
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from None
 
     typer.echo("Validation passed.")
 
@@ -240,11 +253,15 @@ def validate(
 
 @app.command()
 def plot(
-    run_dir: Path = typer.Argument(..., help="Path to the run output directory.", exists=True),
-    case_id: Optional[str] = typer.Option(
+    run_dir: Path = typer.Argument(
+        ..., help="Path to the run output directory.", exists=True
+    ),
+    case_id: str | None = typer.Option(
         None, "--case", "-c", help="Specific case ID to plot. Plots all if omitted."
     ),
-    fmt: str = typer.Option("png", "--format", "-f", help="Output format (png, pdf, svg)."),
+    fmt: str = typer.Option(
+        "png", "--format", "-f", help="Output format (png, pdf, svg)."
+    ),
 ) -> None:
     """Render plots from cached extraction data (no WANDA required)."""
     from ..postprocessing.cache import ParquetCache
@@ -291,7 +308,9 @@ def plot(
                 from ..scenarios.schema import RoutePlotSpecification
 
                 spec = RoutePlotSpecification.model_validate(spec_data)
-                render_route_plot(spec, cache, output_dir=figures_dir, export_props=export_props)
+                render_route_plot(
+                    spec, cache, output_dir=figures_dir, export_props=export_props
+                )
         else:
             # Render all available routes from cache
             for route_title in cache.list_routes():
@@ -305,6 +324,8 @@ def plot(
                     x_axis=AxisSpec(label="Distance [m]"),
                     y_axis=AxisSpec(label=""),
                 )
-                render_route_plot(spec, cache, output_dir=figures_dir, export_props=export_props)
+                render_route_plot(
+                    spec, cache, output_dir=figures_dir, export_props=export_props
+                )
 
     typer.echo("Plotting complete.")

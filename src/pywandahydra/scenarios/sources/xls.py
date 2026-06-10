@@ -4,10 +4,8 @@ from __future__ import annotations
 
 import logging
 import warnings
-
-logger = logging.getLogger(__name__)
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, List, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import numpy as np
 import pandas as pd
@@ -28,6 +26,8 @@ from .base import register_source
 
 if TYPE_CHECKING:
     from ..mapper import ScenarioLoadOptions
+
+logger = logging.getLogger(__name__)
 
 
 # Helper functions
@@ -127,7 +127,7 @@ def _extract_analysis_meta(
 def _read_output_sheet(
     path: str | Path,
     opts: ScenarioLoadOptions,
-) -> List[ExportTableSpecification]:
+) -> list[ExportTableSpecification]:
     """Read the *Output* sheet and return a list of export-table specifications.
 
     Expected sheet layout (no header row, columns by position)::
@@ -170,7 +170,7 @@ def _read_output_sheet(
             )
         return []
 
-    specs: List[ExportTableSpecification] = []
+    specs: list[ExportTableSpecification] = []
     seen: set[tuple[str, str]] = set()
     for idx, row in df.iterrows():
         comp = _as_str_or_none(row.iloc[0])
@@ -178,7 +178,9 @@ def _read_output_sheet(
         mode_str = _as_str_or_none(row.iloc[2])
 
         if comp is None or prop is None or mode_str is None:
-            if opts.strict_validation and not (comp is None and prop is None and mode_str is None):
+            if opts.strict_validation and not (
+                comp is None and prop is None and mode_str is None
+            ):
                 raise ValueError(
                     f"Strict validation: incomplete row {idx} in sheet '{opts.output_sheet}': "
                     f"component={comp!r}, property={prop!r}, mode={mode_str!r}."
@@ -203,7 +205,7 @@ def _read_output_sheet(
 def _read_rplots_sheet(
     path: str | Path,
     opts: ScenarioLoadOptions,
-) -> List[RoutePlotSpecification]:
+) -> list[RoutePlotSpecification]:
     """Read the *RPlots* sheet and return a list of route-plot specifications.
 
     Expected sheet layout (with a header row)::
@@ -256,7 +258,7 @@ def _read_rplots_sheet(
         except (TypeError, ValueError):
             return None
 
-    specs: List[RoutePlotSpecification] = []
+    specs: list[RoutePlotSpecification] = []
     seen_titles: set[str] = set()
 
     def _row_get_ci(row: pd.Series, key: str) -> Any:
@@ -317,7 +319,7 @@ def _read_rplots_sheet(
 
 def read_scenarios_from_excel(
     path: str | Path, opts: ScenarioLoadOptions
-) -> List[ScenarioSpecification]:
+) -> list[ScenarioSpecification]:
     """Read scenarios from an Excel file.
 
     Reads the *Cases* sheet for scenario parameters, and optionally the
@@ -340,14 +342,18 @@ def read_scenarios_from_excel(
         path, opts.cases_sheet, header=None, skiprows=opts.cases_header_row_count
     )
     # Extract parameter columns
-    input_headers = pd.read_excel(path, opts.cases_sheet, header=None, nrows=1).values[0]
+    input_headers = pd.read_excel(path, opts.cases_sheet, header=None, nrows=1).values[
+        0
+    ]
     column_start = np.where(input_headers == "Name")[0][0] + 1
     param_columns = list(input_data.iloc[0, column_start:])
 
     # - Create a MultiIndex column names for the (Component, Property) pairs
-    comp_prop: List[tuple[str, str]] = []
+    comp_prop: list[tuple[str, str]] = []
 
-    for component, prop_name in zip(input_headers[column_start:], param_columns):
+    for component, prop_name in zip(
+        input_headers[column_start:], param_columns, strict=False
+    ):
         component_str = str(component).strip()
         prop_str = str(prop_name).strip()
         comp_prop.append((component_str, prop_str))
@@ -372,7 +378,7 @@ def read_scenarios_from_excel(
     rplot_specs = _read_rplots_sheet(path, opts) if opts.rplots_sheet else []
 
     # Construct scenarios
-    scenarios: List[ScenarioSpecification] = []
+    scenarios: list[ScenarioSpecification] = []
     number_col = ("Number", "")
     # Find exact integer position for scalar access (MultiIndex get_loc may return a slice)
     number_col_pos = list(input_data.columns).index(number_col)
@@ -387,7 +393,7 @@ def read_scenarios_from_excel(
         try:
             # For meta fields, extract only the first level of the MultiIndex.
             # Convert NaN → None and numpy scalars → Python natives.
-            meta_df = {}
+            meta_df: dict[str, Any] = {}
             for k, v in row_dict.items():
                 if k[1] != "":
                     continue
@@ -404,7 +410,7 @@ def read_scenarios_from_excel(
             ) from e
 
         # Extract parameter changes
-        parameters: List[ParameterChange] = []
+        parameters: list[ParameterChange] = []
         for col_tuple in input_data.columns:
             prop_name = col_tuple[1]
             if prop_name == "":
@@ -430,7 +436,9 @@ def read_scenarios_from_excel(
 
         # Construct ScenarioSpecification only if included
         if not meta.include:
-            logger.debug("Scenario '%s' (Number=%d) is not included.", meta.name, meta.number)
+            logger.debug(
+                "Scenario '%s' (Number=%d) is not included.", meta.name, meta.number
+            )
             continue
 
         scenarios.append(
@@ -459,7 +467,7 @@ class XlsScenarioSource:
 
     extensions: set[str] = {".xls", ".xlsx", ".xlsm"}
 
-    def __init__(self, options: "ScenarioLoadOptions | None" = None) -> None:
+    def __init__(self, options: ScenarioLoadOptions | None = None) -> None:
         from ..mapper import ScenarioLoadOptions
 
         self.options = options or ScenarioLoadOptions()

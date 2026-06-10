@@ -7,10 +7,11 @@ This module builds CasePlans from scenarios, dispatches them to workers
 from __future__ import annotations
 
 import logging
+from collections.abc import Sequence
 from dataclasses import dataclass
 from multiprocessing import get_context
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Sequence
+from typing import Any, Literal
 
 from ..config.models import ModelSpecification, RunContext
 from ..execution.artifacts import create_run_directories, write_run_log
@@ -42,7 +43,7 @@ class RunResult:
     n_success: int
     n_failed: int
     n_skipped: int = 0
-    results: List[Dict[str, Any]] = None  # type: ignore[assignment]
+    results: list[dict[str, Any]] = None  # type: ignore[assignment]
 
     def __post_init__(self) -> None:  # noqa: D105
         if self.results is None:
@@ -164,9 +165,9 @@ def run(
 
 def _run_multiprocess(
     *,
-    plans: List[CasePlan],
+    plans: list[CasePlan],
     n_workers: int,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Run case plans in parallel using multiprocessing (spawn context).
 
     Args:

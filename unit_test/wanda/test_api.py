@@ -39,7 +39,7 @@ class TestWandaAPI(unittest.TestCase):
         )
 
         prepare_scenario_model(
-            base_model_path=self.model_spec.model_path,
+            base_model_path=str(self.model_spec.model_path),
             scenario_dir=Path(__file__).parents[2] / "test_data" / "wanda" / "test_scenario",
             scenario_name="test_scenario",
             readonly=self.model_spec.readonly,

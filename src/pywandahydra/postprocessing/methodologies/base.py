@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Dict, Protocol, runtime_checkable
+from typing import Protocol, runtime_checkable
 
 from ..pipeline import PostProcessingContext, PostProcessor
 
@@ -44,7 +44,7 @@ class Methodology(Protocol):
 # Registry
 # ---------------------------------------------------------------------------
 
-_METHODOLOGIES: Dict[str, Methodology] = {}
+_METHODOLOGIES: dict[str, Methodology] = {}
 
 
 def register_methodology(methodology: Methodology) -> Methodology:

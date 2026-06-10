@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import List, Literal, Optional
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -27,7 +27,7 @@ class RouteSeries(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     label: str  # e.g. "0 s", "60 s", "min", "max"
-    values: List[float]  # same length as RouteData.s_location
+    values: list[float]  # same length as RouteData.s_location
 
 
 class RouteData(BaseModel):
@@ -35,13 +35,13 @@ class RouteData(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    s_location: List[float]
-    series: List[RouteSeries]
+    s_location: list[float]
+    series: list[RouteSeries]
 
-    s_location_profile: Optional[List[float]] = None
-    elevation: Optional[List[float]] = None
+    s_location_profile: list[float] | None = None
+    elevation: list[float] | None = None
 
-    start_label: Optional[str] = None
-    end_label: Optional[str] = None
+    start_label: str | None = None
+    end_label: str | None = None
 
-    text_annotations: List[PlotTextAnnotation] = Field(default_factory=list)
+    text_annotations: list[PlotTextAnnotation] = Field(default_factory=list)

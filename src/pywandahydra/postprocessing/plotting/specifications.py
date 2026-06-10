@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Literal, Optional
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -30,14 +30,14 @@ class AxisSpec(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    label: Optional[str] = None
+    label: str | None = None
 
     # Axis limits
-    min: Optional[float] = None
-    max: Optional[float] = None
+    min: float | None = None
+    max: float | None = None
 
     # Tick spacing
-    tick_interval: Optional[float] = None
+    tick_interval: float | None = None
 
     # Scaling of the axis
     scale: ScaleType = "linear"  # or "log"
@@ -45,7 +45,7 @@ class AxisSpec(BaseModel):
 
     @field_validator("label")
     @classmethod
-    def strip_label(cls, v: Optional[str]) -> Optional[str]:
+    def strip_label(cls, v: str | None) -> str | None:
         if v is None:
             return None
         return v.strip()

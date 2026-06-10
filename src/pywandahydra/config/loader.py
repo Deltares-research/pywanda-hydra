@@ -13,9 +13,9 @@ import os
 import platform
 import socket
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Dict, Literal, Optional
+from typing import Any, Literal
 
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -45,10 +45,12 @@ class ExecutionConfig(BaseModel):
     methodology: str = "default"
 
     @model_validator(mode="after")
-    def validate_mode_workers(self) -> "ExecutionConfig":
+    def validate_mode_workers(self) -> ExecutionConfig:
         """Ensure execution mode and worker settings are coherent."""
         if self.mode == "sequential" and self.n_workers != 1:
-            raise ValueError("execution.n_workers must be 1 when execution.mode='sequential'")
+            raise ValueError(
+                "execution.n_workers must be 1 when execution.mode='sequential'"
+            )
         return self
 
 
@@ -71,7 +73,7 @@ class Provenance(BaseModel):
 
     model_config = ConfigDict(extra="allow")
 
-    timestamp: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    timestamp: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
     hostname: str = Field(default_factory=socket.gethostname)
     os: str = Field(default_factory=lambda: f"{platform.system()} {platform.release()}")
     python_version: str = Field(default_factory=lambda: sys.version.split()[0])
@@ -116,11 +118,13 @@ class RunConfig(BaseModel):
         default="./runs",
         description="Root directory for run outputs.",
     )
-    description: Optional[str] = None
+    description: str | None = None
 
     execution: ExecutionConfig = Field(default_factory=ExecutionConfig)
     model: ModelSpecification
-    scenario_file: str | Path = Field(..., description="Path to the scenario definition file.")
+    scenario_file: str | Path = Field(
+        ..., description="Path to the scenario definition file."
+    )
 
     @field_validator("output_root", "scenario_file")
     @classmethod
@@ -159,10 +163,14 @@ def load_run_config(path: Path | str) -> RunConfig:
     elif ext == ".json":
         raw = json.loads(text)
     else:
-        raise ValueError(f"Unsupported config format: '{ext}'. Use .yaml, .yml, or .json.")
+        raise ValueError(
+            f"Unsupported config format: '{ext}'. Use .yaml, .yml, or .json."
+        )
 
     if not isinstance(raw, dict):
-        raise ValueError(f"Config file must contain a mapping, got: {type(raw).__name__}")
+        raise ValueError(
+            f"Config file must contain a mapping, got: {type(raw).__name__}"
+        )
 
     return RunConfig.model_validate(raw)
 
@@ -182,7 +190,9 @@ def validate_run_paths(config: RunConfig, *, config_dir: Path) -> None:
         model_path = config_dir / model_path
 
     if model_path.suffix.lower() != ".wdi":
-        raise ValueError(f"model.model_path must point to a .wdi file, got: {model_path}")
+        raise ValueError(
+            f"model.model_path must point to a .wdi file, got: {model_path}"
+        )
     if not model_path.exists():
         raise ValueError(f"model.model_path does not exist: {model_path}")
 
@@ -218,7 +228,7 @@ def build_run_context(config: RunConfig) -> RunContext:
     run_root = Path(config.output_root) / config.run_id
     return RunContext(
         run_id=config.run_id,
-        timestamp=datetime.now(timezone.utc).isoformat(),
+        timestamp=datetime.now(UTC).isoformat(),
         root_dir=str(run_root),
         description=config.description,
     )

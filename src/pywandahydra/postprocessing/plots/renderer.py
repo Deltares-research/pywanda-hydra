@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from functools import lru_cache
 from importlib import resources
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -194,7 +194,7 @@ def _create_content_axes(fig: Figure, count: int, theme: PlotTheme) -> list[Axes
 
     for i in range(count):
         y0 = top - (i + 1) * row_h - i * theme.row_gap
-        axes.append(fig.add_axes([theme.content_left, y0, width, row_h]))
+        axes.append(fig.add_axes((theme.content_left, y0, width, row_h)))
 
     return axes
 
@@ -272,7 +272,7 @@ def _plot_route_series(
 
     box = ax.get_position()
     shrink = min(0.035, box.height * 0.20)
-    ax.set_position([box.x0, box.y0 + shrink, box.width, box.height - shrink])
+    ax.set_position((box.x0, box.y0 + shrink, box.width, box.height - shrink))
     ax.legend(
         loc="upper center",
         bbox_to_anchor=(0.5, -shrink / max(box.height, 1e-9)),
@@ -384,7 +384,7 @@ def _draw_report_frame(fig: Figure, meta: ReportMeta, theme: PlotTheme) -> None:
     h2 = 2.4 * textbox_height / 29.7 + yo
     h3 = 3.6 * textbox_height / 29.7 + yo
 
-    ax = fig.add_axes([0, 0, 1, 1], facecolor=(1, 1, 1, 0))
+    ax = fig.add_axes((0, 0, 1, 1), facecolor=(1, 1, 1, 0))
     ax.get_xaxis().set_visible(False)
     ax.get_yaxis().set_visible(False)
 
@@ -456,7 +456,7 @@ def _draw_report_frame(fig: Figure, meta: ReportMeta, theme: PlotTheme) -> None:
         fontsize=theme.footer_fontsize,
     )
 
-    imgax = fig.add_axes([v1, h0, v3 - v1, h3 - h0], zorder=-10)
+    imgax = fig.add_axes((v1, h0, v3 - v1, h3 - h0), zorder=-10)
     imgax.imshow(_default_logo(), alpha=theme.logo_alpha, interpolation="none")
     imgax.axis("off")
 
@@ -470,9 +470,9 @@ def render_route_plot(
     spec: RoutePlotSpecification,
     cache: ParquetCache,
     *,
-    output_dir: Optional[Path] = None,
-    filename: Optional[str] = None,
-    export_props: Dict[str, Dict[str, Any]] | None = None,
+    output_dir: Path | None = None,
+    filename: str | None = None,
+    export_props: dict[str, dict[str, Any]] | None = None,
 ) -> Figure | None:
     """Render a route plot from cached data.
 
@@ -539,12 +539,12 @@ def render_time_series_plot(
     property_name: str,
     cache: ParquetCache,
     *,
-    title: Optional[str] = None,
-    x_axis: Optional[AxisSpec] = None,
-    y_axis: Optional[AxisSpec] = None,
-    output_dir: Optional[Path] = None,
-    filename: Optional[str] = None,
-    export_props: Dict[str, Dict[str, Any]] | None = None,
+    title: str | None = None,
+    x_axis: AxisSpec | None = None,
+    y_axis: AxisSpec | None = None,
+    output_dir: Path | None = None,
+    filename: str | None = None,
+    export_props: dict[str, dict[str, Any]] | None = None,
 ) -> Figure | None:
     """Render a time-series plot from cached component data.
 
@@ -624,8 +624,8 @@ def render_table(
     specs: list[ExportTableSpecification],
     cache: ParquetCache,
     *,
-    output_dir: Optional[Path] = None,
-    export_props: Dict[str, Dict[str, Any]] | None = None,
+    output_dir: Path | None = None,
+    export_props: dict[str, dict[str, Any]] | None = None,
 ) -> pd.DataFrame:
     """Render a summary table from cached component data.
 

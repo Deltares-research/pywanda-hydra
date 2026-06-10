@@ -5,7 +5,6 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional
 
 from . import sources as _sources  # noqa: F401
 from .schema import ScenarioSpecification
@@ -30,8 +29,8 @@ class ScenarioLoadOptions:
     global_project_number_col: str = "Include"
 
     # Post-processing sheet names (set to None to skip)
-    output_sheet: Optional[str] = "Output"
-    rplots_sheet: Optional[str] = "Rplots"
+    output_sheet: str | None = "Output"
+    rplots_sheet: str | None = "Rplots"
 
     # Strict validation: raise on missing/malformed post-processing sheets,
     # missing required columns, duplicate route titles, or duplicate
@@ -43,8 +42,8 @@ class ScenarioLoadOptions:
 def load_scenarios(
     path: Path | str,
     *,
-    options: Optional[ScenarioLoadOptions] = None,
-) -> List[ScenarioSpecification]:
+    options: ScenarioLoadOptions | None = None,
+) -> list[ScenarioSpecification]:
     """Load scenarios from a scenario definition file.
 
     Auto-selects the parser based on file extension via the ScenarioSource

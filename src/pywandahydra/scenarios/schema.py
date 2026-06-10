@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from datetime import datetime
-from typing import Any, Dict, Iterable, List, Literal, Optional
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -145,11 +146,11 @@ class ScenarioMeta(BaseModel):
     name: str = Field(..., alias="Name")
 
     # Optional metadata fields
-    description: Optional[str] = Field(None, alias="Description")
-    extra: Optional[str] = Field(None, alias="Extra")
-    appendix: Optional[str] = Field(None, alias="Appendix")
-    chapter: Optional[int] = Field(None, alias="Chapter")
-    date: Optional[Any] = Field(None, alias="Date")
+    description: str | None = Field(None, alias="Description")
+    extra: str | None = Field(None, alias="Extra")
+    appendix: str | None = Field(None, alias="Appendix")
+    chapter: int | None = Field(None, alias="Chapter")
+    date: Any | None = Field(None, alias="Date")
 
     @field_validator("description", "extra", "appendix", mode="before")
     @classmethod
@@ -313,9 +314,9 @@ class AnalysisMeta(BaseModel):
 
     model_config = ConfigDict(extra="allow")
 
-    analysis_description: Optional[str] = None
-    wanda_version: Optional[str] = None
-    project_number: Optional[int] = None
+    analysis_description: str | None = None
+    wanda_version: str | None = None
+    project_number: int | None = None
 
     @field_validator("analysis_description", "wanda_version", mode="before")
     @classmethod
@@ -386,13 +387,13 @@ class ScenarioSpecification(BaseModel):
     analysis_meta: AnalysisMeta = Field(default_factory=AnalysisMeta)
 
     # Parameter changes applied for this scenario
-    parameters: List[ParameterChange] = Field(default_factory=list)
+    parameters: list[ParameterChange] = Field(default_factory=list)
 
     # Post-processing configuration (tables, routes, enabled steps)
     post_processing: PostProcessingConfig = Field(default_factory=lambda: PostProcessingConfig())
 
     # Provenance, traceability, and source-specific context
-    source: Dict[str, Any] = Field(default_factory=dict)
+    source: dict[str, Any] = Field(default_factory=dict)
 
     def iter_parameters(self) -> Iterable[tuple[str, str, Any, ChangeMode]]:
         """Convenience iterator for execution layer."""
@@ -482,11 +483,11 @@ class RoutePlotSpecification(BaseModel):
     route_id: str
     property: str
 
-    title: Optional[str] = None
-    legend: Optional[str] = None
+    title: str | None = None
+    legend: str | None = None
     # Optional report-page grouping metadata from RPlots (legacy-compatible).
-    fig: Optional[str] = None
-    plot: Optional[int] = None
+    fig: str | None = None
+    plot: int | None = None
     x_axis: AxisSpec = Field(default_factory=lambda: AxisSpec(label=""))
     y_axis: AxisSpec = Field(default_factory=lambda: AxisSpec(label=""))
 
@@ -501,7 +502,7 @@ class RoutePlotSpecification(BaseModel):
 
     @field_validator("fig", mode="before")
     @classmethod
-    def normalize_fig(cls, v: Any) -> Optional[str]:
+    def normalize_fig(cls, v: Any) -> str | None:
         if v is None:
             return None
         if isinstance(v, float):
@@ -516,7 +517,7 @@ class RoutePlotSpecification(BaseModel):
 
     @field_validator("plot", mode="before")
     @classmethod
-    def normalize_plot(cls, v: Any) -> Optional[int]:
+    def normalize_plot(cls, v: Any) -> int | None:
         if v is None:
             return None
         if isinstance(v, float):
@@ -549,10 +550,10 @@ class PostProcessingConfig(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    tables: List[ExportTableSpecification] = Field(default_factory=list)
-    routes: List[RoutePlotSpecification] = Field(default_factory=list)
+    tables: list[ExportTableSpecification] = Field(default_factory=list)
+    routes: list[RoutePlotSpecification] = Field(default_factory=list)
     # Allow-list of post-processing step names; empty = all applicable steps.
-    enabled_steps: List[str] = Field(default_factory=list)
+    enabled_steps: list[str] = Field(default_factory=list)
 
 
 # Resolve the forward reference used on ScenarioSpecification.post_processing.

@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import datetime
 from functools import lru_cache
 from importlib import resources
-from typing import Any, Optional
+from typing import Any, cast
 
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
@@ -46,16 +46,15 @@ class PageMeta(BaseModel):
     # Default metadata values
     company_name: str = "Deltares"
     software_version: str = "WANDA 4.8"
-    date: Optional[date] = None
-    company_image: Optional[object] = None  # numpy array or similar
+    date: datetime | None = None
+    company_image: object | None = None  # numpy array or similar
 
     # Rendering options
     fontsize: int = 8
 
     @computed_field
-    @property
-    def effective_date(self) -> date:
-        return self.date or date.today()
+    def effective_date(self) -> datetime:
+        return self.date if self.date is not None else datetime.today()
 
     @field_validator(
         "title",
@@ -80,7 +79,7 @@ class PageMeta(BaseModel):
         """Coerce project number to str or int."""
         if isinstance(v, float) and v.is_integer():
             return int(v)
-        return v
+        return str(v)
 
 
 def _calculate_layout_coordinates() -> (
@@ -106,14 +105,14 @@ def _calculate_layout_coordinates() -> (
     return (v0, v1, v2, v3), (h0, h1, h2, h3)
 
 
-def draw_layout(fig: Figure, meta: PageMetadata) -> None:
+def draw_layout(fig: Figure, meta: PageMeta) -> None:
     """Draw the layout on a matplotlib figure.
 
     Parameters
     ----------
     fig : matplotlib.figure.Figure
         The figure to draw the layout on.
-    meta : PageMetadata
+    meta : PageMeta
         The metadata for the page.
     """
     # Import image
@@ -134,7 +133,9 @@ def draw_layout(fig: Figure, meta: PageMetadata) -> None:
     ax.axvline(x=v2, ymin=h2, ymax=h3, linewidth=1.5, color="k")
     ax.axhline(y=h2, xmin=v1, xmax=v3, linewidth=1.5, color="k")
 
-    rect = Rectangle((_XO, _YO), 1 - (2 * _XO), 1 - (2 * _YO), fill=False, linewidth=1.5)
+    rect = Rectangle(
+        (_XO, _YO), 1 - (2 * _XO), 1 - (2 * _YO), fill=False, linewidth=1.5
+    )
     ax.add_patch(rect)
 
     # Text blocks
@@ -183,7 +184,7 @@ def draw_layout(fig: Figure, meta: PageMetadata) -> None:
     fig.text(
         (v2 + (v3 - v2) / 2.0),
         h2 + (h3 - h2) / 2.0,
-        meta.effective_date.strftime("%d-%m-%Y"),
+        cast(datetime, meta.effective_date).strftime("%d-%m-%Y"),
         va="center",
         ha="center",
         color="black",
@@ -211,7 +212,7 @@ def draw_layout(fig: Figure, meta: PageMetadata) -> None:
     )
 
     # Watermark image (logo)
-    imgax = fig.add_axes([v1, h0, v3 - v1, h3 - h0], zorder=-10)
-    imgax.imshow(img, alpha=0.3, interpolation="none")
+    imgax = fig.add_axes((v1, h0, v3 - v1, h3 - h0), zorder=-10)
+    imgax.imshow(cast(Any, img), alpha=0.3, interpolation="none")
     imgax.axis("off")
     imgax.axis("off")
