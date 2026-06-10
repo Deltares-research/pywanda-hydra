@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable, Literal
+from typing import Any, Literal
 
 import pywanda
 
@@ -182,6 +183,249 @@ def resolve_items(
 
     # Fallback: keyword
     return find_items_with_keyword(model, identifier)
+
+
+def _get_connected_nodes(component: Any) -> dict[int, Any]:
+    """Get connected nodes for a component using node identifiers 1..9."""
+    connected_nodes: dict[int, Any] = {}
+    for node_id in range(1, 10):
+        try:
+            connected_nodes[node_id] = component.get_connected_node(node_id)
+        except Exception:
+            return connected_nodes
+    return connected_nodes
+
+
+def _get_connected_components(
+    component: Any,
+    connected_nodes: dict[int, Any],
+    *,
+    allowed: set[Any] | None = None,
+) -> dict[Any, dict[int, Any]]:
+    """Map connected components to connecting node metadata."""
+    connected_components: dict[Any, dict[int, Any]] = {}
+    for node_id, connected_node in connected_nodes.items():
+        try:
+            node_components = connected_node.get_connected_components()
+        except Exception:
+            continue
+        for comp in node_components:
+            if comp == component:
+                continue
+            if allowed is not None and comp not in allowed:
+                continue
+            if comp not in connected_components:
+                connected_components[comp] = {node_id: connected_node}
+    return connected_components
+
+
+def _find_route(
+    component_graph: dict[Any, dict[Any, dict[int, Any]]],
+    start_component: Any,
+    end_component: Any,
+    visited: set[Any] | None = None,
+    route: list[Any] | None = None,
+) -> list[Any] | None:
+    """Find a route between two components using depth-first traversal."""
+    if visited is None:
+        visited = set()
+    if route is None:
+        route = []
+
+    visited.add(start_component)
+    route.append(start_component)
+
+    if start_component == end_component:
+        return route
+
+    for connected_component in component_graph.get(start_component, {}):
+        if connected_component not in visited:
+            new_route = _find_route(
+                component_graph,
+                connected_component,
+                end_component,
+                visited.copy(),
+                route.copy(),
+            )
+            if new_route:
+                return new_route
+    return None
+
+
+def _connection_node_id(component: Any, neighbour: Any) -> int | None:
+    """Return the node id on *component* that connects to *neighbour*."""
+    connected_nodes = _get_connected_nodes(component)
+    for node_id, node in connected_nodes.items():
+        try:
+            connected_components = node.get_connected_components()
+        except Exception:
+            continue
+        for comp in connected_components:
+            if comp == neighbour:
+                return node_id
+    return None
+
+
+def _pipe_direction_from_route_component_index(
+    route_components: list[Any],
+    idx: int,
+) -> int:
+    """Infer direction from route neighbours using node-id semantics.
+
+    Node id ``1`` means reverse traversal and node id ``2`` means forward.
+    """
+    component = route_components[idx]
+    if idx < len(route_components) - 1:
+        neighbour = route_components[idx + 1]
+    elif idx > 0:
+        neighbour = route_components[idx - 1]
+    else:
+        return 1
+
+    node_id = _connection_node_id(component, neighbour)
+    if node_id == 1:
+        return -1
+    if node_id == 2:
+        return 1
+    return 1
+
+
+def _build_component_graph(components: list[Any]) -> dict[Any, dict[Any, dict[int, Any]]]:
+    """Build a connection graph for the given components."""
+    allowed = set(components)
+    component_graph: dict[Any, dict[Any, dict[int, Any]]] = {}
+    for component in components:
+        connected_nodes = _get_connected_nodes(component)
+        connected_components = _get_connected_components(
+            component,
+            connected_nodes,
+            allowed=allowed,
+        )
+        component_graph[component] = connected_components
+    return component_graph
+
+
+def _order_components_by_connection(components: list[Any]) -> list[Any]:
+    """Return components ordered by connectivity along a route-like path."""
+    if len(components) <= 1:
+        return components
+
+    component_graph = _build_component_graph(components)
+    if not component_graph:
+        return components
+
+    endpoints = [
+        component for component, neighbours in component_graph.items() if len(neighbours) <= 1
+    ]
+
+    start = endpoints[0] if endpoints else components[0]
+    end = endpoints[1] if len(endpoints) > 1 else components[-1]
+
+    route = _find_route(component_graph, start, end)
+    if not route:
+        return components
+
+    if len(route) == len(components):
+        return route
+
+    # Preserve all original components even if route traversal did not span all.
+    missing = [component for component in components if component not in route]
+    return route + missing
+
+
+def _normalize_pipe_route_orientation(
+    pipes_with_direction: list[tuple[Any, int]],
+) -> list[tuple[Any, int]]:
+    """Normalize route orientation to avoid per-pipe flips on fully reversed routes.
+
+    When every resolved pipe direction is ``-1``, the route is globally reversed.
+    In that case we flip the route as a whole by reversing pipe order and inverting
+    direction signs. This preserves pipe-to-pipe continuity while keeping the
+    traversal direction aligned with connectivity.
+    """
+    if not pipes_with_direction:
+        return pipes_with_direction
+
+    if all(direction < 0 for _, direction in pipes_with_direction):
+        return [(pipe, -direction) for pipe, direction in reversed(pipes_with_direction)]
+
+    return pipes_with_direction
+
+
+def _pipe_name(pipe: Any) -> str:
+    """Return a stable component name for a pipe-like object."""
+    if hasattr(pipe, "get_complete_name_spec"):
+        return str(pipe.get_complete_name_spec())
+    return str(pipe)
+
+
+def resolve_route_pipes(
+    model: pywanda.WandaModel,
+    route_id: str,
+) -> list[tuple[str, int]]:
+    """Resolve route pipes as ``(pipe_name, direction)`` tuples.
+
+    Preferred path uses ``model.get_route``. When route direction is not usable,
+    orientation is inferred from component connectivity. Fallback resolution uses
+    ``resolve_items`` and route traversal between the first and last items.
+    """
+    route_id = str(route_id).strip()
+    if not route_id:
+        return []
+
+    try:
+        components, directions = model.get_route(route_id)
+        raw_components = list(components)
+        comps = _order_components_by_connection(raw_components)
+        dirs = list(directions)
+        direction_by_component: dict[Any, int] = {}
+        for comp, direction in zip(raw_components, dirs, strict=True):
+            if not (hasattr(comp, "is_pipe") and comp.is_pipe()):
+                continue
+            if int(direction) == 0:
+                continue
+            direction_by_component[comp] = 1 if int(direction) > 0 else -1
+
+        ordered_pipes: list[tuple[Any, int]] = []
+        for idx, comp in enumerate(comps):
+            if hasattr(comp, "is_pipe") and comp.is_pipe():
+                direction = direction_by_component.get(comp)
+                if direction is None:
+                    direction = _pipe_direction_from_route_component_index(comps, idx)
+                ordered_pipes.append((comp, direction))
+        if ordered_pipes:
+            normalized = _normalize_pipe_route_orientation(ordered_pipes)
+            return [(_pipe_name(pipe), direction) for pipe, direction in normalized]
+    except Exception:
+        pass
+
+    item_refs = resolve_items(model, route_id)
+    items: list[Any] = []
+    for ref in item_refs:
+        try:
+            item = get_item(model, ref)
+        except Exception:
+            continue
+        items.append(item)
+
+    if not items:
+        return []
+
+    if len(items) == 1:
+        item = items[0]
+        if hasattr(item, "is_pipe") and item.is_pipe():
+            return [(_pipe_name(item), 1)]
+        return []
+
+    route = _order_components_by_connection(items)
+
+    fallback_pipes: list[tuple[Any, int]] = []
+    for idx, component in enumerate(route):
+        if hasattr(component, "is_pipe") and component.is_pipe():
+            direction = _pipe_direction_from_route_component_index(route, idx)
+            fallback_pipes.append((component, direction))
+    normalized = _normalize_pipe_route_orientation(fallback_pipes)
+    return [(_pipe_name(pipe), direction) for pipe, direction in normalized]
 
 
 def apply_parameter_change(model: pywanda.WandaModel, change: ParameterChange) -> None:

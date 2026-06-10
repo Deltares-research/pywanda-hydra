@@ -8,7 +8,12 @@ import numpy as np
 import pywanda
 
 from ..scenarios.schema import ParameterChange
-from .api import apply_parameter_change, get_item, resolve_items
+from .api import (
+    apply_parameter_change,
+    get_item,
+    resolve_items,
+    resolve_route_pipes,
+)
 
 
 class PywandaAdapter:
@@ -16,6 +21,18 @@ class PywandaAdapter:
 
     Implements the :class:`WandaAdapter` protocol.
     """
+
+    @staticmethod
+    def _get_item_by_name(handle: pywanda.WandaModel, item_name: str) -> Any:
+        """Resolve an item by exact name if possible, else first match."""
+        item_refs = resolve_items(handle, item_name)
+        if not item_refs:
+            raise ValueError(f"Item '{item_name}' not found in model")
+
+        for ref in item_refs:
+            if ref.name == item_name:
+                return get_item(handle, ref)
+        return get_item(handle, item_refs[0])
 
     def open(self, model_path: str, wanda_bin: str) -> pywanda.WandaModel:
         """Open a WANDA model via pywanda.
@@ -110,7 +127,11 @@ class PywandaAdapter:
             raise ValueError(f"Component '{component}' not found in model")
         item = get_item(handle, item_refs[0])
         prop = item.get_property(property_name)
-        return np.array(prop.get_series(), dtype=np.float64)
+        try:
+            handle.read_prop_output(prop)
+        except Exception:
+            pass
+        return np.array(prop.get_series(), dtype=np.float64) * prop.get_unit_factor()
 
     def get_scalar(self, handle: pywanda.WandaModel, component: str, property_name: str) -> float:
         """Get scalar value for a component property.
@@ -142,3 +163,92 @@ class PywandaAdapter:
         """
         item_refs = resolve_items(handle, route_id)
         return [ref.name for ref in item_refs]
+
+    def resolve_route_pipes(
+        self,
+        handle: pywanda.WandaModel,
+        route_id: str,
+    ) -> list[tuple[str, int]]:
+        """Resolve route identifier into ordered pipe/direction pairs.
+
+        Args:
+            handle: The WandaModel instance.
+            route_id: Route identifier.
+
+        Returns:
+            List of ``(pipe_name, direction)`` tuples.
+        """
+        return resolve_route_pipes(handle, route_id)
+
+    def resolve_output_items(
+        self,
+        handle: pywanda.WandaModel,
+        identifier: str,
+    ) -> list[str]:
+        """Resolve output identifier to concrete model item names."""
+        return [ref.name for ref in resolve_items(handle, identifier)]
+
+    def is_pipe_item(self, handle: pywanda.WandaModel, item_name: str) -> bool:
+        """Return whether an item is a pipe component."""
+        item = self._get_item_by_name(handle, item_name)
+        return hasattr(item, "is_pipe") and item.is_pipe()
+
+    def get_pipe_series(
+        self,
+        handle: pywanda.WandaModel,
+        pipe_name: str,
+        property_name: str,
+    ) -> np.ndarray:
+        """Get unit-converted pipe property series."""
+        item = self._get_item_by_name(handle, pipe_name)
+        if not (hasattr(item, "is_pipe") and item.is_pipe()):
+            raise ValueError(f"Item '{pipe_name}' is not a pipe")
+
+        prop = item.get_property(property_name)
+        try:
+            handle.read_prop_output(prop)
+        except Exception:
+            pass
+        return np.asarray(prop.get_series_pipe(), dtype=np.float64) * prop.get_unit_factor()
+
+    def get_pipe_length(self, handle: pywanda.WandaModel, pipe_name: str) -> float:
+        """Get pipe length for the named pipe."""
+        item = self._get_item_by_name(handle, pipe_name)
+        if not (hasattr(item, "is_pipe") and item.is_pipe()):
+            raise ValueError(f"Item '{pipe_name}' is not a pipe")
+        return float(item.get_property("Length").get_scalar_float())
+
+    def get_pipe_extrema(
+        self,
+        handle: pywanda.WandaModel,
+        pipe_name: str,
+        property_name: str,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Get unit-converted min/max arrays for a pipe property."""
+        item = self._get_item_by_name(handle, pipe_name)
+        if not (hasattr(item, "is_pipe") and item.is_pipe()):
+            raise ValueError(f"Item '{pipe_name}' is not a pipe")
+
+        prop = item.get_property(property_name)
+        try:
+            handle.read_prop_output(prop)
+        except Exception:
+            pass
+        unit_factor = prop.get_unit_factor()
+        min_vals = np.asarray(prop.get_extr_min_pipe(), dtype=np.float64) * unit_factor
+        max_vals = np.asarray(prop.get_extr_max_pipe(), dtype=np.float64) * unit_factor
+        return min_vals, max_vals
+
+    def get_pipe_profile_table(
+        self,
+        handle: pywanda.WandaModel,
+        pipe_name: str,
+    ) -> np.ndarray:
+        """Get raw profile table float data for a pipe."""
+        item = self._get_item_by_name(handle, pipe_name)
+        if not (hasattr(item, "is_pipe") and item.is_pipe()):
+            raise ValueError(f"Item '{pipe_name}' is not a pipe")
+        return np.asarray(
+            item.get_property("Profile").get_table().get_float_data(),
+            dtype=np.float64,
+        )

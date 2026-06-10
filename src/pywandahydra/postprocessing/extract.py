@@ -14,7 +14,7 @@ Typical usage::
         extract_all,
     )
 
-    results = extract_all(model, scenario)
+    results = extract_all(model, scenario, adapter)
     # results["components"]  -> DataFrame with component time series
     # results["routes"]      -> dict[str, dict[str, DataFrame]] keyed by route title
     #                           inner keys: "timeseries" (time × s_location)
@@ -36,7 +36,7 @@ from ..scenarios.schema import (
     RoutePlotSpecification,
     ScenarioSpecification,
 )
-from ..wanda.api import get_item, resolve_items
+from ..wanda.adapter import WandaAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -49,13 +49,14 @@ logger = logging.getLogger(__name__)
 def extract_component_outputs(
     model: pywanda.WandaModel,
     specs: Sequence[ExportTableSpecification],
+    adapter: WandaAdapter,
 ) -> pd.DataFrame:
     """Extract time-series data for every *Output* specification.
 
     Each specification identifies a *component* (or keyword) and a
-    *property*.  The component identifier is resolved via
-    :func:`~pywandahydra.wanda.api.resolve_items`, so it can be an
-    exact name **or** a keyword that matches multiple items.
+    *property*. The component identifier is resolved via the
+    configured :class:`~pywandahydra.wanda.adapter.WandaAdapter`, so it
+    can be an exact name **or** a keyword that matches multiple items.
 
     The returned DataFrame has:
 
@@ -71,6 +72,8 @@ def extract_component_outputs(
         An open WANDA model that has been simulated.
     specs : Sequence[ExportTableSpecification]
         One or more export-table specifications.
+    adapter : WandaAdapter
+        Adapter used for item resolution and unit-converted outputs.
 
     Returns
     -------
@@ -80,7 +83,7 @@ def extract_component_outputs(
     if not specs:
         return pd.DataFrame()
 
-    time_steps = model.get_time_steps()
+    time_steps = adapter.get_time_steps(model)
     n_times = len(time_steps)
     time_index = pd.Index(time_steps, name="time [s]")
     column_names = ["component", "property", "s_location"]
@@ -88,52 +91,51 @@ def extract_component_outputs(
     frames: list[pd.DataFrame] = []
     seen: set[tuple[str, str]] = set()
     for spec in specs:
-        item_refs = resolve_items(model, spec.component)
-        if not item_refs:
+        item_names = adapter.resolve_output_items(model, spec.component)
+        if not item_names:
             logger.warning(
                 "Component '%s' not found in model – skipping.",
                 spec.component,
             )
             continue
-        for ref in item_refs:
-            key = (ref.name, spec.property)
+        for item_name in item_names:
+            key = (item_name, spec.property)
             if key in seen:
                 continue
             seen.add(key)
 
-            item = get_item(model, ref)
             try:
-                prop = item.get_property(spec.property)
+                is_pipe = adapter.is_pipe_item(model, item_name)
             except Exception:
                 logger.debug(
                     "Component '%s' has no property '%s' - skipping.",
-                    ref.name,
+                    item_name,
                     spec.property,
                 )
                 continue
 
-            try:
-                model.read_prop_output(prop)
-            except Exception:
-                # Some property types do not require explicit read calls.
-                pass
-
-            if item.is_pipe():
+            if is_pipe:
                 arr = _normalise_pipe_series(
-                    np.asarray(prop.get_series_pipe(), dtype=float),
+                    np.asarray(
+                        adapter.get_pipe_series(model, item_name, spec.property),
+                        dtype=float,
+                    ),
                     n_times,
-                    ref.name,
+                    item_name,
                     spec.property,
                 )
 
                 n_s = arr.shape[1]
-                length = item.get_property("Length").get_scalar_float()
+                length = adapter.get_pipe_length(model, item_name)
                 s_distance = np.linspace(0.0, length, n_s)
-                tuples = [(ref.name, spec.property, float(s)) for s in s_distance]
+                tuples = [(item_name, spec.property, float(s)) for s in s_distance]
                 data = arr
             else:
-                arr = np.asarray(prop.get_series(), dtype=float)
-                tuples = [(ref.name, spec.property, np.nan)]
+                arr = np.asarray(
+                    adapter.get_series(model, item_name, spec.property),
+                    dtype=float,
+                )
+                tuples = [(item_name, spec.property, np.nan)]
                 data = arr.reshape(-1, 1)
 
             col = pd.MultiIndex.from_tuples(tuples, names=column_names)
@@ -163,6 +165,7 @@ def extract_component_outputs(
 def extract_route_outputs(
     model: pywanda.WandaModel,
     specs: Sequence[RoutePlotSpecification],
+    adapter: WandaAdapter,
 ) -> dict[str, dict[str, pd.DataFrame]]:
     """Extract route-based property data for every *RPlots* specification.
 
@@ -171,7 +174,7 @@ def extract_route_outputs(
     so that downstream code can correlate results with the plot they
     belong to.
 
-    Each inner result dict contains two DataFrames:
+    Each inner result dict contains DataFrames for route rendering:
 
     * ``"timeseries"`` – index ``time [s]``, columns a three-level
       :class:`~pandas.MultiIndex` ``(component, property, s_location)``.
@@ -181,6 +184,8 @@ def extract_route_outputs(
     * ``"envelope"`` – index ``s_location [m]`` (cumulative along the
       route), columns ``["min", "max"]`` derived from
             :meth:`get_extr_min_pipe` / :meth:`get_extr_max_pipe`.
+        * ``"profile"`` – index ``s_location [m]`` (cumulative along the
+            route), column ``"elevation"`` from pipe profile tables.
 
     Parameters
     ----------
@@ -188,18 +193,21 @@ def extract_route_outputs(
         An open WANDA model that has been simulated.
     specs : Sequence[RoutePlotSpecification]
         One or more route-plot specifications.
+    adapter : WandaAdapter
+        Adapter used to resolve route topology and model outputs.
 
     Returns
     -------
     Dict[str, Dict[str, pd.DataFrame]]
         Mapping of specification *title* →
-        ``{"timeseries": DataFrame, "envelope": DataFrame}``.
+        ``{"timeseries": DataFrame, "envelope": DataFrame,
+        "profile": DataFrame}``.
         Empty dict when *specs* is empty.
     """
     if not specs:
         return {}
 
-    time_steps = model.get_time_steps()
+    time_steps = adapter.get_time_steps(model)
     n_times = len(time_steps)
     time_index = pd.Index(time_steps, name="time [s]")
     ts_col_names = ["component", "property", "s_location"]
@@ -216,40 +224,31 @@ def extract_route_outputs(
             continue
         prop_name = spec.property.strip()
 
-        pipes_with_dir = _resolve_route_pipes(model, route_id)
+        pipes_with_dir = adapter.resolve_route_pipes(model, route_id)
         if not pipes_with_dir:
             logger.warning("Route identifier '%s' has no pipe components – skipping.", route_id)
             continue
 
         ts_frames: list[pd.DataFrame] = []
         env_rows: list[dict] = []
+        profile_rows: list[dict[str, float]] = []
         s_offset = 0.0
 
-        for pipe, direction in pipes_with_dir:
-            pipe_name = pipe.get_complete_name_spec()
+        for pipe_name, direction in pipes_with_dir:
 
             try:
-                length = pipe.get_property("Length").get_scalar_float()
+                length = adapter.get_pipe_length(model, pipe_name)
             except Exception:
                 logger.debug("Pipe '%s' could not get Length – skipping.", pipe_name)
                 continue
 
-            try:
-                prop = pipe.get_property(prop_name)
-            except Exception:
-                logger.warning("Pipe '%s' has no property '%s' – skipping.", pipe_name, prop_name)
-                s_offset += length
-                continue
-
-            try:
-                model.read_prop_output(prop)
-            except Exception:
-                pass
-
             # --- Timeseries (time × s_location) ---
             try:
                 ts_arr = _normalise_pipe_series(
-                    np.asarray(prop.get_series_pipe(), dtype=float),
+                    np.asarray(
+                        adapter.get_pipe_series(model, pipe_name, prop_name),
+                        dtype=float,
+                    ),
                     n_times,
                     pipe_name,
                     prop_name,
@@ -279,8 +278,13 @@ def extract_route_outputs(
 
             # --- Envelope (min / max along s_location) ---
             try:
-                min_vals = np.asarray(prop.get_extr_min_pipe(), dtype=float).ravel()
-                max_vals = np.asarray(prop.get_extr_max_pipe(), dtype=float).ravel()
+                min_vals, max_vals = adapter.get_pipe_extrema(
+                    model,
+                    pipe_name,
+                    prop_name,
+                )
+                min_vals = np.asarray(min_vals, dtype=float).ravel()
+                max_vals = np.asarray(max_vals, dtype=float).ravel()
                 n_s_env = min(len(min_vals), len(max_vals))
                 s_local_env = np.linspace(0.0, length, n_s_env)
                 s_env = s_offset + (s_local_env if direction > 0 else (length - s_local_env))
@@ -294,6 +298,34 @@ def extract_route_outputs(
                     "Pipe '%s' property '%s' has no min/max series – skipping envelope.",
                     pipe_name,
                     prop_name,
+                )
+
+            # --- Elevation profile (s_location × elevation) ---
+            try:
+                profile_raw = np.asarray(
+                    adapter.get_pipe_profile_table(model, pipe_name), dtype=float
+                )
+                if profile_raw.ndim == 2 and profile_raw.shape[0] >= 3:
+                    profile_sh = profile_raw[:3].transpose()[:, -1:0:-1]
+                    s_local_prof = profile_sh[:, 0]
+                    elev_prof = profile_sh[:, 1]
+                    if direction < 0:
+                        s_local_prof = length - s_local_prof
+                        s_local_prof = s_local_prof[::-1]
+                        elev_prof = elev_prof[::-1]
+
+                    s_prof = s_offset + s_local_prof
+                    for s, elev in zip(s_prof, elev_prof, strict=False):
+                        profile_rows.append(
+                            {
+                                "s_location [m]": float(s),
+                                "elevation": float(elev),
+                            }
+                        )
+            except Exception:
+                logger.debug(
+                    "Pipe '%s' has no profile data – skipping elevation profile.",
+                    pipe_name,
                 )
 
             s_offset += length
@@ -313,6 +345,10 @@ def extract_route_outputs(
             route_result["timeseries"] = pd.concat(ts_frames, axis=1)
         if env_rows:
             route_result["envelope"] = pd.DataFrame(env_rows).set_index("s_location [m]")
+        if profile_rows:
+            profile_df = pd.DataFrame(profile_rows).set_index("s_location [m]")
+            profile_df = profile_df.sort_index().groupby(level=0).mean()
+            route_result["profile"] = profile_df
         if route_result:
             results[key] = route_result
 
@@ -345,44 +381,6 @@ def _normalise_pipe_series(
     return arr
 
 
-def _resolve_route_pipes(model: pywanda.WandaModel, route_id: str) -> list[tuple[Any, int]]:
-    """Resolve pipes for a route, returning ``(pipe, direction)`` pairs.
-
-    *direction* is ``+1`` for forward traversal and ``-1`` for reverse.
-    The fallback path (when the native route API is unavailable) assumes
-    ``+1`` for every pipe.
-    """
-    route_id = route_id.strip()
-    if not route_id:
-        return []
-
-    # Preferred path: use native route resolution from pywanda.
-    try:
-        components, directions = model.get_route(route_id)
-        pipes: list[tuple[Any, int]] = []
-        for comp, direction in zip(components, directions, strict=False):
-            if direction == 0:
-                continue
-            if hasattr(comp, "is_pipe") and comp.is_pipe():
-                pipes.append((comp, int(direction)))
-        if pipes:
-            return pipes
-    except Exception:
-        pass
-
-    # Fallback path: resolve by identifier; assume forward direction.
-    item_refs = resolve_items(model, route_id)
-    pipes = []
-    for ref in item_refs:
-        try:
-            item = get_item(model, ref)
-        except Exception:
-            continue
-        if hasattr(item, "is_pipe") and item.is_pipe():
-            pipes.append((item, 1))
-    return pipes
-
-
 # ---------------------------------------------------------------------------
 # Convenience: extract everything from a ScenarioSpecification
 # ---------------------------------------------------------------------------
@@ -391,6 +389,7 @@ def _resolve_route_pipes(model: pywanda.WandaModel, route_id: str) -> list[tuple
 def extract_all(
     model: pywanda.WandaModel,
     scenario: ScenarioSpecification,
+    adapter: WandaAdapter,
 ) -> dict[str, Any]:
     """Run all extractions defined on a scenario specification.
 
@@ -401,16 +400,26 @@ def extract_all(
     scenario : ScenarioSpecification
         The scenario whose ``outputs`` and ``route_plots`` lists drive
         the extraction.
+    adapter : WandaAdapter
+        Adapter used for route-related model operations.
 
     Returns
     -------
     dict[str, Any]
         ``{"components": DataFrame,
         "routes": dict[str, dict[str, DataFrame]]}``.
-        Inner ``"routes"`` values have keys ``"timeseries"`` and
-        ``"envelope"``.
+        Inner ``"routes"`` values have keys ``"timeseries"``,
+        ``"envelope"`` and optionally ``"profile"``.
     """
     return {
-        "components": extract_component_outputs(model, scenario.post_processing.tables),
-        "routes": extract_route_outputs(model, scenario.post_processing.routes),
+        "components": extract_component_outputs(
+            model,
+            scenario.post_processing.tables,
+            adapter,
+        ),
+        "routes": extract_route_outputs(
+            model,
+            scenario.post_processing.routes,
+            adapter,
+        ),
     }

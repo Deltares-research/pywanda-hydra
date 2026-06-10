@@ -235,8 +235,11 @@ def _read_rplots_sheet(
             ) from None
         return []
 
+    # Accept both lower-case and Excel-style capitalization.
+    columns_ci = {str(c).strip().lower(): c for c in df.columns}
+
     required_cols = {"title", "name", "property"}
-    missing = required_cols - set(df.columns)
+    missing = required_cols - set(columns_ci)
     if missing:
         if opts.strict_validation:
             raise ValueError(
@@ -255,9 +258,6 @@ def _read_rplots_sheet(
 
     specs: List[RoutePlotSpecification] = []
     seen_titles: set[str] = set()
-
-    # Accept both lower-case and Excel-style capitalization.
-    columns_ci = {str(c).strip().lower(): c for c in df.columns}
 
     def _row_get_ci(row: pd.Series, key: str) -> Any:
         actual = columns_ci.get(key.lower())

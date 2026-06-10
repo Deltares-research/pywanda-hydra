@@ -58,6 +58,9 @@ class PlotTheme:
     max_color: str = "#c82536"
     max_linestyle: str = "--"
     current_color: str = "#2f7ea8"
+    elevation_color: str = "#8fb59a"
+    elevation_linewidth: float = 2.0
+    elevation_alpha: float = 0.40
     envelope_alpha: float = 0.08
     grid_alpha: float = 0.35
     grid_linestyle: str = "--"
@@ -242,6 +245,20 @@ def _plot_route_series(
     if {"min", "max"}.issubset(envelope.columns):
         ax.fill_between(s_loc, envelope["min"], envelope["max"], alpha=theme.envelope_alpha)
 
+    # Match reference behavior: only Head plots show the pipeline elevation profile.
+    if spec.property.strip().lower() == "head":
+        s_prof, elev_prof = _extract_profile_series(route_data)
+        if s_prof is not None and elev_prof is not None:
+            ax.plot(
+                s_prof,
+                elev_prof,
+                label="Elevation",
+                color=theme.elevation_color,
+                linewidth=theme.elevation_linewidth,
+                alpha=theme.elevation_alpha,
+                zorder=-2,
+            )
+
     _apply_axis_spec(ax, spec.x_axis, axis="x")
     _apply_axis_spec(ax, spec.y_axis, axis="y")
     if not spec.x_axis.label:
@@ -332,6 +349,23 @@ def _annotate_route_endpoints(ax: Axes, route_data: dict[str, pd.DataFrame]) -> 
     stepy = (ymax - ymin) * 0.05
     ax.text(xmin + stepx, ymin + stepy, start_label)
     ax.text(xmax - 3 * stepx, ymin + stepy, end_label)
+
+
+def _extract_profile_series(
+    route_data: dict[str, pd.DataFrame],
+) -> tuple[np.ndarray | None, np.ndarray | None]:
+    """Extract profile s/elevation arrays from cached route payload."""
+    profile = route_data.get("profile")
+    if profile is None or profile.empty or "elevation" not in profile.columns:
+        return None, None
+
+    s = np.asarray(profile.index, dtype=float)
+    elev = np.asarray(profile["elevation"], dtype=float)
+    if len(s) == 0 or len(s) != len(elev):
+        return None, None
+
+    sort_idx = np.argsort(s)
+    return s[sort_idx], elev[sort_idx]
 
 
 def _draw_report_frame(fig: Figure, meta: ReportMeta, theme: PlotTheme) -> None:

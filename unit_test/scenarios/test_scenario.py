@@ -60,3 +60,30 @@ class TestScenarioLoading(unittest.TestCase):
         self.assertEqual(specs[0].plot, 1)
         self.assertEqual(specs[1].fig, "a")
         self.assertEqual(specs[1].plot, 2)
+
+    def test_rplots_required_columns_case_insensitive(self) -> None:
+        """Rplots parser should accept Title/Name/Property capitalization variants."""
+        rplots = pd.DataFrame(
+            {
+                "Title": ["Route C - Head"],
+                "Name": ["Route_C"],
+                "Property": ["Head"],
+                "Fig": ["c"],
+                "Plot": [1],
+                "Xlabel": ["S-distance (m)"],
+                "Ylabel": ["Head (m)"],
+            }
+        )
+
+        with tempfile.TemporaryDirectory() as td:
+            xlsx = Path(td) / "rplots_caps.xlsx"
+            with pd.ExcelWriter(xlsx, engine="openpyxl") as writer:
+                rplots.to_excel(writer, sheet_name="Rplots", index=False)
+
+            specs = _read_rplots_sheet(xlsx, ScenarioLoadOptions())
+
+        self.assertEqual(len(specs), 1)
+        self.assertEqual(specs[0].route_id, "Route_C")
+        self.assertEqual(specs[0].property, "Head")
+        self.assertEqual(specs[0].fig, "c")
+        self.assertEqual(specs[0].plot, 1)

@@ -30,6 +30,7 @@ class ParquetCache:
             <route_title>/
                 timeseries.parquet   — time × s_location data
                 envelope.parquet     — min/max envelope along s_location
+                profile.parquet      — elevation profile along s_location
 
     Args:
         case_dir: Path to the case directory.
@@ -47,7 +48,7 @@ class ParquetCache:
         Args:
             extracted: Dict with keys ``"components"`` (DataFrame) and
                 ``"routes"`` (``dict[title, {"timeseries": df,
-                "envelope": df}]``).
+                "envelope": df, "profile": df}]``).
 
         Returns:
             Dict mapping artefact name → relative path (for the journal).
@@ -96,6 +97,14 @@ class ParquetCache:
                         env_path.relative_to(self.data_dir.parent)
                     )
 
+                profile_df = route_dict.get("profile")
+                if isinstance(profile_df, pd.DataFrame) and not profile_df.empty:
+                    profile_path = route_subdir / "profile.parquet"
+                    profile_df.to_parquet(profile_path, engine="pyarrow")
+                    artefacts[f"route_{safe_name}_profile"] = str(
+                        profile_path.relative_to(self.data_dir.parent)
+                    )
+
             logger.info("Cached %d route outputs", len(routes))
 
         return artefacts
@@ -124,7 +133,7 @@ class ParquetCache:
             title: The route plot title (used as filename stem).
 
         Returns:
-            ``{"timeseries": df, "envelope": df}`` with whichever keys
+            ``{"timeseries": df, "envelope": df, "profile": df}`` with whichever keys
             are available on disk. Empty dict if nothing is cached.
         """
         safe_name = _sanitize_filename(title)
@@ -142,6 +151,13 @@ class ParquetCache:
             if env_df.index.name is None:
                 env_df.index.name = "s_location [m]"
             result["envelope"] = env_df
+
+        profile_path = route_subdir / "profile.parquet"
+        if profile_path.exists():
+            profile_df = pd.read_parquet(profile_path, engine="pyarrow")
+            if profile_df.index.name is None:
+                profile_df.index.name = "s_location [m]"
+            result["profile"] = profile_df
 
         return result
 

@@ -16,9 +16,11 @@ from pydantic import BaseModel, ConfigDict, computed_field, field_validator
 @lru_cache(maxsize=1)
 def _default_logo() -> Any:
     """Load the default Deltares logo as a numpy array."""
-    with resources.files("pywandahydra.postprocessing.plotting.image_data").joinpath(
-        "Deltares_logo.png"
-    ).open("rb") as f:
+    with (
+        resources.files("pywandahydra.postprocessing.plotting.image_data")
+        .joinpath("Deltares_logo.png")
+        .open("rb") as f
+    ):
         return plt.imread(f)
 
 
@@ -43,7 +45,7 @@ class PageMeta(BaseModel):
 
     # Default metadata values
     company_name: str = "Deltares"
-    software_version: str = "WANDA 4.7"
+    software_version: str = "WANDA 4.8"
     date: Optional[date] = None
     company_image: Optional[object] = None  # numpy array or similar
 

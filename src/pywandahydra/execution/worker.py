@@ -25,6 +25,7 @@ from ..postprocessing.methodologies import bootstrap as bootstrap_methodologies
 from ..postprocessing.pipeline import PostProcessingContext, run_postprocessing
 from ..wanda.api import apply_parameter_change
 from ..wanda.create_scenario import prepare_scenario_model
+from ..wanda.pywanda_adapter import PywandaAdapter
 from ..wanda.session import wanda_session
 
 logger = logging.getLogger(__name__)
@@ -75,6 +76,7 @@ def run_one_case(plan: CasePlan) -> dict[str, Any]:
         )
 
     start_time = time.perf_counter()
+    adapter = PywandaAdapter()
 
     try:
         # --- Prepare scenario model copy ---
@@ -116,7 +118,7 @@ def run_one_case(plan: CasePlan) -> dict[str, Any]:
                     journal.event("unsteady_done")
 
             # --- Extract results while model is open (single pass) ---
-            extracted = extract_all(model, plan.scenario)
+            extracted = extract_all(model, plan.scenario, adapter)
             journal.event(
                 "extracted",
                 has_components=not extracted["components"].empty,

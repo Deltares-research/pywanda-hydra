@@ -92,9 +92,7 @@ class WandaAdapter(Protocol):
         """
         ...
 
-    def get_series(
-        self, handle: Any, component: str, property_name: str
-    ) -> np.ndarray:
+    def get_series(self, handle: Any, component: str, property_name: str) -> np.ndarray:
         """Get a time-series array for a component property.
 
         Args:
@@ -107,9 +105,7 @@ class WandaAdapter(Protocol):
         """
         ...
 
-    def get_scalar(
-        self, handle: Any, component: str, property_name: str
-    ) -> float:
+    def get_scalar(self, handle: Any, component: str, property_name: str) -> float:
         """Get a scalar value for a component property.
 
         Args:
@@ -122,9 +118,7 @@ class WandaAdapter(Protocol):
         """
         ...
 
-    def resolve_route_components(
-        self, handle: Any, route_id: str
-    ) -> list[str]:
+    def resolve_route_components(self, handle: Any, route_id: str) -> list[str]:
         """Resolve a route identifier into ordered component names.
 
         Args:
@@ -134,4 +128,55 @@ class WandaAdapter(Protocol):
         Returns:
             Ordered list of component names along the route.
         """
+        ...
+
+    def resolve_route_pipes(self, handle: Any, route_id: str) -> list[tuple[str, int]]:
+        """Resolve route identifier into ordered pipes with direction.
+
+        Args:
+            handle: The model handle.
+            route_id: Route identifier (keyword or exact route name).
+
+        Returns:
+            List of ``(pipe_name, direction)`` where direction is
+            ``+1`` for forward and ``-1`` for reverse traversal.
+        """
+        ...
+
+    def resolve_output_items(
+        self,
+        handle: Any,
+        identifier: str,
+    ) -> list[str]:
+        """Resolve output identifier to concrete item names."""
+        ...
+
+    def is_pipe_item(self, handle: Any, item_name: str) -> bool:
+        """Return whether an item is a pipe component."""
+        ...
+
+    def get_pipe_series(
+        self,
+        handle: Any,
+        pipe_name: str,
+        property_name: str,
+    ) -> np.ndarray:
+        """Get unit-converted pipe series for a property."""
+        ...
+
+    def get_pipe_length(self, handle: Any, pipe_name: str) -> float:
+        """Get pipe length in model units."""
+        ...
+
+    def get_pipe_extrema(
+        self,
+        handle: Any,
+        pipe_name: str,
+        property_name: str,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Get unit-converted min/max envelopes for a pipe property."""
+        ...
+
+    def get_pipe_profile_table(self, handle: Any, pipe_name: str) -> np.ndarray:
+        """Get raw pipe profile table float data."""
         ...
