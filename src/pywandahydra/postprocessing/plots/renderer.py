@@ -11,8 +11,6 @@ from __future__ import annotations
 import logging
 import math
 from dataclasses import dataclass
-from functools import lru_cache
-from importlib import resources
 from pathlib import Path
 from typing import Any
 
@@ -25,11 +23,9 @@ from matplotlib.patches import Rectangle
 
 from ...scenarios.schema import ExportTableSpecification, RoutePlotSpecification
 from ..cache import ParquetCache
-from ..export import (
-    save_table,
-    savefig,
-)
+from ..export import save_table, savefig
 from ..plotting.specifications import AxisSpec
+from ..plotting.styles.layout import _default_logo
 
 logger = logging.getLogger(__name__)
 
@@ -79,17 +75,6 @@ class PlotTheme:
     row_gap: float = 0.09
 
 
-@lru_cache(maxsize=1)
-def _default_logo() -> Any:
-    """Load packaged logo used in the page watermark."""
-    with (
-        resources.files("pywandahydra.postprocessing.plotting.image_data")
-        .joinpath("Deltares_logo.png")
-        .open("rb") as f
-    ):
-        return plt.imread(f)
-
-
 def _configure_matplotlib_defaults() -> None:
     """Apply module-level matplotlib defaults for post-processing plots.
 
@@ -131,7 +116,9 @@ def render_route_report_pages(
             grouped[fig_key], key=lambda s: (s.plot if s.plot is not None else 10_000)
         )
 
-        fig = _create_report_page_figure(group_specs, cache, report_meta_base, fig_key, theme)
+        fig = _create_report_page_figure(
+            group_specs, cache, report_meta_base, fig_key, theme
+        )
         if fig is not None:
             figures.append(fig)
 
@@ -145,14 +132,18 @@ def _create_report_page_figure(
     fig_key: str,
     theme: PlotTheme,
 ) -> Figure | None:
-    valid_specs: list[tuple[RoutePlotSpecification, pd.DataFrame, dict[str, pd.DataFrame]]] = []
+    valid_specs: list[
+        tuple[RoutePlotSpecification, pd.DataFrame, dict[str, pd.DataFrame]]
+    ] = []
 
     for spec in specs:
         title = spec.title or f"{spec.route_id}_{spec.property}"
         route_data = cache.read_route(title)
         envelope = route_data.get("envelope")
         if envelope is None or envelope.empty:
-            logger.warning("No cached envelope for route '%s' – skipping render.", title)
+            logger.warning(
+                "No cached envelope for route '%s' – skipping render.", title
+            )
             continue
         valid_specs.append((spec, envelope, route_data))
 
@@ -243,7 +234,9 @@ def _plot_route_series(
             zorder=-1,
         )
     if {"min", "max"}.issubset(envelope.columns):
-        ax.fill_between(s_loc, envelope["min"], envelope["max"], alpha=theme.envelope_alpha)
+        ax.fill_between(
+            s_loc, envelope["min"], envelope["max"], alpha=theme.envelope_alpha
+        )
 
     # Match reference behavior: only Head plots show the pipeline elevation profile.
     if spec.property.strip().lower() == "head":
@@ -399,7 +392,15 @@ def _draw_report_frame(fig: Figure, meta: ReportMeta, theme: PlotTheme) -> None:
     ax.add_patch(rect)
 
     left_text = "\n".join(
-        [x for x in (meta.analysis_description, meta.scenario_description, meta.case_name) if x]
+        [
+            x
+            for x in (
+                meta.analysis_description,
+                meta.scenario_description,
+                meta.case_name,
+            )
+            if x
+        ]
     )
     fig.text(
         v0 + 0.01,
@@ -578,7 +579,11 @@ def render_time_series_plot(
             matching = [c for c in df.columns if c[0] == comp and c[1] == property_name]
             for col in matching:
                 # 3-level columns carry s_location at col[2]; for non-pipes it is NaN.
-                if len(col) >= 3 and isinstance(col[2], float) and not math.isnan(col[2]):
+                if (
+                    len(col) >= 3
+                    and isinstance(col[2], float)
+                    and not math.isnan(col[2])
+                ):
                     label = f"{col[0]} @ s={col[2]:.1f} m"
                 else:
                     label = col[0]
@@ -591,7 +596,9 @@ def render_time_series_plot(
                 plotted = True
 
     if not plotted:
-        logger.warning("No matching data for components=%s, property=%s", components, property_name)
+        logger.warning(
+            "No matching data for components=%s, property=%s", components, property_name
+        )
         plt.close(fig)
         return None
 
@@ -609,7 +616,9 @@ def render_time_series_plot(
     fig.tight_layout()
 
     if output_dir:
-        safe_name = filename or (title or property_name).replace(" ", "_").replace("/", "_")
+        safe_name = filename or (title or property_name).replace(" ", "_").replace(
+            "/", "_"
+        )
         savefig(fig, output_dir, safe_name, export_props=export_props, close=True)
 
     return fig
@@ -649,7 +658,11 @@ def render_table(
     rows: list[dict[str, str | float]] = []
     for spec in specs:
         if isinstance(df.columns, pd.MultiIndex):
-            matching = [c for c in df.columns if c[0] == spec.component and c[1] == spec.property]
+            matching = [
+                c
+                for c in df.columns
+                if c[0] == spec.component and c[1] == spec.property
+            ]
             if not matching:
                 continue
             # Aggregate across all s_location columns of this (component, property).

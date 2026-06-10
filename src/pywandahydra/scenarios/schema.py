@@ -96,10 +96,12 @@ class ParameterChange(BaseModel):
             elif v_lower in ("0", "no", "false", "n", "use"):
                 return False
             else:
-                raise ValueError(f"Cannot normalize string '{v}' to boolean for 'disuse' property")
+                raise ValueError(
+                    f"Cannot normalize string '{v}' to boolean for 'disuse' property"
+                )
 
         # Normalize numeric inputs
-        if isinstance(v, (int, float)):
+        if isinstance(v, int | float):
             if v == 1 or v == 1.0:
                 return True
             elif v == 0 or v == 0.0:
@@ -390,7 +392,9 @@ class ScenarioSpecification(BaseModel):
     parameters: list[ParameterChange] = Field(default_factory=list)
 
     # Post-processing configuration (tables, routes, enabled steps)
-    post_processing: PostProcessingConfig = Field(default_factory=lambda: PostProcessingConfig())
+    post_processing: PostProcessingConfig = Field(
+        default_factory=lambda: PostProcessingConfig()
+    )
 
     # Provenance, traceability, and source-specific context
     source: dict[str, Any] = Field(default_factory=dict)

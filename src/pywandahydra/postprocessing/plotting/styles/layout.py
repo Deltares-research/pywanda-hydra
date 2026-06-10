@@ -16,12 +16,11 @@ from pydantic import BaseModel, ConfigDict, computed_field, field_validator
 @lru_cache(maxsize=1)
 def _default_logo() -> Any:
     """Load the default Deltares logo as a numpy array."""
-    with (
+    logo_path = (
         resources.files("pywandahydra.postprocessing.plotting.image_data")
         .joinpath("Deltares_logo.png")
-        .open("rb") as f
-    ):
-        return plt.imread(f)
+    )
+    return plt.imread(str(logo_path))
 
 
 # Layout constants
