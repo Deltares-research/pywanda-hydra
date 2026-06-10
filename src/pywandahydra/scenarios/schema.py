@@ -388,11 +388,8 @@ class ScenarioSpecification(BaseModel):
     # Parameter changes applied for this scenario
     parameters: List[ParameterChange] = Field(default_factory=list)
 
-    # Post-processing: table exports (from "Output" sheet)
-    outputs: List[ExportTableSpecification] = Field(default_factory=list)
-
-    # Post-processing: route plot specifications (from "RPlots" sheet)
-    route_plots: List[RoutePlotSpecification] = Field(default_factory=list)
+    # Post-processing configuration (tables, routes, enabled steps)
+    post_processing: PostProcessingConfig = Field(default_factory=lambda: PostProcessingConfig())
 
     # Provenance, traceability, and source-specific context
     source: Dict[str, Any] = Field(default_factory=dict)
@@ -498,3 +495,23 @@ class RoutePlotSpecification(BaseModel):
         if not v:
             raise ValueError("must be a non-empty string")
         return v
+
+
+class PostProcessingConfig(BaseModel):
+    """Typed post-processing configuration attached to each scenario.
+
+    Groups all post-processing inputs (table exports, route plots) and the
+    optional allow-list of step names to run. An empty ``enabled_steps``
+    means "run every applicable registered step".
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    tables: List[ExportTableSpecification] = Field(default_factory=list)
+    routes: List[RoutePlotSpecification] = Field(default_factory=list)
+    # Allow-list of post-processing step names; empty = all applicable steps.
+    enabled_steps: List[str] = Field(default_factory=list)
+
+
+# Resolve the forward reference used on ScenarioSpecification.post_processing.
+ScenarioSpecification.model_rebuild()

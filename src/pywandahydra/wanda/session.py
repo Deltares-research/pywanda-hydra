@@ -27,6 +27,10 @@ def wanda_session(spec: ModelSpecification, *, model_path: str | None = None) ->
     """
     path = model_path or spec.model_path
     model = pywanda.WandaModel(path, spec.wanda_bin)
+
+    # Review version and upgrade if necessary
+    model.upgrade_model()
+
     try:
         yield model
     finally:

@@ -7,7 +7,7 @@ authors = [
 ]
 description = "Scenario runner for the pywanda package"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.11,<3.12"
 classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
@@ -34,10 +34,13 @@ dependencies = [
     "typer~=0.15.0",
     "filelock~=3.16.0",
     "pyarrow~=18.0.0",
-    "pywanda~=4.7.0a3",
+    "pywanda",
     "matplotlib>=3.7",
     "pypdf>=5.0.0",
 ]
+
+[tool.uv.sources]
+pywanda = { path = "pywanda-4.8.dev2-cp311-cp311-win_amd64.whl" }
 
 [dependency-groups]
 dev = [

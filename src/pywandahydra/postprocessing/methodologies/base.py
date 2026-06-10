@@ -50,21 +50,19 @@ _METHODOLOGIES: Dict[str, Methodology] = {}
 def register_methodology(methodology: Methodology) -> Methodology:
     """Register a methodology in the global registry.
 
-    Can be called directly or used to register at module level::
-
-        register_methodology(MyMethodology())
+    Idempotent: registering an instance under a name that already exists
+    is a no-op and returns the already-registered instance. This keeps
+    bootstrap() safe to call from multiple worker processes (spawn).
 
     Args:
         methodology: An instance implementing the Methodology protocol.
 
     Returns:
-        The same methodology instance (allows inline registration).
-
-    Raises:
-        ValueError: If a methodology with the same name is already registered.
+        The registered Methodology instance (existing one on duplicate).
     """
-    if methodology.name in _METHODOLOGIES:
-        raise ValueError(f"Methodology '{methodology.name}' is already registered.")
+    existing = _METHODOLOGIES.get(methodology.name)
+    if existing is not None:
+        return existing
     _METHODOLOGIES[methodology.name] = methodology
     logger.debug("Registered methodology: %s", methodology.name)
     return methodology

@@ -12,7 +12,7 @@ import socket
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from filelock import FileLock
 
@@ -207,3 +207,29 @@ class CaseJournal:
         if state is None:
             return False
         return state.status == "SUCCEEDED" and state.postprocess_status != "DONE"
+
+
+def resume_decision(
+    *,
+    journal: CaseJournal,
+    config_hash: str,
+    readonly: bool,
+) -> Literal["skip", "rerun", "run"]:
+    """Determine resume behavior for a case.
+
+    Args:
+        journal: Case journal used to inspect completion state.
+        config_hash: Expected config hash for idempotency checks.
+        readonly: Whether model execution is read-only.
+
+    Returns:
+        "skip" if case should be skipped in resume mode,
+        "rerun" if case completed but must be re-run,
+        "run" if case has not completed for this config.
+    """
+    completed = journal.is_completed(config_hash)
+    if completed and readonly:
+        return "skip"
+    if completed and not readonly:
+        return "rerun"
+    return "run"

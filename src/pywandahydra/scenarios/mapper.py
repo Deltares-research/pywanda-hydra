@@ -33,6 +33,12 @@ class ScenarioLoadOptions:
     output_sheet: Optional[str] = "Output"
     rplots_sheet: Optional[str] = "Rplots"
 
+    # Strict validation: raise on missing/malformed post-processing sheets,
+    # missing required columns, duplicate route titles, or duplicate
+    # (component, property) entries in the Output sheet. When False (default),
+    # malformed rows / missing sheets are silently skipped (legacy behavior).
+    strict_validation: bool = False
+
 
 def load_scenarios(
     path: Path | str,

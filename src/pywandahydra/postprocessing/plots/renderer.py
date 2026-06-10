@@ -9,6 +9,7 @@ subdirectories.
 from __future__ import annotations
 
 import logging
+import math
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -57,21 +58,27 @@ def render_route_plot(
         The matplotlib Figure, or None if no data is available.
     """
     title = spec.title or f"{spec.route_id}_{spec.property}"
-    df = cache.read_route(title)
-    if df.empty:
-        logger.warning("No cached route data for '%s' — skipping render.", title)
+    route_data = cache.read_route(title)
+    envelope = route_data.get("envelope")
+    if envelope is None or envelope.empty:
+        logger.warning("No cached envelope for route '%s' – skipping render.", title)
         return None
 
     fig, ax = plt.subplots(figsize=(10, 6))
 
-    # Plot each series (component) in the DataFrame
-    for col in df.columns:
-        label = col[0] if isinstance(col, tuple) else str(col)
-        ax.plot(df.index, df[col], label=label)
+    s_loc = envelope.index
+    if "min" in envelope.columns:
+        ax.plot(s_loc, envelope["min"], label="min", linewidth=1.2)
+    if "max" in envelope.columns:
+        ax.plot(s_loc, envelope["max"], label="max", linewidth=1.2)
+    if {"min", "max"}.issubset(envelope.columns):
+        ax.fill_between(s_loc, envelope["min"], envelope["max"], alpha=0.15)
 
     # Apply axis specifications
     _apply_axis_spec(ax, spec.x_axis, axis="x")
     _apply_axis_spec(ax, spec.y_axis, axis="y")
+    if not spec.x_axis.label:
+        ax.set_xlabel("s_location [m]")
 
     ax.set_title(title)
     ax.legend(loc="best", fontsize=8)
@@ -130,11 +137,15 @@ def render_time_series_plot(
     plotted = False
 
     for comp in components:
-        # Look for matching column in MultiIndex
         if isinstance(df.columns, pd.MultiIndex):
             matching = [c for c in df.columns if c[0] == comp and c[1] == property_name]
             for col in matching:
-                ax.plot(df.index, df[col], label=col[0])
+                # 3-level columns carry s_location at col[2]; for non-pipes it is NaN.
+                if len(col) >= 3 and isinstance(col[2], float) and not math.isnan(col[2]):
+                    label = f"{col[0]} @ s={col[2]:.1f} m"
+                else:
+                    label = col[0]
+                ax.plot(df.index, df[col], label=label)
                 plotted = True
         else:
             col_name = f"{comp}|{property_name}"
@@ -200,20 +211,21 @@ def render_table(
 
     rows: list[dict[str, str | float]] = []
     for spec in specs:
-        # Find matching columns
         if isinstance(df.columns, pd.MultiIndex):
             matching = [c for c in df.columns if c[0] == spec.component and c[1] == spec.property]
-            for col in matching:
-                series = df[col]
-                value = series.min() if spec.mode == "MIN" else series.max()
-                rows.append(
-                    {
-                        "component": col[0],
-                        "property": col[1],
-                        "mode": spec.mode,
-                        "value": float(value),
-                    }
-                )
+            if not matching:
+                continue
+            # Aggregate across all s_location columns of this (component, property).
+            sub = df.loc[:, matching]
+            value = sub.min().min() if spec.mode == "MIN" else sub.max().max()
+            rows.append(
+                {
+                    "component": spec.component,
+                    "property": spec.property,
+                    "mode": spec.mode,
+                    "value": float(value),
+                }
+            )
         else:
             col_name = f"{spec.component}|{spec.property}"
             if col_name in df.columns:
@@ -265,14 +277,8 @@ def aggregate_tables(
     for case_dir in sorted(scenarios_dir.iterdir()):
         if not case_dir.is_dir():
             continue
-        csv_candidates = [
-            case_dir / "summary_table.csv",
-            # Legacy paths from older export layouts
-            case_dir / "tables" / "summary_table.csv",
-            case_dir / "csv-files" / "summary_table.csv",
-        ]
-        csv_path = next((p for p in csv_candidates if p.exists()), None)
-        if csv_path is None:
+        csv_path = case_dir / "summary_table.csv"
+        if not csv_path.exists():
             continue
         case_df = pd.read_csv(csv_path)
         case_df.insert(0, "case", case_dir.name)

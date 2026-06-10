@@ -19,8 +19,11 @@ class RoutePlotStep:
     name = "route_plots"
 
     def applicable(self, ctx: PostProcessingContext) -> bool:
-        """Run only if the scenario defines route plot specifications."""
-        return len(ctx.scenario.route_plots) > 0
+        """Run only if the scenario defines route plot specifications and the step is enabled."""
+        pp = ctx.scenario.post_processing
+        if pp.enabled_steps and self.name not in pp.enabled_steps:
+            return False
+        return len(pp.routes) > 0
 
     def run(self, ctx: PostProcessingContext) -> None:
         """Render all route plots to one consolidated per-case PDF."""
@@ -29,7 +32,7 @@ class RoutePlotStep:
         case_id = ctx.case_dir.name
         case_pdf = figures_dir / f"{case_id}.pdf"
         figures = []
-        for spec in ctx.scenario.route_plots:
+        for spec in ctx.scenario.post_processing.routes:
             fig = render_route_plot(spec, ctx.cache)
             if fig is not None:
                 figures.append(fig)

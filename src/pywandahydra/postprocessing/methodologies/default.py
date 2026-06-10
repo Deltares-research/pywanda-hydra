@@ -10,7 +10,6 @@ from __future__ import annotations
 from ..pipeline import PostProcessingContext, PostProcessor
 from ..steps.route_plots import RoutePlotStep
 from ..steps.summary_table import SummaryTableStep
-from .base import register_methodology
 
 
 class DefaultMethodology:
@@ -25,7 +24,3 @@ class DefaultMethodology:
             SummaryTableStep(),
             RoutePlotStep(),
         ]
-
-
-# Auto-register on import
-register_methodology(DefaultMethodology())

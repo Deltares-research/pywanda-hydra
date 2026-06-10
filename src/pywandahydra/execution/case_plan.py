@@ -54,8 +54,7 @@ class CasePlan:
                 ch.model_dump(mode="json") for ch in self.model_spec.global_overrides
             ],
             "parameters": [ch.model_dump(mode="json") for ch in self.scenario.parameters],
-            "outputs": [s.model_dump(mode="json") for s in self.scenario.outputs],
-            "route_plots": [s.model_dump(mode="json") for s in self.scenario.route_plots],
+            "post_processing": self.scenario.post_processing.model_dump(mode="json"),
         }
         raw = json.dumps(payload, sort_keys=True, default=str)
         return "sha256:" + hashlib.sha256(raw.encode()).hexdigest()

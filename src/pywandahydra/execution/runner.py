@@ -15,7 +15,7 @@ from typing import Any, Dict, List, Literal, Sequence
 from ..config.models import ModelSpecification, RunContext
 from ..execution.artifacts import create_run_directories, write_run_log
 from ..execution.case_plan import CasePlan, build_case_plans
-from ..execution.journal import CaseJournal
+from ..execution.journal import CaseJournal, resume_decision
 from ..execution.worker import run_one_case
 from ..scenarios.schema import ScenarioSpecification
 
@@ -110,9 +110,20 @@ def run(
         plans_to_run = []
         for plan in plans:
             journal = CaseJournal(plan.case_dir)
-            if journal.is_completed(plan.config_hash):
+            decision = resume_decision(
+                journal=journal,
+                config_hash=plan.config_hash,
+                readonly=plan.model_spec.readonly,
+            )
+            if decision == "skip":
                 logger.info("Skipping completed case: %s", plan.case_id)
                 n_skipped += 1
+            elif decision == "rerun":
+                logger.warning(
+                    "Case %s will be re-run because of readonly=False.",
+                    plan.case_id,
+                )
+                plans_to_run.append(plan)
             else:
                 plans_to_run.append(plan)
 

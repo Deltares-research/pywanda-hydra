@@ -19,6 +19,7 @@ from ..schema import (
     AnalysisMeta,
     ExportTableSpecification,
     ParameterChange,
+    PostProcessingConfig,
     RoutePlotSpecification,
     ScenarioMeta,
     ScenarioSpecification,
@@ -154,20 +155,44 @@ def _read_output_sheet(
         df = cast(pd.DataFrame, pd.read_excel(path, opts.output_sheet, header=None))
     except ValueError:
         # Sheet does not exist
+        if opts.strict_validation:
+            raise ValueError(
+                f"Strict validation: required sheet '{opts.output_sheet}' is missing in {path}"
+            ) from None
         return []
 
     # Skip if there are fewer than 3 columns (component, property, mode)
     if df.shape[1] < 3:
+        if opts.strict_validation:
+            raise ValueError(
+                f"Strict validation: sheet '{opts.output_sheet}' must have at least 3 columns "
+                f"(component, property, mode); got {df.shape[1]}."
+            )
         return []
 
     specs: List[ExportTableSpecification] = []
-    for _, row in df.iterrows():
+    seen: set[tuple[str, str]] = set()
+    for idx, row in df.iterrows():
         comp = _as_str_or_none(row.iloc[0])
         prop = _as_str_or_none(row.iloc[1])
         mode_str = _as_str_or_none(row.iloc[2])
 
         if comp is None or prop is None or mode_str is None:
+            if opts.strict_validation and not (comp is None and prop is None and mode_str is None):
+                raise ValueError(
+                    f"Strict validation: incomplete row {idx} in sheet '{opts.output_sheet}': "
+                    f"component={comp!r}, property={prop!r}, mode={mode_str!r}."
+                )
             continue
+
+        key = (comp, prop)
+        if key in seen:
+            if opts.strict_validation:
+                raise ValueError(
+                    f"Strict validation: duplicate (component, property)=({comp!r}, {prop!r}) "
+                    f"at row {idx} in sheet '{opts.output_sheet}'."
+                )
+        seen.add(key)
 
         mode = cast(Any, mode_str)
         specs.append(ExportTableSpecification(component=comp, property=prop, mode=mode))
@@ -204,9 +229,20 @@ def _read_rplots_sheet(
         df = cast(pd.DataFrame, pd.read_excel(path, opts.rplots_sheet))
     except ValueError:
         # Sheet does not exist
+        if opts.strict_validation:
+            raise ValueError(
+                f"Strict validation: required sheet '{opts.rplots_sheet}' is missing in {path}"
+            ) from None
         return []
 
-    if "title" not in df.columns:
+    required_cols = {"title", "name", "property"}
+    missing = required_cols - set(df.columns)
+    if missing:
+        if opts.strict_validation:
+            raise ValueError(
+                f"Strict validation: sheet '{opts.rplots_sheet}' missing required column(s) "
+                f"{sorted(missing)}."
+            )
         return []
 
     def _float_or_none(val: Any) -> float | None:
@@ -218,14 +254,27 @@ def _read_rplots_sheet(
             return None
 
     specs: List[RoutePlotSpecification] = []
-    for _, row in df.iterrows():
+    seen_titles: set[str] = set()
+    for idx, row in df.iterrows():
         comp = _as_str_or_none(row.get("name"))
         prop = _as_str_or_none(row.get("property"))
 
         if comp is None or prop is None:
+            if opts.strict_validation and not (comp is None and prop is None):
+                raise ValueError(
+                    f"Strict validation: incomplete row {idx} in sheet '{opts.rplots_sheet}': "
+                    f"name={comp!r}, property={prop!r}."
+                )
             continue
 
         title = _as_str_or_none(row.get("title"))
+        if title is not None:
+            if title in seen_titles and opts.strict_validation:
+                raise ValueError(
+                    f"Strict validation: duplicate route title {title!r} at row {idx} "
+                    f"in sheet '{opts.rplots_sheet}'."
+                )
+            seen_titles.add(title)
 
         x_axis = AxisSpec(
             label=_as_str_or_none(row.get("Xlabel")) or "",
@@ -378,8 +427,10 @@ def read_scenarios_from_excel(
             ScenarioSpecification(
                 meta=meta,
                 parameters=parameters,
-                outputs=output_specs,
-                route_plots=rplot_specs,
+                post_processing=PostProcessingConfig(
+                    tables=output_specs,
+                    routes=rplot_specs,
+                ),
                 analysis_meta=analysis_context,
                 source={
                     "file": path,

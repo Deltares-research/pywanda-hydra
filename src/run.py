@@ -23,7 +23,7 @@ def main() -> None:
     # Model specification
     model_spec = ModelSpecification(
         model_path=run_dir / "model" / "base_model.wdi",
-        wanda_bin=r"c:\Program Files (x86)\Deltares\Wanda 4.7\Bin\\",
+        wanda_bin=r"c:\Program Files (x86)\Deltares\Wanda 4.8\Bin64\\",
         base_model_name="base_model",
         run_steady=True,
         run_unsteady=True,

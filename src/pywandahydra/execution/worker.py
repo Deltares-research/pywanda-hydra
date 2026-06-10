@@ -15,18 +15,14 @@ from __future__ import annotations
 import logging
 import os
 import time
-import warnings
-from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
-from ..config.models import ModelSpecification
 from ..execution.case_plan import CasePlan
-from ..execution.journal import CaseJournal, _now_iso
-from ..postprocessing import methodologies  # noqa: F401
+from ..execution.journal import CaseJournal, _now_iso, resume_decision
 from ..postprocessing.cache import ParquetCache
 from ..postprocessing.extract import extract_all
+from ..postprocessing.methodologies import bootstrap as bootstrap_methodologies
 from ..postprocessing.pipeline import PostProcessingContext, run_postprocessing
-from ..scenarios.schema import ScenarioSpecification
 from ..wanda.api import apply_parameter_change
 from ..wanda.create_scenario import prepare_scenario_model
 from ..wanda.session import wanda_session
@@ -34,7 +30,7 @@ from ..wanda.session import wanda_session
 logger = logging.getLogger(__name__)
 
 
-def run_one_case(plan: CasePlan) -> Dict[str, Any]:
+def run_one_case(plan: CasePlan) -> dict[str, Any]:
     """Execute a single case according to its CasePlan.
 
     This is the atomic unit of work dispatched by the runner — either
@@ -48,8 +44,18 @@ def run_one_case(plan: CasePlan) -> Dict[str, Any]:
     """
     journal = CaseJournal(plan.case_dir)
 
-    # --- Check idempotency (already completed with same config?) ---
-    if journal.is_completed(plan.config_hash):
+    # Ensure built-in methodologies are registered in this process (idempotent,
+    # required under multiprocessing 'spawn' where module-level side effects
+    # do not propagate from the parent process).
+    bootstrap_methodologies()
+
+    # --- Check idempotency using shared resume policy ---
+    decision = resume_decision(
+        journal=journal,
+        config_hash=plan.config_hash,
+        readonly=plan.model_spec.readonly,
+    )
+    if decision == "skip":
         logger.info("Case %s already completed — skipping.", plan.case_id)
         return {
             "case_id": plan.case_id,
@@ -178,41 +184,3 @@ def run_one_case(plan: CasePlan) -> Dict[str, Any]:
             "duration_s": round(duration, 2),
             "scenario_dir": str(plan.case_dir),
         }
-
-
-# ---------------------------------------------------------------------------
-# Legacy compatibility shim
-# ---------------------------------------------------------------------------
-
-
-def run_one_scenario(
-    model_specifications: ModelSpecification,
-    scenario: ScenarioSpecification,
-    ctx: Any,
-) -> Dict[str, Any]:
-    """Legacy entry point — wraps run_one_case for backwards compatibility.
-
-    Args:
-        model_specifications: Model specification.
-        scenario: Scenario specification.
-        ctx: RunContext (used for root_dir).
-
-    Returns:
-        Per-case result dict.
-    """
-    warnings.warn(
-        "run_one_scenario is deprecated; use run_one_case with CasePlan instead.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-
-    case_id = scenario.meta.name
-    case_dir = Path(ctx.root_dir) / "scenarios" / case_id
-
-    plan = CasePlan(
-        case_id=case_id,
-        case_dir=case_dir,
-        model_spec=model_specifications,
-        scenario=scenario,
-    )
-    return run_one_case(plan)
