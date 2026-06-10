@@ -1,6 +1,6 @@
 [project]
 name = "pywanda-hydra"
-dynamic = ["version"]
+version = "0.0.1"
 authors = [
     { name = "Mike van Meerkerk", email = "Mike.vanMeerkerk@Deltares.nl" },
     { name = "Sam van der Zwan", email = "sam.vanderzwan@deltares.nl" },
@@ -44,16 +44,17 @@ pywanda = { path = "pywanda-4.8.dev2-cp311-cp311-win_amd64.whl" }
 
 [dependency-groups]
 dev = [
-    "black == 24.10.0",
     "ruff ~= 0.11.13",
     "pytest ~= 8.3.4",
     "pytest-cov ~= 6.0.0",
     "mypy ~= 1.13.0",
-    "isort == 6.1.0",
     "sphinx~=8.0.2",
     "snakeviz==2.2.0",
     "types-requests ~= 2.28.11",
 ]
+
+[tool.uv]
+default-groups = ["dev"]
 
 [project.urls]
 homepage = "https://www.deltares.nl/en/software-and-data/products/wanda-software"
@@ -65,82 +66,77 @@ changelog = "https://github.com/Deltares-research/pywanda-hydra/blob/main/CHANGE
 pywandahydra = "pywandahydra:main"
 
 [build-system]
-build-backend = "setuptools.build_meta"
+build-backend = "uv_build"
 requires = [
-    "setuptools ~= 69.0.3",
-    "wheel ~= 0.40.0",
-    "setuptools-git-versioning<2",
+    "uv_build>=0.11.19,<0.12",
 ]
 
-[tool.setuptools-git-versioning]
-enabled = true
-version_file = "VERSION"
-count_commits_from_version_file = true
-dev_template = "{tag}.dev{ccount}"
-dirty_template = "{tag}.dev{ccount}"
-
-[tool.setuptools.package-data]
-"pywandahydra.postprocessing.plotting.image_data" = ["*.png"]
-
 [tool.pytest.ini_options]
-addopts = "--cov=pywandahydra --cov-report html --cov-report term-missing --cov-fail-under 50"
+addopts = "-q --cov=pywandahydra --cov-report html --cov-report term-missing --cov-fail-under 50"
 testpaths = ["unit_test"]
+norecursedirs = [".git", ".venv", "venv", "build", "dist", "notebooks/output"]
 
 [tool.coverage.run]
 source = ["src"]
 
 [tool.ruff]
 line-length = 100
-extend-exclude = [
-    ".venv/*",
-    "venv/*",
-    "doc/*",
+target-version = "py311"
+src = ["src", "unit_test"]
+exclude = [
+    ".git",
+    ".venv",
+    "venv",
+    "build",
+    "dist",
+    "doc",    
 ]
 
 [tool.ruff.lint]
 select = [
-    "F",  # pyflakes
     "E",  # pycodestyle
+    "F",  # pyflakes
     "W",  # pycodestyle
-    "D",  # pydocstyle
-    "B",  # flake8-bugbear
-    "Q",  # flake8-quotes
+    "I",  # import sorting
     "UP", # pyupgrade
+    "B",  # flake8-bugbear
+    "N",  # pep8-naming
     "PT", # flake8-pytest-style
 ]
-ignore = [
-    "Q000",  # Remove bad quotes
-    "D401",  # Docstring First line should be imperative
-    "E203",  # Space before colon (not PEP-8 compliant, and conflicts with black)
-    "C408",  # Suggestion to use dict() over {}
+extend-ignore = [
+    "E203",  # Keep Black-compatible slice spacing
+    "N803",  # Allow common scientific naming style
+    "N806",  # Allow common scientific naming style
     "PT009", # use a regular assert instead of unittest-style assertion
     "PT027", # pytest.raises() should be used instead of assertRaises()
 ]
 
-[tool.ruff.lint.pydocstyle]
-convention = "numpy"
-
 [tool.ruff.lint.extend-per-file-ignores]
 "__init__.py" = ["F401"]
-"unit_test/*" = ["D100", "D101", "D102", "D103", "D104", "D105", "D106"]
 "src/pywandahydra/cli/commands.py" = ["B008"]
-
-[tool.black]
-line-length = 100
-
-[tool.isort]
-profile = "black"
-line_length = 100
 
 [tool.mypy]
 python_version = "3.11"
+mypy_path = ["src"]
+packages = ["pywandahydra"]
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
 disallow_incomplete_defs = true
-ignore_missing_imports = true
+check_untyped_defs = true
 follow_imports_for_stubs = true
-exclude = ['.venv/*', 'venv/*', 'doc/*', 'ci/*']
+exclude = [
+    "^build/",
+    "^dist/",
+    "^doc/",
+    "^ci/",
+    '^\.venv/',
+    "^venv/",
+]
+
+[[tool.mypy.overrides]]
+module = ["pywanda", "pywanda.*", "scipy", "scipy.*", "matplotlib", "matplotlib.*"]
+ignore_missing_imports = true
 
 # mypy per-module options:
 [[tool.mypy.overrides]]
