@@ -38,6 +38,7 @@ class CasePlan:
     scenario: ScenarioSpecification
     methodology_name: str = "default"
     methodology_params: dict[str, Any] = field(default_factory=dict)
+    extractors: list[dict[str, Any]] = field(default_factory=list)
     adapter_class: str = "pywandahydra.wanda.pywanda_adapter:PywandaAdapter"
     attempt: int = 1
     config_hash: str = field(default="", repr=False)
@@ -59,6 +60,7 @@ class CasePlan:
             "model_bytes_sha256": model_bytes_hash,
             "methodology_name": self.methodology_name,
             "methodology_params": self.methodology_params,
+            "extractors": self.extractors,
             "run_steady": self.model_spec.run_steady,
             "run_unsteady": self.model_spec.run_unsteady,
             "global_overrides": [
@@ -79,6 +81,7 @@ def build_case_plans(
     run_root: Path,
     methodology_name: str = "default",
     methodology_params: dict[str, Any] | None = None,
+    extractors: list[dict[str, Any]] | None = None,
     adapter_class: str = "pywandahydra.wanda.pywanda_adapter:PywandaAdapter",
 ) -> list[CasePlan]:
     """Build CasePlan objects for all included scenarios.
@@ -89,6 +92,7 @@ def build_case_plans(
         run_root: Root directory for the run output.
         methodology_name: Post-processing methodology name.
         methodology_params: Post-processing methodology parameters.
+        extractors: List of extractor specifications (name + params).
         adapter_class: Import path for the WandaAdapter implementation.
 
     Returns:
@@ -110,6 +114,7 @@ def build_case_plans(
                 scenario=scenario,
                 methodology_name=methodology_name,
                 methodology_params=dict(methodology_params or {}),
+                extractors=list(extractors or []),
                 adapter_class=adapter_class,
             )
         )

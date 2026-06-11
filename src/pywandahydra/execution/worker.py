@@ -21,8 +21,10 @@ from typing import Any, cast
 from ..execution.case_plan import CasePlan
 from ..execution.journal import CaseJournal, _now_iso, resume_decision
 from ..postprocessing.cache import ParquetCache
-from ..postprocessing.context import CaseContext
+from ..postprocessing.context import CaseContext, ExtractionContext
 from ..postprocessing.extract import extract_all
+from ..postprocessing.extractors import bootstrap as bootstrap_extractors
+from ..postprocessing.extractors import resolve_extractor
 from ..postprocessing.methodologies import bootstrap as bootstrap_methodologies
 from ..postprocessing.pipeline import run_postprocessing
 from ..wanda.adapter import WandaAdapter
@@ -62,6 +64,7 @@ def run_one_case(plan: CasePlan) -> dict[str, Any]:
     # required under multiprocessing 'spawn' where module-level side effects
     # do not propagate from the parent process).
     bootstrap_methodologies()
+    bootstrap_extractors()
 
     # --- Check idempotency using shared resume policy ---
     decision = resume_decision(
@@ -138,9 +141,56 @@ def run_one_case(plan: CasePlan) -> dict[str, Any]:
                 n_routes=len(extracted["routes"]),
             )
 
-        # --- Cache extracted data to Parquet ---
+            # --- Run custom extractors while model is open ---
+            custom_extracted: dict[str, Any] = {}
+            cache = ParquetCache(plan.case_dir)
+            for extractor_spec in plan.extractors:
+                extractor_name = extractor_spec.get("name")
+                extractor_params = extractor_spec.get("params", {})
+                if not extractor_name:
+                    logger.warning(
+                        "Skipping extractor spec with no name: %s", extractor_spec
+                    )
+                    continue
+
+                try:
+                    extractor = resolve_extractor(extractor_name, extractor_params)
+                    extraction_ctx = ExtractionContext(
+                        model=model,
+                        adapter=adapter,
+                        scenario=plan.scenario,
+                        case_id=plan.case_id,
+                        case_dir=plan.case_dir,
+                        cache=cache,
+                    )
+                    result = extractor.extract(extraction_ctx)
+                    if result:
+                        custom_extracted[extractor_name] = result
+                        logger.info(
+                            "Extractor '%s' completed for case '%s'.",
+                            extractor_name,
+                            plan.case_id,
+                        )
+                    else:
+                        logger.debug(
+                            "Extractor '%s' returned no data for case '%s'.",
+                            extractor_name,
+                            plan.case_id,
+                        )
+                except Exception as e:
+                    logger.error(
+                        "Extractor '%s' failed for case '%s': %s",
+                        extractor_name,
+                        plan.case_id,
+                        e,
+                        exc_info=True,
+                    )
+
+        # --- Cache extracted data (standard + custom) to Parquet ---
         cache = ParquetCache(plan.case_dir)
         artefacts = cache.write(extracted)
+        custom_artefacts = cache.write_custom(custom_extracted)
+        artefacts.update(custom_artefacts)
         journal.event("cached", artefacts=artefacts)
 
         # --- Post-processing: run methodology-driven steps ---

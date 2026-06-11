@@ -147,6 +147,7 @@ def run(
         resume=cfg.execution.resume,
         methodology_name=cfg.execution.methodology.name,
         methodology_params=cfg.execution.methodology.params,
+        extractors=cfg.execution.extractors,
     )
 
     # Summary
@@ -255,6 +256,8 @@ def validate(
 @app.command()
 def plugins() -> None:
     """List discovered post-processing and scenario-source plugins."""
+    from ..postprocessing.extractors import bootstrap as bootstrap_extractors
+    from ..postprocessing.extractors import get_extractor_class, list_extractors
     from ..postprocessing.methodologies import bootstrap as bootstrap_methodologies
     from ..postprocessing.methodologies import (
         get_case_step_class,
@@ -268,6 +271,7 @@ def plugins() -> None:
     from ..scenarios import sources
 
     bootstrap_methodologies()
+    bootstrap_extractors()
     themes.bootstrap()
     sources.bootstrap()
 
@@ -277,6 +281,13 @@ def plugins() -> None:
             return "{}"
         schema = params.model_json_schema()
         return json.dumps(schema.get("properties", {}), sort_keys=True)
+
+    typer.echo("Extractors:")
+    for name in list_extractors():
+        cls = get_extractor_class(name)
+        desc = getattr(cls, "description", "")
+        typer.echo(f"  - {name}: {desc}")
+        typer.echo(f"    params={_params_schema(cls)}")
 
     typer.echo("Methodologies:")
     for name in list_methodologies():

@@ -142,7 +142,9 @@ class ParquetCache:
 
         ts_path = route_subdir / "timeseries.parquet"
         if ts_path.exists():
-            result["timeseries"] = _restore_flat_cols(pd.read_parquet(ts_path, engine="pyarrow"))
+            result["timeseries"] = _restore_flat_cols(
+                pd.read_parquet(ts_path, engine="pyarrow")
+            )
 
         env_path = route_subdir / "envelope.parquet"
         if env_path.exists():
@@ -181,6 +183,129 @@ class ParquetCache:
         if not self.data_dir.exists():
             return False
         return any(self.data_dir.rglob("*.parquet"))
+
+    # -----------------------------------------------------------------
+    # Custom Extractions (from extractor plugins)
+    # -----------------------------------------------------------------
+    def write_custom(self, custom_extracted: dict[str, Any]) -> dict[str, str]:
+        """Persist custom extracted data from extractors to Parquet files.
+
+        File layout in case_dir/data/custom/::
+
+            <extractor_name>.parquet         — simple DataFrame output
+            <extractor_name>/                — for nested extractor output
+                timeseries.parquet
+                profile.parquet
+                ...
+
+        Args:
+            custom_extracted: Dict mapping extractor name → DataFrame or nested dict.
+                Nested dict should mirror route structure: {key: DataFrames}.
+
+        Returns:
+            Dict mapping artefact name → relative path (for the journal).
+        """
+        if not custom_extracted:
+            return {}
+
+        custom_dir = self.data_dir / "custom"
+        custom_dir.mkdir(parents=True, exist_ok=True)
+        artefacts: dict[str, str] = {}
+
+        for extractor_name, data in custom_extracted.items():
+            if isinstance(data, pd.DataFrame):
+                # Simple DataFrame: write directly
+                if data.empty:
+                    logger.debug("Skipping empty custom extraction: %s", extractor_name)
+                    continue
+                path = custom_dir / f"{extractor_name}.parquet"
+                _write_with_flat_cols(data, path)
+                artefacts[f"custom_{extractor_name}"] = str(
+                    path.relative_to(self.data_dir.parent)
+                )
+                logger.info("Cached custom extraction: %s → %s", extractor_name, path)
+            elif isinstance(data, dict):
+                # Nested structure: write each key to a sub-directory
+                extractor_subdir = custom_dir / extractor_name
+                extractor_subdir.mkdir(parents=True, exist_ok=True)
+                for key, df in data.items():
+                    if not isinstance(df, pd.DataFrame) or df.empty:
+                        continue
+                    path = extractor_subdir / f"{key}.parquet"
+                    _write_with_flat_cols(df, path)
+                    artefacts[f"custom_{extractor_name}_{key}"] = str(
+                        path.relative_to(self.data_dir.parent)
+                    )
+                logger.info(
+                    "Cached custom extraction (nested): %s → %s",
+                    extractor_name,
+                    extractor_subdir,
+                )
+            else:
+                logger.warning(
+                    "Custom extraction '%s' has unsupported type %s – skipping.",
+                    extractor_name,
+                    type(data).__name__,
+                )
+
+        return artefacts
+
+    def read_custom(
+        self, extractor_name: str
+    ) -> pd.DataFrame | dict[str, pd.DataFrame]:
+        """Read custom extracted data by extractor name.
+
+        Returns a DataFrame if a simple extraction exists (case_dir/data/custom/<name>.parquet).
+        Returns a dict of DataFrames if a nested structure exists (case_dir/data/custom/<name>/).
+
+        Args:
+            extractor_name: Name of the extractor (used as filename stem).
+
+        Returns:
+            DataFrame, dict of DataFrames, or empty DataFrame if not found.
+        """
+        custom_dir = self.data_dir / "custom"
+        if not custom_dir.exists():
+            return pd.DataFrame()
+
+        # Try simple file first
+        simple_path = custom_dir / f"{extractor_name}.parquet"
+        if simple_path.exists():
+            df = pd.read_parquet(simple_path, engine="pyarrow")
+            return _restore_flat_cols(df)
+
+        # Try nested directory
+        nested_dir = custom_dir / extractor_name
+        if nested_dir.is_dir():
+            result: dict[str, pd.DataFrame] = {}
+            for parquet_file in nested_dir.glob("*.parquet"):
+                key = parquet_file.stem
+                df = pd.read_parquet(parquet_file, engine="pyarrow")
+                result[key] = _restore_flat_cols(df)
+            return result if result else pd.DataFrame()
+
+        return pd.DataFrame()
+
+    def list_custom_extractors(self) -> list[str]:
+        """List available custom extraction names.
+
+        Returns:
+            Sorted list of extractor names (both simple files and nested dirs).
+        """
+        custom_dir = self.data_dir / "custom"
+        if not custom_dir.exists():
+            return []
+
+        names: set[str] = set()
+        # Collect simple files (name.parquet)
+        for parquet_file in custom_dir.glob("*.parquet"):
+            names.add(parquet_file.stem)
+        # Collect directories
+        for subdir in custom_dir.iterdir():
+            if subdir.is_dir():
+                names.add(subdir.name)
+
+        return sorted(names)
 
 
 # ---------------------------------------------------------------------------

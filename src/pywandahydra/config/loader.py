@@ -43,6 +43,7 @@ class ExecutionConfig(BaseModel):
         n_workers: Number of parallel workers (only used when mode != sequential).
         resume: Whether to skip already-completed cases.
         methodology: Post-processing methodology name + params.
+        extractors: List of custom extractors to run during model execution.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -51,6 +52,10 @@ class ExecutionConfig(BaseModel):
     n_workers: int = Field(default=1, ge=1)
     resume: bool = False
     methodology: MethodologySpec = Field(default_factory=MethodologySpec)
+    extractors: list[dict[str, Any]] = Field(
+        default_factory=list,
+        description="List of extractor specs: [{name: str, params: dict}]",
+    )
 
     @model_validator(mode="before")
     @classmethod

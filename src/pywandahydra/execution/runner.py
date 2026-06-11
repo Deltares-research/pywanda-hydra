@@ -60,6 +60,7 @@ def run(
     resume: bool = False,
     methodology_name: str = "default",
     methodology_params: dict[str, Any] | None = None,
+    extractors: list[dict[str, Any]] | None = None,
     adapter_class: str = "pywandahydra.wanda.pywanda_adapter:PywandaAdapter",
 ) -> RunResult:
     """Run scenarios with the specified model and context.
@@ -78,6 +79,7 @@ def run(
         resume: Skip already-completed cases with matching config hash.
         methodology_name: Post-processing methodology name.
         methodology_params: Post-processing methodology parameters.
+        extractors: List of custom extractor specs to run during model execution.
         adapter_class: Import path for the WandaAdapter implementation.
 
     Returns:
@@ -103,6 +105,7 @@ def run(
         run_root,
         methodology_name=methodology.name,
         methodology_params=methodology_params,
+        extractors=extractors,
         adapter_class=adapter_class,
     )
     if not plans:

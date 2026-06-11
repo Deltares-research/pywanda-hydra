@@ -65,6 +65,8 @@ changelog = "https://github.com/Deltares-research/pywanda-hydra/blob/main/CHANGE
 [project.scripts]
 pywandahydra = "pywandahydra:main"
 
+[project.entry-points."pywandahydra.extractors"]
+
 [project.entry-points."pywandahydra.methodologies"]
 default = "pywandahydra.postprocessing.methodologies.default:DefaultMethodology"
 composed = "pywandahydra.postprocessing.methodologies.composed:ComposedMethodology"
