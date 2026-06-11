@@ -15,10 +15,10 @@ class ModelSpecification(BaseModel):
 
     Attributes
     ----------
-    model_path : str | Path
-        Path to .wdi (or base path); internally handled as a string.
-    wanda_bin : str | Path
-        Path to WANDA binaries and executables; internally handled as a string.
+    model_path : Path
+        Path to .wdi (or base path).
+    wanda_bin : Path
+        Path to WANDA binaries and executables.
     base_model_name : str
         Name of the base model.
 
@@ -33,8 +33,8 @@ class ModelSpecification(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    model_path: str | Path = Field(..., description="Path to .wdi (or base path)")
-    wanda_bin: str | Path = Field(..., description="Path to WANDA binaries and executables")
+    model_path: Path = Field(..., description="Path to .wdi (or base path)")
+    wanda_bin: Path = Field(..., description="Path to WANDA binaries and executables")
     base_model_name: str
 
     # Run settings
@@ -53,10 +53,10 @@ class ModelSpecification(BaseModel):
         description="Global parameter changes to apply before scenarios changes.",
     )
 
-    @field_validator("model_path")
+    @field_validator("model_path", mode="before")
     @classmethod
-    def normalize_paths(cls, v: str | Path) -> str:
-        """Normalize path strings by expanding user and stripping whitespace.
+    def normalize_paths(cls, v: str | Path) -> Path:
+        """Normalize paths by expanding user and stripping whitespace.
 
         Parameters
         ----------
@@ -65,16 +65,16 @@ class ModelSpecification(BaseModel):
 
         Returns
         -------
-        str
-            The normalized path as a string.
+        Path
+            The normalized path.
         """
-        return str(Path(v).expanduser()).strip()
+        return Path(str(v).strip()).expanduser()
 
     # Ensure wanda_bin ends with "**\\"
-    @field_validator("wanda_bin")
+    @field_validator("wanda_bin", mode="before")
     @classmethod
-    def ensure_wanda_bin_format(cls, v: str | Path) -> str:
-        """Ensure wanda_bin path ends with double backslash.
+    def ensure_wanda_bin_format(cls, v: str | Path) -> Path:
+        """Normalize wanda_bin path.
 
         Parameters
         ----------
@@ -83,13 +83,10 @@ class ModelSpecification(BaseModel):
 
         Returns
         -------
-        str
-            The formatted path as a string.
+        Path
+            The normalized path.
         """
-        path_str = str(Path(v).expanduser()).strip()
-        if not path_str.endswith("\\\\"):
-            path_str += "\\\\"
-        return path_str
+        return Path(str(v).strip()).expanduser()
 
 
 class RunContext(BaseModel):
@@ -101,7 +98,7 @@ class RunContext(BaseModel):
         Unique identifier for the run.
     timestamp : str
         Timestamp of the run in ISO format.
-    root_dir : str | Path
+    root_dir : Path
         Root directory for the run.
     analysis_meta : AnalysisMeta
         Global analysis metadata associated with the run.
@@ -116,7 +113,7 @@ class RunContext(BaseModel):
     # Information about this run
     run_id: str = Field(..., description="Unique identifier for the run.")
     timestamp: str = Field(..., description="Timestamp of the run in ISO format.")
-    root_dir: str | Path = Field(..., description="Root directory for the run.")
+    root_dir: Path = Field(..., description="Root directory for the run.")
 
     # Global analysis metadata
     analysis_meta: AnalysisMeta = Field(
@@ -125,7 +122,9 @@ class RunContext(BaseModel):
     )
 
     # Optional description and metadata
-    description: str | None = Field(default=None, description="Optional description of the run.")
+    description: str | None = Field(
+        default=None, description="Optional description of the run."
+    )
     metadata: dict[str, Any] = Field(
         default_factory=dict,
         description="Additional metadata for the run.",
@@ -150,10 +149,10 @@ class RunContext(BaseModel):
             return v.isoformat()
         return str(v).strip()
 
-    @field_validator("root_dir")
+    @field_validator("root_dir", mode="before")
     @classmethod
-    def normalize_paths(cls, v: str | Path) -> str:
-        """Normalize path strings by expanding user and stripping whitespace.
+    def normalize_paths(cls, v: str | Path) -> Path:
+        """Normalize paths by expanding user and stripping whitespace.
 
         Parameters
         ----------
@@ -162,7 +161,7 @@ class RunContext(BaseModel):
 
         Returns
         -------
-        str
-            The normalized path as a string.
+        Path
+            The normalized path.
         """
-        return str(Path(v).expanduser()).strip()
+        return Path(str(v).strip()).expanduser()

@@ -16,10 +16,9 @@ from pydantic import BaseModel, ConfigDict, computed_field, field_validator
 @lru_cache(maxsize=1)
 def _default_logo() -> Any:
     """Load the default Deltares logo as a numpy array."""
-    logo_path = (
-        resources.files("pywandahydra.postprocessing.plotting.image_data")
-        .joinpath("Deltares_logo.png")
-    )
+    logo_path = resources.files(
+        "pywandahydra.postprocessing.plotting.image_data"
+    ).joinpath("Deltares_logo.png")
     return plt.imread(str(logo_path))
 
 
@@ -29,7 +28,7 @@ _YO = 0.03
 _TEXTBOX_HEIGHT = 0.75
 
 
-class PageMeta(BaseModel):
+class PageMetadata(BaseModel):
     """Metadata for a plot page layout."""
 
     model_config = ConfigDict(extra="forbid")
@@ -104,14 +103,14 @@ def _calculate_layout_coordinates() -> (
     return (v0, v1, v2, v3), (h0, h1, h2, h3)
 
 
-def draw_layout(fig: Figure, meta: PageMeta) -> None:
+def draw_layout(fig: Figure, meta: PageMetadata) -> None:
     """Draw the layout on a matplotlib figure.
 
     Parameters
     ----------
     fig : matplotlib.figure.Figure
         The figure to draw the layout on.
-    meta : PageMeta
+    meta : PageMetadata
         The metadata for the page.
     """
     # Import image

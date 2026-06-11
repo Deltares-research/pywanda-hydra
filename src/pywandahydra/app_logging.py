@@ -1,74 +1,44 @@
-"""Setup logging for this python application."""
+"""Logging configuration for pywandahydra."""
+
+from __future__ import annotations
 
 import logging
 import sys
-from enum import Enum
 
 import coloredlogs
 
-
-class LogLevel(Enum):
-    """Loglevel enum."""
-
-    DEBUG = logging.DEBUG
-    INFO = logging.INFO
-    WARNING = logging.WARNING
-    ERROR = logging.ERROR
-
-    @staticmethod
-    def parse(value: str) -> "LogLevel":
-        """
-        Parses a given string for LogLevel's.
-
-        Parameters
-        ----------
-        value : str
-                user provided string containing the requested log level
-
-        Returns
-        -------
-        LogLevel
-            Loglevel for this logger
-        """
-        lowered = value.lower()
-
-        if lowered == "debug":
-            result = LogLevel.DEBUG
-        elif lowered == "info":
-            result = LogLevel.INFO
-        elif lowered in ["warning", "warn"]:
-            result = LogLevel.WARNING
-        elif lowered in ["err", "error"]:
-            result = LogLevel.ERROR
-        else:
-            raise ValueError(f"Value {value} is not a valid log level.")
-
-        return result
+LOGGER_NAME = "pywandahydra"
 
 
-LOG_LEVEL: LogLevel | None = None
+def _resolve_level(level: str | int) -> int:
+    """Resolve user-provided level to logging integer value."""
+    if isinstance(level, int):
+        return level
+
+    resolved = logging.getLevelName(str(level).upper())
+    if isinstance(resolved, int):
+        return resolved
+
+    raise ValueError(f"Value {level} is not a valid log level.")
 
 
-def setup_logging(log_level: LogLevel, colors: bool = True) -> None:
-    """
-    Initializes logging.
+def setup_logging(level: str | int, colors: bool = True) -> None:
+    """Configure the package logger without mutating the root logger."""
+    log_level = _resolve_level(level)
+    logger = logging.getLogger(LOGGER_NAME)
+    logger.setLevel(log_level)
+    logger.propagate = False
 
-    Parameters
-    ----------
-    log_level : LogLevel
-        The LogLevel for this logger.
-    """
-    global LOG_LEVEL
-    root_logger = logging.getLogger()
-    root_logger.info("Will use log level: %s", log_level.name)
-    root_logger.setLevel(log_level.value)
-    LOG_LEVEL = log_level
+    # Ensure repeated setup calls do not accumulate handlers.
+    logger.handlers.clear()
+
     if colors:
-        coloredlogs.install(log_level.value, logger=root_logger)
-    else:
-        log_handler = logging.StreamHandler(sys.stdout)
-        formatter = logging.Formatter(
-            fmt="%(asctime)s [%(threadName)s][%(filename)s:%(lineno)d][%(levelname)s]: %(message)s"
-        )
-        log_handler.setFormatter(formatter)
-        root_logger.addHandler(log_handler)
+        coloredlogs.install(log_level, logger=logger)
+        return
+
+    log_handler = logging.StreamHandler(sys.stdout)
+    formatter = logging.Formatter(
+        fmt="%(asctime)s [%(threadName)s][%(filename)s:%(lineno)d][%(levelname)s]: %(message)s"
+    )
+    log_handler.setFormatter(formatter)
+    logger.addHandler(log_handler)

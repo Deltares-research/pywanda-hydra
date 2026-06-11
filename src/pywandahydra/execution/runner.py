@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from multiprocessing import get_context
 from pathlib import Path
 from typing import Any, Literal
@@ -18,6 +18,9 @@ from ..execution.artifacts import create_run_directories, write_run_log
 from ..execution.case_plan import CasePlan, build_case_plans
 from ..execution.journal import CaseJournal, resume_decision
 from ..execution.worker import run_one_case
+from ..postprocessing.context import RunStepContext
+from ..postprocessing.methodologies import bootstrap as bootstrap_methodologies
+from ..postprocessing.methodologies.base import resolve_methodology
 from ..scenarios.schema import ScenarioSpecification
 
 logger = logging.getLogger(__name__)
@@ -43,11 +46,7 @@ class RunResult:
     n_success: int
     n_failed: int
     n_skipped: int = 0
-    results: list[dict[str, Any]] = None  # type: ignore[assignment]
-
-    def __post_init__(self) -> None:  # noqa: D105
-        if self.results is None:
-            object.__setattr__(self, "results", [])
+    results: list[dict[str, Any]] = field(default_factory=list)
 
 
 def run(
@@ -59,7 +58,9 @@ def run(
     mode: Literal["sequential", "multiprocessing"] = "sequential",
     persist_manifest: bool = True,
     resume: bool = False,
-    methodology: str = "default",
+    methodology_name: str = "default",
+    methodology_params: dict[str, Any] | None = None,
+    adapter_class: str = "pywandahydra.wanda.pywanda_adapter:PywandaAdapter",
 ) -> RunResult:
     """Run scenarios with the specified model and context.
 
@@ -75,12 +76,16 @@ def run(
         mode: Execution mode used to select sequential vs multiprocessing.
         persist_manifest: Write run-level manifest/log file.
         resume: Skip already-completed cases with matching config hash.
-        methodology: Post-processing methodology name.
+        methodology_name: Post-processing methodology name.
+        methodology_params: Post-processing methodology parameters.
+        adapter_class: Import path for the WandaAdapter implementation.
 
     Returns:
         Aggregated RunResult.
     """
     run_root = Path(ctx.root_dir)
+    bootstrap_methodologies()
+    methodology = resolve_methodology(methodology_name, methodology_params)
 
     # Create run directories and write log manifest
     create_run_directories(ctx)
@@ -92,7 +97,14 @@ def run(
         )
 
     # Build case plans for included scenarios
-    plans = build_case_plans(model, list(scenarios), run_root, methodology=methodology)
+    plans = build_case_plans(
+        model,
+        list(scenarios),
+        run_root,
+        methodology_name=methodology.name,
+        methodology_params=methodology_params,
+        adapter_class=adapter_class,
+    )
     if not plans:
         return RunResult(
             run_id=ctx.run_id,
@@ -129,7 +141,9 @@ def run(
                 plans_to_run.append(plan)
 
     # Execute
-    use_multiprocessing = mode == "multiprocessing" and n_workers > 1 and len(plans_to_run) > 1
+    use_multiprocessing = (
+        mode == "multiprocessing" and n_workers > 1 and len(plans_to_run) > 1
+    )
 
     if not use_multiprocessing:
         results = [run_one_case(plan) for plan in plans_to_run]
@@ -140,17 +154,16 @@ def run(
     n_success = sum(1 for r in results if r.get("success") is True)
     n_failed = sum(1 for r in results if r.get("success") is False)
 
-    # --- Aggregate per-case tables into a run-level summary ---
-    if n_success > 0:
-        from ..postprocessing.pdf_merge import merge_case_figure_pdfs
-        from ..postprocessing.plots.renderer import aggregate_tables
-
-        scenarios_dir = run_root / "scenarios"
-        tables_dir = run_root / "tables"
-        merged_pdf = run_root / "figures" / f"{ctx.run_id}_merged.pdf"
-
-        aggregate_tables(scenarios_dir, tables_dir, run_id=ctx.run_id)
-        merge_case_figure_pdfs(scenarios_dir, merged_pdf)
+    run_ctx = RunStepContext(
+        run_root=run_root,
+        run_id=ctx.run_id,
+        case_results=tuple(results),
+    )
+    for step in methodology.run_steps(run_ctx):
+        try:
+            step.run(run_ctx)
+        except Exception:
+            logger.exception("Run step %r failed", step.name)
 
     return RunResult(
         run_id=ctx.run_id,

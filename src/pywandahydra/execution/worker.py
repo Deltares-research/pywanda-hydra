@@ -15,20 +15,33 @@ from __future__ import annotations
 import logging
 import os
 import time
-from typing import Any
+from importlib import import_module
+from typing import Any, cast
 
 from ..execution.case_plan import CasePlan
 from ..execution.journal import CaseJournal, _now_iso, resume_decision
 from ..postprocessing.cache import ParquetCache
+from ..postprocessing.context import CaseContext
 from ..postprocessing.extract import extract_all
 from ..postprocessing.methodologies import bootstrap as bootstrap_methodologies
-from ..postprocessing.pipeline import PostProcessingContext, run_postprocessing
-from ..wanda.api import apply_parameter_change
-from ..wanda.create_scenario import prepare_scenario_model
-from ..wanda.pywanda_adapter import PywandaAdapter
-from ..wanda.session import wanda_session
+from ..postprocessing.pipeline import run_postprocessing
+from ..wanda.adapter import WandaAdapter
 
 logger = logging.getLogger(__name__)
+
+
+def _load_adapter(plan: CasePlan) -> WandaAdapter:
+    """Instantiate the configured adapter class for this case."""
+    module_name, _, class_name = plan.adapter_class.partition(":")
+    if not module_name or not class_name:
+        raise ValueError(
+            f"Invalid adapter class path '{plan.adapter_class}'. "
+            "Expected format 'package.module:ClassName'."
+        )
+
+    module = import_module(module_name)
+    adapter_class = getattr(module, class_name)
+    return cast(WandaAdapter, adapter_class())
 
 
 def run_one_case(plan: CasePlan) -> dict[str, Any]:
@@ -76,27 +89,27 @@ def run_one_case(plan: CasePlan) -> dict[str, Any]:
         )
 
     start_time = time.perf_counter()
-    adapter = PywandaAdapter()
+    adapter = _load_adapter(plan)
 
     try:
         # --- Prepare scenario model copy ---
-        scenario_model_path = prepare_scenario_model(
-            base_model_path=str(plan.model_spec.model_path),
-            scenario_dir=plan.case_dir,
-            scenario_name=plan.scenario.meta.name,
+        scenario_model_path = adapter.prepare_scenario_model(
+            plan.model_spec.model_path,
+            plan.case_dir,
+            plan.scenario.meta.name,
             readonly=plan.model_spec.readonly,
         )
         journal.event("model_prepared", path=scenario_model_path)
 
         # --- Open WANDA session (single open per case) ---
-        with wanda_session(plan.model_spec, model_path=scenario_model_path) as model:
+        with adapter.session(plan.model_spec, scenario_model_path) as model:
             # Apply global overrides
             for change in plan.model_spec.global_overrides:
-                apply_parameter_change(model, change)
+                adapter.apply(model, change)
 
             # Apply scenario-specific parameter changes
             for change in plan.scenario.parameters:
-                apply_parameter_change(model, change)
+                adapter.apply(model, change)
 
             journal.event(
                 "params_applied",
@@ -105,16 +118,16 @@ def run_one_case(plan: CasePlan) -> dict[str, Any]:
             )
 
             # Save and run
-            model.save_model_input()
+            adapter.save_input(model)
 
             if plan.model_spec.run_steady:
-                model.run_steady()
+                adapter.run_steady(model)
                 journal.event("steady_done")
 
             if plan.model_spec.run_unsteady:
-                sim_time = model.get_property("Simulation time").get_scalar_float()
+                sim_time = adapter.simulation_time(model)
                 if sim_time > 0:
-                    model.run_unsteady()
+                    adapter.run_unsteady(model)
                     journal.event("unsteady_done")
 
             # --- Extract results while model is open (single pass) ---
@@ -131,14 +144,18 @@ def run_one_case(plan: CasePlan) -> dict[str, Any]:
         journal.event("cached", artefacts=artefacts)
 
         # --- Post-processing: run methodology-driven steps ---
-        pp_ctx = PostProcessingContext(
+        pp_ctx = CaseContext(
             cache=cache,
             scenario=plan.scenario,
             case_dir=plan.case_dir,
         )
         with journal:
             journal.transition("RUNNING", postprocess_status="RUNNING")
-        pp_results = run_postprocessing(pp_ctx, methodology=plan.methodology)
+        pp_results = run_postprocessing(
+            pp_ctx,
+            methodology_name=plan.methodology_name,
+            methodology_params=plan.methodology_params,
+        )
 
         pp_success = all(pp_results.values())
         pp_status = "DONE" if pp_success else "FAILED"

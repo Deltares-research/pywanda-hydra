@@ -9,7 +9,7 @@ from pathlib import Path
 
 import typer
 
-from ..app_logging import LogLevel, setup_logging
+from ..app_logging import setup_logging
 
 app = typer.Typer(
     name="pywandahydra",
@@ -42,7 +42,7 @@ def run(
     ),
 ) -> None:
     """Run WANDA scenarios from a configuration file."""
-    setup_logging(LogLevel.parse(log_level))
+    setup_logging(log_level)
     logger = logging.getLogger(__name__)
 
     from ..config.loader import (
@@ -105,7 +105,7 @@ def run(
         raise typer.Exit(code=1) from None
 
     # Load scenarios from the scenario file
-    scenario_path = Path(cfg.scenario_file)
+    scenario_path = cfg.scenario_file
     if not scenario_path.is_absolute():
         scenario_path = config.parent / scenario_path
 
@@ -145,7 +145,8 @@ def run(
         n_workers=cfg.execution.n_workers,
         mode=cfg.execution.mode,
         resume=cfg.execution.resume,
-        methodology=cfg.execution.methodology,
+        methodology_name=cfg.execution.methodology.name,
+        methodology_params=cfg.execution.methodology.params,
     )
 
     # Summary
@@ -231,7 +232,7 @@ def validate(
         typer.echo(f"Runtime paths INVALID: {e}", err=True)
         raise typer.Exit(code=1) from None
 
-    scenario_path = Path(cfg.scenario_file)
+    scenario_path = cfg.scenario_file
     if not scenario_path.is_absolute():
         scenario_path = config.parent / scenario_path
 
@@ -244,6 +245,65 @@ def validate(
         raise typer.Exit(code=1) from None
 
     typer.echo("Validation passed.")
+
+
+# ---------------------------------------------------------------------------
+# plugins
+# ---------------------------------------------------------------------------
+
+
+@app.command()
+def plugins() -> None:
+    """List discovered post-processing and scenario-source plugins."""
+    from ..postprocessing.methodologies import bootstrap as bootstrap_methodologies
+    from ..postprocessing.methodologies import (
+        get_case_step_class,
+        get_methodology_class,
+        get_run_step_class,
+        list_case_steps,
+        list_methodologies,
+        list_run_steps,
+    )
+    from ..postprocessing.plotting import themes
+    from ..scenarios import sources
+
+    bootstrap_methodologies()
+    themes.bootstrap()
+    sources.bootstrap()
+
+    def _params_schema(cls: type) -> str:
+        params = getattr(cls, "Params", None)
+        if params is None:
+            return "{}"
+        schema = params.model_json_schema()
+        return json.dumps(schema.get("properties", {}), sort_keys=True)
+
+    typer.echo("Methodologies:")
+    for name in list_methodologies():
+        cls = get_methodology_class(name)
+        desc = getattr(cls, "description", "")
+        typer.echo(f"  - {name}: {desc}")
+        typer.echo(f"    params={_params_schema(cls)}")
+
+    typer.echo("Case steps:")
+    for name in list_case_steps():
+        cls = get_case_step_class(name)
+        typer.echo(f"  - {name}")
+        typer.echo(f"    params={_params_schema(cls)}")
+
+    typer.echo("Run steps:")
+    for name in list_run_steps():
+        cls = get_run_step_class(name)
+        typer.echo(f"  - {name}")
+        typer.echo(f"    params={_params_schema(cls)}")
+
+    typer.echo("Themes:")
+    for name in themes.list_themes():
+        typer.echo(f"  - {name}")
+
+    typer.echo("Scenario sources:")
+    for ext, cls_path in sources.list_source_classes().items():
+        typer.echo(f"  - {ext}: {cls_path}")
 
 
 # ---------------------------------------------------------------------------
@@ -265,7 +325,7 @@ def plot(
 ) -> None:
     """Render plots from cached extraction data (no WANDA required)."""
     from ..postprocessing.cache import ParquetCache
-    from ..postprocessing.plots.renderer import render_route_plot
+    from ..postprocessing.plotting.renderer import render_route_plot
 
     scenarios_dir = run_dir / "scenarios"
     if not scenarios_dir.exists():

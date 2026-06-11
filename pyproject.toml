@@ -65,6 +65,25 @@ changelog = "https://github.com/Deltares-research/pywanda-hydra/blob/main/CHANGE
 [project.scripts]
 pywandahydra = "pywandahydra:main"
 
+[project.entry-points."pywandahydra.methodologies"]
+default = "pywandahydra.postprocessing.methodologies.default:DefaultMethodology"
+composed = "pywandahydra.postprocessing.methodologies.composed:ComposedMethodology"
+
+[project.entry-points."pywandahydra.case_steps"]
+summary_table = "pywandahydra.postprocessing.steps.summary_table:SummaryTableStep"
+route_plots = "pywandahydra.postprocessing.steps.route_plots:RoutePlotStep"
+
+[project.entry-points."pywandahydra.run_steps"]
+aggregate_tables = "pywandahydra.postprocessing.steps.aggregate_tables:AggregateTablesStep"
+merge_pdfs = "pywandahydra.postprocessing.steps.merge_pdfs:MergePdfsStep"
+
+[project.entry-points."pywandahydra.themes"]
+default = "pywandahydra.postprocessing.plotting.themes:DEFAULT_THEME"
+deltares_light = "pywandahydra.postprocessing.plotting.themes:DELTARES_LIGHT"
+
+[project.entry-points."pywandahydra.scenario_sources"]
+xls = "pywandahydra.scenarios.sources.xls:XlsScenarioSource"
+
 [build-system]
 build-backend = "uv_build"
 requires = [

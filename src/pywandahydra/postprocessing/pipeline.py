@@ -1,133 +1,47 @@
 """Post-processing pipeline — pluggable steps that run after simulation.
 
-Each post-processor is a submodule implementing the :class:`PostProcessor`
-protocol. The pipeline discovers registered steps and executes them in order.
+Each post-processor is a submodule implementing case/run step protocols.
+The pipeline resolves a methodology and executes its case-level steps.
 
 Adding a new step:
     1. Create a module under ``postprocessing/steps/``
-    2. Implement a class satisfying the :class:`PostProcessor` protocol
-    3. Register it via :func:`register_step`
+    2. Implement a class satisfying the case-step protocol
+    3. Add it to a methodology implementation
 
-Each step receives a :class:`PostProcessingContext` with everything it needs
+Each step receives a :class:`CaseContext` with everything it needs
 (cache, scenario spec, case directory, export config).
 """
 
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field
-from pathlib import Path
-from typing import Any, Protocol, runtime_checkable
+from typing import Any
 
-from ..scenarios.schema import ScenarioSpecification
-from .cache import ParquetCache
-from .export import (
-    DEFAULT_TABLE_EXPORT_PROPS,
-    build_figure_export_props,
-)
+from .context import CaseContext
 
 logger = logging.getLogger(__name__)
 
 
-@dataclass
-class PostProcessingContext:
-    """Context object passed to each post-processing step.
-
-    Provides access to cached data, scenario specification, output paths,
-    and export configuration.
-    """
-
-    cache: ParquetCache
-    scenario: ScenarioSpecification
-    case_dir: Path
-    export_figure_props: dict[str, dict[str, Any]] = field(
-        default_factory=build_figure_export_props
-    )
-    export_table_props: dict[str, dict[str, Any]] = field(
-        default_factory=lambda: dict(DEFAULT_TABLE_EXPORT_PROPS)
-    )
-
-
-@runtime_checkable
-class PostProcessor(Protocol):
-    """Protocol for a post-processing step.
-
-    Each step must declare a ``name`` and implement ``run()``.
-    Optionally implement ``applicable()`` to conditionally skip.
-    """
-
-    name: str
-
-    def applicable(self, ctx: PostProcessingContext) -> bool:
-        """Return True if this step should run for the given context."""
-        ...
-
-    def run(self, ctx: PostProcessingContext) -> None:
-        """Execute the post-processing step."""
-        ...
-
-
-# ---------------------------------------------------------------------------
-# Registry
-# ---------------------------------------------------------------------------
-
-_STEPS: list[PostProcessor] = []
-
-
-def register_step(step: PostProcessor) -> PostProcessor:
-    """Register a post-processing step in the pipeline.
-
-    Args:
-        step: An instance implementing the PostProcessor protocol.
-
-    Returns:
-        The same step (for use as a decorator target on instances).
-    """
-    _STEPS.append(step)
-    logger.debug("Registered post-processing step: %s", step.name)
-    return step
-
-
-def get_steps() -> list[PostProcessor]:
-    """Return all registered post-processing steps in order."""
-    return list(_STEPS)
-
-
-def clear_steps() -> None:
-    """Remove all registered steps (useful for testing)."""
-    _STEPS.clear()
-
-
-# ---------------------------------------------------------------------------
-# Pipeline execution
-# ---------------------------------------------------------------------------
-
-
 def run_postprocessing(
-    ctx: PostProcessingContext,
+    ctx: CaseContext,
     *,
-    methodology: str | None = None,
+    methodology_name: str,
+    methodology_params: dict[str, Any] | None = None,
 ) -> dict[str, bool]:
     """Run post-processing steps for a single case.
 
-    When *methodology* is provided, steps are sourced from the named
-    methodology plugin. Otherwise falls back to the global step registry
-    (legacy behaviour).
-
     Args:
         ctx: The post-processing context for a single case.
-        methodology: Optional methodology name. If None, uses registered steps.
+        methodology_name: Methodology name used to resolve ordered step instances.
+        methodology_params: Optional parameter dict passed to methodology ``Params``.
 
     Returns:
         Dict mapping step name → success (True/False).
     """
-    if methodology is not None:
-        from .methodologies.base import get_methodology
+    from .methodologies.base import resolve_methodology
 
-        meth = get_methodology(methodology)
-        steps = meth.get_steps(ctx)
-    else:
-        steps = list(_STEPS)
+    meth = resolve_methodology(methodology_name, methodology_params)
+    steps = meth.case_steps(ctx)
 
     results: dict[str, bool] = {}
 

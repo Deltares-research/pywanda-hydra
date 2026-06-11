@@ -27,6 +27,14 @@ from .models import ModelSpecification, RunContext
 # ---------------------------------------------------------------------------
 
 
+class MethodologySpec(BaseModel):
+    """Config wrapper for methodology name + validated parameter dict."""
+
+    model_config = ConfigDict(extra="forbid")
+    name: str = "default"
+    params: dict[str, Any] = Field(default_factory=dict)
+
+
 class ExecutionConfig(BaseModel):
     """Execution mode and worker configuration.
 
@@ -34,7 +42,7 @@ class ExecutionConfig(BaseModel):
         mode: Execution strategy.
         n_workers: Number of parallel workers (only used when mode != sequential).
         resume: Whether to skip already-completed cases.
-        methodology: Post-processing methodology name (default uses standard pipeline).
+        methodology: Post-processing methodology name + params.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -42,7 +50,15 @@ class ExecutionConfig(BaseModel):
     mode: Literal["sequential", "multiprocessing"] = "sequential"
     n_workers: int = Field(default=1, ge=1)
     resume: bool = False
-    methodology: str = "default"
+    methodology: MethodologySpec = Field(default_factory=MethodologySpec)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _coerce_methodology_str(cls, data: Any) -> Any:
+        if isinstance(data, dict) and isinstance(data.get("methodology"), str):
+            data = dict(data)
+            data["methodology"] = {"name": data["methodology"]}
+        return data
 
     @model_validator(mode="after")
     def validate_mode_workers(self) -> ExecutionConfig:
@@ -114,23 +130,23 @@ class RunConfig(BaseModel):
         default_factory=lambda: datetime.now().strftime("%Y%m%d_%H%M%S"),
         description="Unique run identifier.",
     )
-    output_root: str | Path = Field(
-        default="./runs",
+    output_root: Path = Field(
+        default=Path("./runs"),
         description="Root directory for run outputs.",
     )
     description: str | None = None
 
     execution: ExecutionConfig = Field(default_factory=ExecutionConfig)
     model: ModelSpecification
-    scenario_file: str | Path = Field(
+    scenario_file: Path = Field(
         ..., description="Path to the scenario definition file."
     )
 
-    @field_validator("output_root", "scenario_file")
+    @field_validator("output_root", "scenario_file", mode="before")
     @classmethod
-    def normalize_path(cls, v: str | Path) -> str:
+    def normalize_path(cls, v: str | Path) -> Path:
         """Normalize paths by expanding user home."""
-        return str(Path(v).expanduser()).strip()
+        return Path(str(v).strip()).expanduser()
 
 
 # ---------------------------------------------------------------------------
@@ -185,7 +201,7 @@ def validate_run_paths(config: RunConfig, *, config_dir: Path) -> None:
     Raises:
         ValueError: If any path is invalid or not accessible.
     """
-    model_path = Path(config.model.model_path)
+    model_path = config.model.model_path
     if not model_path.is_absolute():
         model_path = config_dir / model_path
 
@@ -196,19 +212,19 @@ def validate_run_paths(config: RunConfig, *, config_dir: Path) -> None:
     if not model_path.exists():
         raise ValueError(f"model.model_path does not exist: {model_path}")
 
-    wanda_bin = Path(config.model.wanda_bin)
+    wanda_bin = config.model.wanda_bin
     if not wanda_bin.is_absolute():
         wanda_bin = config_dir / wanda_bin
     if not wanda_bin.exists() or not wanda_bin.is_dir():
         raise ValueError(f"model.wanda_bin must be an existing directory: {wanda_bin}")
 
-    scenario_file = Path(config.scenario_file)
+    scenario_file = config.scenario_file
     if not scenario_file.is_absolute():
         scenario_file = config_dir / scenario_file
     if not scenario_file.exists():
         raise ValueError(f"scenario_file does not exist: {scenario_file}")
 
-    output_root = Path(config.output_root)
+    output_root = config.output_root
     if not output_root.is_absolute():
         output_root = config_dir / output_root
     output_root.mkdir(parents=True, exist_ok=True)
@@ -225,11 +241,11 @@ def build_run_context(config: RunConfig) -> RunContext:
     Returns:
         RunContext with populated fields.
     """
-    run_root = Path(config.output_root) / config.run_id
+    run_root = config.output_root / config.run_id
     return RunContext(
         run_id=config.run_id,
         timestamp=datetime.now(UTC).isoformat(),
-        root_dir=str(run_root),
+        root_dir=run_root,
         description=config.description,
     )
 

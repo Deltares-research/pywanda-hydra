@@ -1,26 +1,35 @@
-"""Default methodology — runs all registered pipeline steps.
-
-This replicates the existing behaviour: execute summary_table and
-route_plots steps in order. Serves as the baseline methodology and
-as a template for writing new ones.
-"""
+"""Default configurable methodology implementation."""
 
 from __future__ import annotations
 
-from ..pipeline import PostProcessingContext, PostProcessor
+from typing import cast
+
+from pydantic import BaseModel, ConfigDict
+
+from ..context import CaseContext, RunStepContext
+from ..protocols import CaseStep, RunStep
+from ..steps.aggregate_tables import AggregateTablesStep
+from ..steps.merge_pdfs import MergePdfsStep
 from ..steps.route_plots import RoutePlotStep
 from ..steps.summary_table import SummaryTableStep
 
 
 class DefaultMethodology:
-    """Standard post-processing: summary tables then route plots."""
+    """Standard post-processing: summary tables and route plots + run aggregation."""
 
     name = "default"
     description = "Standard post-processing pipeline (tables + route plots)."
 
-    def get_steps(self, ctx: PostProcessingContext) -> list[PostProcessor]:
-        """Return the default step sequence."""
-        return [
-            SummaryTableStep(),
-            RoutePlotStep(),
-        ]
+    class Params(BaseModel):
+        model_config = ConfigDict(extra="forbid")
+
+    def __init__(self, params: BaseModel) -> None:
+        self._p = params
+
+    def case_steps(self, ctx: CaseContext) -> list[CaseStep]:
+        del ctx
+        return cast(list[CaseStep], [SummaryTableStep(), RoutePlotStep()])
+
+    def run_steps(self, ctx: RunStepContext) -> list[RunStep]:
+        del ctx
+        return cast(list[RunStep], [AggregateTablesStep(), MergePdfsStep()])

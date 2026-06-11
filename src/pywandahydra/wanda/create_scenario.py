@@ -8,12 +8,12 @@ from pathlib import Path
 
 
 def prepare_scenario_model(
-    base_model_path: str,
+    base_model_path: Path,
     scenario_dir: str | Path,
-    readonly: bool = True,
-    *,
     scenario_name: str,
-) -> str:
+    *,
+    readonly: bool = True,
+) -> Path:
     """Scenario-specific WANDA model.
 
     Routine copies the base .wdi and .wdx files into a scenario-specific
@@ -21,7 +21,7 @@ def prepare_scenario_model(
 
     Parameters
     ----------
-    base_model_path : str
+    base_model_path : Path
         Path to the base .wdi model file.
     scenario_dir : str | Path
         Directory where the scenario model will be created.
@@ -31,7 +31,7 @@ def prepare_scenario_model(
         Name of the scenario, used to name the model files.
     """
     # Validate and prepare paths
-    base_wdi = Path(base_model_path)
+    base_wdi = base_model_path
     if base_wdi.suffix.lower() != ".wdi":
         raise ValueError(f"Expected .wdi model path, got: {base_wdi}")
 
@@ -48,7 +48,7 @@ def prepare_scenario_model(
 
     # If readonly, and .wdo exists -> skip copying
     if readonly and target_wdi.exists():
-        return str(target_wdi)
+        return target_wdi
 
     # Otherwise, remove existing files if any
     if target_wdi.exists():
@@ -61,4 +61,4 @@ def prepare_scenario_model(
     if src_wdx.exists():
         shutil.copyfile(src_wdx, target_wdx)
 
-    return str(target_wdi)
+    return target_wdi

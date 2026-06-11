@@ -1,91 +1,117 @@
-"""Methodology protocol and registry."""
+"""Methodology and post-processing step registries."""
 
 from __future__ import annotations
 
 import logging
-from typing import Protocol, runtime_checkable
+from typing import Any, cast
 
-from ..pipeline import PostProcessingContext, PostProcessor
+from pydantic import BaseModel, Field
+
+from ..protocols import CaseStep, Methodology, RunStep
 
 logger = logging.getLogger(__name__)
 
+_METHODOLOGY_CLASSES: dict[str, type[Any]] = {}
+_CASE_STEP_CLASSES: dict[str, type[Any]] = {}
+_RUN_STEP_CLASSES: dict[str, type[Any]] = {}
 
-@runtime_checkable
-class Methodology(Protocol):
-    """Protocol for a post-processing methodology.
 
-    A methodology assembles and configures a sequence of post-processing
-    steps appropriate for a specific analysis approach.
-
-    Attributes:
-        name: Unique identifier for this methodology.
-        description: Human-readable description of the methodology.
-    """
+class StepSpec(BaseModel):
+    """Declarative case/run step specification."""
 
     name: str
-    description: str
-
-    def get_steps(self, ctx: PostProcessingContext) -> list[PostProcessor]:
-        """Return the ordered list of steps for this methodology.
-
-        The methodology can inspect the context (scenario spec, cache
-        contents) to conditionally include or parameterize steps.
-
-        Args:
-            ctx: The post-processing context for the current case.
-
-        Returns:
-            Ordered list of step instances to execute.
-        """
-        ...
+    params: dict[str, Any] = Field(default_factory=dict)
 
 
-# ---------------------------------------------------------------------------
-# Registry
-# ---------------------------------------------------------------------------
-
-_METHODOLOGIES: dict[str, Methodology] = {}
-
-
-def register_methodology(methodology: Methodology) -> Methodology:
-    """Register a methodology in the global registry.
-
-    Idempotent: registering an instance under a name that already exists
-    is a no-op and returns the already-registered instance. This keeps
-    bootstrap() safe to call from multiple worker processes (spawn).
-
-    Args:
-        methodology: An instance implementing the Methodology protocol.
-
-    Returns:
-        The registered Methodology instance (existing one on duplicate).
-    """
-    existing = _METHODOLOGIES.get(methodology.name)
+def register_methodology(methodology_class: type[Any]) -> type[Any]:
+    """Register a methodology class by its declared name."""
+    existing = _METHODOLOGY_CLASSES.get(methodology_class.name)
     if existing is not None:
         return existing
-    _METHODOLOGIES[methodology.name] = methodology
-    logger.debug("Registered methodology: %s", methodology.name)
-    return methodology
+    _METHODOLOGY_CLASSES[methodology_class.name] = methodology_class
+    logger.debug("Registered methodology: %s", methodology_class.name)
+    return methodology_class
 
 
-def get_methodology(name: str) -> Methodology:
-    """Look up a registered methodology by name.
-
-    Args:
-        name: The methodology name (case-sensitive).
-
-    Returns:
-        The registered Methodology instance.
-
-    Raises:
-        KeyError: If no methodology is registered under that name.
-    """
-    if name not in _METHODOLOGIES:
-        available = sorted(_METHODOLOGIES.keys())
+def get_methodology_class(name: str) -> type[Any]:
+    """Look up a registered methodology class by name."""
+    if name not in _METHODOLOGY_CLASSES:
+        available = sorted(_METHODOLOGY_CLASSES.keys())
         raise KeyError(f"Unknown methodology: '{name}'. Available: {available}")
-    return _METHODOLOGIES[name]
+    return _METHODOLOGY_CLASSES[name]
 
 
 def list_methodologies() -> list[str]:
     """Return names of all registered methodologies."""
-    return sorted(_METHODOLOGIES.keys())
+    return sorted(_METHODOLOGY_CLASSES.keys())
+
+
+def resolve_methodology(name: str, params: dict[str, Any] | None = None) -> Methodology:
+    """Instantiate a registered methodology with validated params."""
+    cls = get_methodology_class(name)
+    validated = cls.Params.model_validate(params or {})
+    return cast(Methodology, cls(validated))
+
+
+def register_case_step(step_class: type[Any]) -> type[Any]:
+    """Register a case-level step class."""
+    existing = _CASE_STEP_CLASSES.get(step_class.name)
+    if existing is not None:
+        return existing
+    _CASE_STEP_CLASSES[step_class.name] = step_class
+    logger.debug("Registered case step: %s", step_class.name)
+    return step_class
+
+
+def register_run_step(step_class: type[Any]) -> type[Any]:
+    """Register a run-level step class."""
+    existing = _RUN_STEP_CLASSES.get(step_class.name)
+    if existing is not None:
+        return existing
+    _RUN_STEP_CLASSES[step_class.name] = step_class
+    logger.debug("Registered run step: %s", step_class.name)
+    return step_class
+
+
+def list_case_steps() -> list[str]:
+    return sorted(_CASE_STEP_CLASSES.keys())
+
+
+def list_run_steps() -> list[str]:
+    return sorted(_RUN_STEP_CLASSES.keys())
+
+
+def get_case_step_class(name: str) -> type[Any]:
+    """Look up a registered case step class by name."""
+    if name not in _CASE_STEP_CLASSES:
+        available = sorted(_CASE_STEP_CLASSES.keys())
+        raise KeyError(f"Unknown case step: '{name}'. Available: {available}")
+    return _CASE_STEP_CLASSES[name]
+
+
+def get_run_step_class(name: str) -> type[Any]:
+    """Look up a registered run step class by name."""
+    if name not in _RUN_STEP_CLASSES:
+        available = sorted(_RUN_STEP_CLASSES.keys())
+        raise KeyError(f"Unknown run step: '{name}'. Available: {available}")
+    return _RUN_STEP_CLASSES[name]
+
+
+def build_case_step(spec: StepSpec) -> CaseStep:
+    """Instantiate a registered case step from declarative StepSpec."""
+    if spec.name not in _CASE_STEP_CLASSES:
+        raise KeyError(
+            f"Unknown case step '{spec.name}'. Available: {list_case_steps()}"
+        )
+    cls = _CASE_STEP_CLASSES[spec.name]
+    params_model = cls.Params.model_validate(spec.params)
+    return cast(CaseStep, cls(params_model))
+
+
+def build_run_step(spec: StepSpec) -> RunStep:
+    """Instantiate a registered run step from declarative StepSpec."""
+    if spec.name not in _RUN_STEP_CLASSES:
+        raise KeyError(f"Unknown run step '{spec.name}'. Available: {list_run_steps()}")
+    cls = _RUN_STEP_CLASSES[spec.name]
+    params_model = cls.Params.model_validate(spec.params)
+    return cast(RunStep, cls(params_model))

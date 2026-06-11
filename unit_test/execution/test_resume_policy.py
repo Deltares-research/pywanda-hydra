@@ -16,9 +16,13 @@ class TestResumePolicy(unittest.TestCase):
     def _build_plan(
         self, *, root_dir: Path, readonly: bool, case_name: str = "case_001"
     ) -> CasePlan:
+        model_path = root_dir / "base_model.wdi"
+        if not model_path.exists():
+            model_path.write_bytes(b"model_v1")
+
         model_spec = ModelSpecification(
-            model_path=root_dir / "base_model.wdi",
-            wanda_bin=r"c:\\wanda\\bin\\",
+            model_path=model_path,
+            wanda_bin=Path(r"c:\wanda\bin"),
             base_model_name="base_model",
             readonly=readonly,
             run_steady=False,
@@ -108,3 +112,27 @@ class TestResumePolicy(unittest.TestCase):
             self.assertTrue(result["skipped"])
             self.assertEqual(result["case_id"], plan.case_id)
             self.assertEqual(result["scenario_dir"], str(plan.case_dir))
+
+    def test_config_hash_is_invariant_to_case_rename(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            plan_a = self._build_plan(
+                root_dir=tmp_path, readonly=True, case_name="case_a"
+            )
+            plan_b = self._build_plan(
+                root_dir=tmp_path, readonly=True, case_name="case_b"
+            )
+
+            self.assertEqual(plan_a.config_hash, plan_b.config_hash)
+
+    def test_config_hash_changes_on_model_mutation(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            model_path = tmp_path / "base_model.wdi"
+            model_path.write_bytes(b"model_v1")
+
+            plan_before = self._build_plan(root_dir=tmp_path, readonly=True)
+            model_path.write_bytes(b"model_v2")
+            plan_after = self._build_plan(root_dir=tmp_path, readonly=True)
+
+            self.assertNotEqual(plan_before.config_hash, plan_after.config_hash)

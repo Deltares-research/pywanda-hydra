@@ -22,8 +22,11 @@ class TestWandaAPI(unittest.TestCase):
     def setUp(self) -> None:
         """Set up a Wanda model for testing."""
         self.model_spec = ModelSpecification(
-            model_path=Path(__file__).parents[2] / "test_data" / "wanda" / "base_model.wdi",
-            wanda_bin=r"c:\Program Files (x86)\Deltares\Wanda 4.7\Bin\\",
+            model_path=Path(__file__).parents[2]
+            / "test_data"
+            / "wanda"
+            / "base_model.wdi",
+            wanda_bin=Path(r"c:\Program Files (x86)\Deltares\Wanda 4.7\Bin"),
             base_model_name="base_model",
             run_steady=False,
             run_unsteady=False,
@@ -39,22 +42,27 @@ class TestWandaAPI(unittest.TestCase):
         )
 
         prepare_scenario_model(
-            base_model_path=str(self.model_spec.model_path),
-            scenario_dir=Path(__file__).parents[2] / "test_data" / "wanda" / "test_scenario",
+            base_model_path=self.model_spec.model_path,
+            scenario_dir=Path(__file__).parents[2]
+            / "test_data"
+            / "wanda"
+            / "test_scenario",
             scenario_name="test_scenario",
             readonly=self.model_spec.readonly,
         )
 
     def get_wanda_session(self):
         """Helper method to create a Wanda session for testing."""
-        return wanda_session(spec=self.model_spec, model_path=str(self.scenario_model_path))
+        return wanda_session(spec=self.model_spec, model_path=self.scenario_model_path)
 
     def test_change_general(self):
         """Test applying a general parameter change."""
         # Arrange
         with self.get_wanda_session() as model:
             # Act
-            change = ParameterChange(component="general", property="Time step", value=15.0)
+            change = ParameterChange(
+                component="general", property="Time step", value=15.0
+            )
             apply_parameter_change(model, change)
             time_step_prop = model.get_property("Time step")
 
@@ -83,7 +91,9 @@ class TestWandaAPI(unittest.TestCase):
             items = find_items_with_keyword(model, keyword)
 
             # Assert
-            self.assertListEqual([item.name for item in items], ["PUMP P1", "PUMP P2", "PUMP P3"])
+            self.assertListEqual(
+                [item.name for item in items], ["PUMP P1", "PUMP P2", "PUMP P3"]
+            )
             self.assertListEqual([item.type for item in items], ["component"] * 3)
 
     def test_resolve_items(self):
@@ -98,7 +108,14 @@ class TestWandaAPI(unittest.TestCase):
                 resolved_items.extend(resolve_items(model, identifier))
 
             # Assert
-            expected_names = ["PUMP P2", "H-node G", "Signal A.c", "PUMP P1", "PUMP P2", "PUMP P3"]
+            expected_names = [
+                "PUMP P2",
+                "H-node G",
+                "Signal A.c",
+                "PUMP P1",
+                "PUMP P2",
+                "PUMP P3",
+            ]
             expected_types = [
                 "component",
                 "node",

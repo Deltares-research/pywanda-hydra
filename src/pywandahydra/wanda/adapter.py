@@ -2,11 +2,16 @@
 
 from __future__ import annotations
 
-from typing import Any, Protocol, runtime_checkable
+from contextlib import AbstractContextManager
+from pathlib import Path
+from typing import Any, Protocol, TypeAlias, runtime_checkable
 
 import numpy as np
 
+from ..config.models import ModelSpecification
 from ..scenarios.schema import ParameterChange
+
+ModelHandle: TypeAlias = Any
 
 
 @runtime_checkable
@@ -17,40 +22,52 @@ class WandaAdapter(Protocol):
     execution layer can be tested without a real WANDA installation.
     """
 
-    def open(self, model_path: str, wanda_bin: str) -> Any:
-        """Open a WANDA model and return an opaque handle.
+    def session(
+        self,
+        spec: ModelSpecification,
+        model_path: Path,
+    ) -> AbstractContextManager[ModelHandle]:
+        """Open a WANDA model session and return a context manager.
 
         Args:
-            model_path: Path to the .wdi model file.
-            wanda_bin: Path to the WANDA binaries directory.
+            spec: Model specification with run settings and wanda path.
+            model_path: Path to the scenario-specific .wdi file.
 
         Returns:
-            An opaque model handle used by other adapter methods.
+            Context manager yielding an opaque model handle.
         """
         ...
 
-    def close(self, handle: Any) -> None:
-        """Close a previously opened WANDA model.
+    def prepare_scenario_model(
+        self,
+        base_model_path: Path,
+        scenario_dir: Path,
+        scenario_name: str,
+        *,
+        readonly: bool,
+    ) -> Path:
+        """Create or reuse a scenario-specific model file.
 
         Args:
-            handle: The model handle returned by ``open``.
+            base_model_path: Path to the base model .wdi.
+            scenario_dir: Case output directory.
+            scenario_name: Scenario name.
+            readonly: Whether to reuse existing files.
+
+        Returns:
+            Path to the scenario model .wdi file.
         """
         ...
 
-    def save_model_input(self, handle: Any) -> None:
+    def apply(self, handle: Any, change: ParameterChange) -> None:
+        """Apply a single parameter change to the open model."""
+        ...
+
+    def save_input(self, handle: Any) -> None:
         """Save model input before running.
 
         Args:
             handle: The model handle.
-        """
-        ...
-
-    def apply_parameter_change(self, handle: Any, change: ParameterChange) -> None:
-        """Apply a single parameter change to the open model.
-
-        Args:
-            handle: The model handle.
-            change: The parameter change to apply.
         """
         ...
 
@@ -70,7 +87,7 @@ class WandaAdapter(Protocol):
         """
         ...
 
-    def get_simulation_time(self, handle: Any) -> float:
+    def simulation_time(self, handle: Any) -> float:
         """Get the simulation time from model properties.
 
         Args:

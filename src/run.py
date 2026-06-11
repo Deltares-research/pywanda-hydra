@@ -23,7 +23,7 @@ def main() -> None:
     # Model specification
     model_spec = ModelSpecification(
         model_path=run_dir / "model" / "base_model.wdi",
-        wanda_bin=r"c:\Program Files (x86)\Deltares\Wanda 4.8\Bin64\\",
+        wanda_bin=Path(r"c:\Program Files (x86)\Deltares\Wanda 4.8\Bin64"),
         base_model_name="base_model",
         run_steady=True,
         run_unsteady=True,
@@ -34,7 +34,7 @@ def main() -> None:
     run_id = "eval_run_001"
     ctx = RunContext(
         run_id=run_id,
-        root_dir=str(run_dir),
+        root_dir=run_dir,
         timestamp=datetime.now().strftime("%Y%m%d_%H%M%S"),
     )
 

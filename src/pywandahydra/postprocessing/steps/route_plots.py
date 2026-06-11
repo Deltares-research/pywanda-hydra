@@ -6,11 +6,10 @@ import logging
 from datetime import date, datetime
 from typing import Any
 
-import matplotlib.pyplot as plt
-from matplotlib.backends.backend_pdf import PdfPages
+from pydantic import BaseModel, ConfigDict
 
-from ..pipeline import PostProcessingContext, register_step
-from ..plots.renderer import PlotTheme, ReportMeta, render_route_report_pages
+from ..context import CaseContext
+from ..plotting.renderer import PlotTheme, ReportMeta, render_route_report_pages
 
 logger = logging.getLogger(__name__)
 
@@ -20,15 +19,24 @@ class RoutePlotStep:
 
     name = "route_plots"
 
-    def applicable(self, ctx: PostProcessingContext) -> bool:
+    class Params(BaseModel):
+        model_config = ConfigDict(extra="forbid")
+
+    def __init__(self, params: Params | None = None) -> None:
+        self._p = params or self.Params()
+
+    def applicable(self, ctx: CaseContext) -> bool:
         """Run only when route plots are defined and this step is enabled."""
         pp = ctx.scenario.post_processing
         if pp.enabled_steps and self.name not in pp.enabled_steps:
             return False
         return len(pp.routes) > 0
 
-    def run(self, ctx: PostProcessingContext) -> None:
+    def run(self, ctx: CaseContext) -> None:
         """Render all route plots to one consolidated per-case PDF."""
+        import matplotlib.pyplot as plt
+        from matplotlib.backends.backend_pdf import PdfPages
+
         figures_dir = ctx.case_dir / "figures"
         figures_dir.mkdir(parents=True, exist_ok=True)
         case_id = ctx.case_dir.name
@@ -64,7 +72,7 @@ class RoutePlotStep:
         )
 
 
-def _build_report_meta(ctx: PostProcessingContext) -> ReportMeta:
+def _build_report_meta(ctx: CaseContext) -> ReportMeta:
     """Create report metadata from scenario and analysis metadata."""
     scen_meta = ctx.scenario.meta
     analysis_meta = ctx.scenario.analysis_meta
@@ -108,7 +116,3 @@ def _format_date(value: Any) -> str:
         except ValueError:
             continue
     return text
-
-
-# Auto-register on import
-register_step(RoutePlotStep())

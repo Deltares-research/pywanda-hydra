@@ -2,13 +2,18 @@
 
 from __future__ import annotations
 
+from contextlib import AbstractContextManager
+from pathlib import Path
 from typing import Any
 
 import numpy as np
 import pywanda
 
+from ..config.models import ModelSpecification
 from ..scenarios.schema import ParameterChange
 from .api import apply_parameter_change, get_item, resolve_items, resolve_route_pipes
+from .create_scenario import prepare_scenario_model
+from .session import wanda_session
 
 
 class PywandaAdapter:
@@ -16,6 +21,42 @@ class PywandaAdapter:
 
     Implements the :class:`WandaAdapter` protocol.
     """
+
+    def session(
+        self,
+        spec: ModelSpecification,
+        model_path: Path,
+    ) -> AbstractContextManager[pywanda.WandaModel]:
+        """Open a WANDA model session context manager."""
+        return wanda_session(spec, model_path=model_path)
+
+    def prepare_scenario_model(
+        self,
+        base_model_path: Path,
+        scenario_dir: Path,
+        scenario_name: str,
+        *,
+        readonly: bool,
+    ) -> Path:
+        """Prepare scenario-specific model files and return model path."""
+        return prepare_scenario_model(
+            base_model_path,
+            scenario_dir,
+            scenario_name,
+            readonly=readonly,
+        )
+
+    def apply(self, handle: pywanda.WandaModel, change: ParameterChange) -> None:
+        """Apply a parameter change."""
+        apply_parameter_change(handle, change)
+
+    def save_input(self, handle: pywanda.WandaModel) -> None:
+        """Save model input before running."""
+        handle.save_model_input()
+
+    def simulation_time(self, handle: pywanda.WandaModel) -> float:
+        """Get simulation time from model properties."""
+        return float(handle.get_property("Simulation time").get_scalar_float())
 
     @staticmethod
     def _get_item_by_name(handle: pywanda.WandaModel, item_name: str) -> Any:
