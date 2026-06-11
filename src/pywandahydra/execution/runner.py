@@ -58,6 +58,7 @@ def run(
     mode: Literal["sequential", "multiprocessing"] = "sequential",
     persist_manifest: bool = True,
     resume: bool = False,
+    verbose: bool = False,
     methodology_name: str = "default",
     methodology_params: dict[str, Any] | None = None,
     extractors: list[dict[str, Any]] | None = None,
@@ -77,6 +78,7 @@ def run(
         mode: Execution mode used to select sequential vs multiprocessing.
         persist_manifest: Write run-level manifest/log file.
         resume: Skip already-completed cases with matching config hash.
+        verbose: Enable detailed logging during execution.
         methodology_name: Post-processing methodology name.
         methodology_params: Post-processing methodology parameters.
         extractors: List of custom extractor specs to run during model execution.
@@ -86,6 +88,12 @@ def run(
         Aggregated RunResult.
     """
     run_root = Path(ctx.root_dir)
+
+    # Configure logging level based on verbose mode
+    if verbose:
+        logging.getLogger("pywandahydra").setLevel(logging.DEBUG)
+        logger.debug("Verbose logging enabled for execution")
+
     bootstrap_methodologies()
     methodology = resolve_methodology(methodology_name, methodology_params)
 

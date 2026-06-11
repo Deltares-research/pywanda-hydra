@@ -20,6 +20,7 @@ from typing import Any, Literal
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from ..scenarios.schema import ScenarioSpecification
 from .models import ModelSpecification, RunContext
 
 # ---------------------------------------------------------------------------
@@ -44,6 +45,7 @@ class ExecutionConfig(BaseModel):
         resume: Whether to skip already-completed cases.
         methodology: Post-processing methodology name + params.
         extractors: List of custom extractors to run during model execution.
+        verbose: Enable detailed logging during execution (default False).
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -51,6 +53,7 @@ class ExecutionConfig(BaseModel):
     mode: Literal["sequential", "multiprocessing"] = "sequential"
     n_workers: int = Field(default=1, ge=1)
     resume: bool = False
+    verbose: bool = False
     methodology: MethodologySpec = Field(default_factory=MethodologySpec)
     extractors: list[dict[str, Any]] = Field(
         default_factory=list,
@@ -117,6 +120,18 @@ class Provenance(BaseModel):
 # ---------------------------------------------------------------------------
 
 
+class PostProcessingRunConfig(BaseModel):
+    """Run-level post-processing overrides applied to every scenario.
+
+    Currently only ``theme`` is supported; when set, it overrides the per-scenario
+    theme for all scenarios in the run.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    theme: str | None = None
+
+
 class RunConfig(BaseModel):
     """Top-level run configuration combining all settings.
 
@@ -127,6 +142,7 @@ class RunConfig(BaseModel):
         execution: Execution mode and parallelism settings.
         model: WANDA model specification.
         scenario_file: Path to the scenario definition file (XLS).
+        post_processing: Run-level post-processing overrides (e.g. theme).
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -145,6 +161,9 @@ class RunConfig(BaseModel):
     model: ModelSpecification
     scenario_file: Path = Field(
         ..., description="Path to the scenario definition file."
+    )
+    post_processing: PostProcessingRunConfig = Field(
+        default_factory=PostProcessingRunConfig
     )
 
     @field_validator("output_root", "scenario_file", mode="before")
@@ -199,6 +218,8 @@ def load_run_config(path: Path | str) -> RunConfig:
 def validate_run_paths(config: RunConfig, *, config_dir: Path) -> None:
     """Validate runtime-critical paths before executing a run.
 
+    Also resolves relative paths to absolute paths based on config_dir.
+
     Args:
         config: Validated run configuration.
         config_dir: Directory that contains the run config file.
@@ -236,6 +257,36 @@ def validate_run_paths(config: RunConfig, *, config_dir: Path) -> None:
     if not os.access(output_root, os.W_OK):
         raise ValueError(f"output_root is not writable: {output_root}")
 
+    # Update config object with absolute paths
+    config.model.model_path = model_path
+    config.model.wanda_bin = wanda_bin
+    config.scenario_file = scenario_file
+    config.output_root = output_root
+
+
+def apply_post_processing_overrides(
+    config: RunConfig, scenarios: list[ScenarioSpecification]
+) -> None:
+    """Apply run-level post-processing overrides in place.
+
+    Validates the theme against the registered theme registry and overrides
+    each scenario's per-scenario theme when a top-level theme is configured.
+    """
+    theme_name = config.post_processing.theme
+    if theme_name is None:
+        return
+
+    from ..postprocessing.plotting.themes import list_themes
+
+    known = list_themes()
+    if theme_name not in known:
+        raise ValueError(
+            f"post_processing.theme '{theme_name}' is not registered. "
+            f"Known themes: {known}"
+        )
+    for scenario in scenarios:
+        scenario.post_processing.theme = theme_name
+
 
 def build_run_context(config: RunConfig) -> RunContext:
     """Build a RunContext from a RunConfig.
@@ -249,7 +300,7 @@ def build_run_context(config: RunConfig) -> RunContext:
     run_root = config.output_root / config.run_id
     return RunContext(
         run_id=config.run_id,
-        timestamp=datetime.now(UTC).isoformat(),
+        timestamp=datetime.now(UTC).strftime("%Y-%m-%d_%H-%M"),
         root_dir=run_root,
         description=config.description,
     )

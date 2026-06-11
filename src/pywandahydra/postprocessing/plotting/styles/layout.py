@@ -49,6 +49,7 @@ class PageMetadata(BaseModel):
 
     # Rendering options
     fontsize: int = 8
+    font_family: str = "Arial"  # Deltares house style
 
     @computed_field
     def effective_date(self) -> datetime:
@@ -146,6 +147,7 @@ def draw_layout(fig: Figure, meta: PageMetadata) -> None:
         ha="left",
         color="black",
         fontsize=meta.fontsize,
+        fontfamily=meta.font_family,
     )
 
     fig.text(
@@ -156,6 +158,7 @@ def draw_layout(fig: Figure, meta: PageMetadata) -> None:
         ha="center",
         color="black",
         fontsize=meta.fontsize,
+        fontfamily=meta.font_family,
     )
 
     fig.text(
@@ -166,6 +169,7 @@ def draw_layout(fig: Figure, meta: PageMetadata) -> None:
         ha="center",
         color="black",
         fontsize=meta.fontsize,
+        fontfamily=meta.font_family,
     )
 
     fig.text(
@@ -176,6 +180,7 @@ def draw_layout(fig: Figure, meta: PageMetadata) -> None:
         ha="center",
         color="black",
         fontsize=meta.fontsize,
+        fontfamily=meta.font_family,
     )
 
     # Date, figure name, software version
@@ -187,6 +192,7 @@ def draw_layout(fig: Figure, meta: PageMetadata) -> None:
         ha="center",
         color="black",
         fontsize=meta.fontsize,
+        fontfamily=meta.font_family,
     )
 
     fig.text(
@@ -197,6 +203,7 @@ def draw_layout(fig: Figure, meta: PageMetadata) -> None:
         ha="center",
         color="black",
         fontsize=meta.fontsize,
+        fontfamily=meta.font_family,
     )
 
     fig.text(
@@ -207,6 +214,7 @@ def draw_layout(fig: Figure, meta: PageMetadata) -> None:
         ha="center",
         color="black",
         fontsize=meta.fontsize,
+        fontfamily=meta.font_family,
     )
 
     # Watermark image (logo)

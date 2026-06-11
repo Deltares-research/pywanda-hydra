@@ -39,12 +39,15 @@ def main() -> None:
     )
 
     # Execute all scenarios (sequential, with resume support)
+    # Set verbose=True to enable detailed execution logging (for debugging)
+    print(f"Running {len(scenarios)} scenarios with run ID '{run_id}'...")
     result = run(
         model=model_spec,
         ctx=ctx,
         scenarios=scenarios,
         n_workers=1,
         resume=True,
+        verbose=False,  # Set to True for detailed execution logs
     )
 
     print(

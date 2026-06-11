@@ -18,6 +18,8 @@ import time
 from importlib import import_module
 from typing import Any, cast
 
+from filelock import Timeout
+
 from ..execution.case_plan import CasePlan
 from ..execution.journal import CaseJournal, _now_iso, resume_decision
 from ..postprocessing.cache import ParquetCache
@@ -27,6 +29,7 @@ from ..postprocessing.extractors import bootstrap as bootstrap_extractors
 from ..postprocessing.extractors import resolve_extractor
 from ..postprocessing.methodologies import bootstrap as bootstrap_methodologies
 from ..postprocessing.pipeline import run_postprocessing
+from ..postprocessing.plotting.themes import get_theme
 from ..wanda.adapter import WandaAdapter
 
 logger = logging.getLogger(__name__)
@@ -66,6 +69,32 @@ def run_one_case(plan: CasePlan) -> dict[str, Any]:
     bootstrap_methodologies()
     bootstrap_extractors()
 
+    # Hold the case lock for the entire execution so two processes can never
+    # work the same case directory concurrently — a second WANDA session on
+    # the same model files blocks indefinitely inside pywanda.WandaModel.
+    # FileLock is reentrant, so nested `with journal:` transitions still work.
+    try:
+        journal.acquire()
+    except Timeout:
+        error_msg = (
+            "Case directory is locked by another process — a previous or "
+            "concurrent run may still be active on this case."
+        )
+        logger.error("Case %s: %s", plan.case_id, error_msg)
+        return {
+            "case_id": plan.case_id,
+            "success": False,
+            "error": error_msg,
+            "scenario_dir": str(plan.case_dir),
+        }
+    try:
+        return _execute_case(plan, journal)
+    finally:
+        journal.release()
+
+
+def _execute_case(plan: CasePlan, journal: CaseJournal) -> dict[str, Any]:
+    """Execute the case body. The caller must hold the case lock."""
     # --- Check idempotency using shared resume policy ---
     decision = resume_decision(
         journal=journal,
@@ -92,25 +121,49 @@ def run_one_case(plan: CasePlan) -> dict[str, Any]:
         )
 
     start_time = time.perf_counter()
+    logger.info("Case %s: Loading adapter...", plan.case_id)
     adapter = _load_adapter(plan)
+    logger.info("Case %s: Adapter loaded successfully", plan.case_id)
 
     try:
         # --- Prepare scenario model copy ---
+        logger.info(
+            "Case %s: Preparing scenario model from %s",
+            plan.case_id,
+            plan.model_spec.model_path,
+        )
         scenario_model_path = adapter.prepare_scenario_model(
             plan.model_spec.model_path,
             plan.case_dir,
             plan.scenario.meta.name,
             readonly=plan.model_spec.readonly,
         )
+        logger.info("Case %s: Model prepared at %s", plan.case_id, scenario_model_path)
         journal.event("model_prepared", path=scenario_model_path)
 
         # --- Open WANDA session (single open per case) ---
+        logger.info("Case %s: Opening WANDA session...", plan.case_id)
+        logger.info(
+            "Case %s: This may take several seconds while WANDA initializes",
+            plan.case_id,
+        )
         with adapter.session(plan.model_spec, scenario_model_path) as model:
+            logger.info("Case %s: WANDA session opened successfully", plan.case_id)
             # Apply global overrides
+            logger.info(
+                "Case %s: Applying %d global overrides",
+                plan.case_id,
+                len(plan.model_spec.global_overrides),
+            )
             for change in plan.model_spec.global_overrides:
                 adapter.apply(model, change)
 
             # Apply scenario-specific parameter changes
+            logger.info(
+                "Case %s: Applying %d scenario parameters",
+                plan.case_id,
+                len(plan.scenario.parameters),
+            )
             for change in plan.scenario.parameters:
                 adapter.apply(model, change)
 
@@ -121,20 +174,33 @@ def run_one_case(plan: CasePlan) -> dict[str, Any]:
             )
 
             # Save and run
+            logger.info("Case %s: Saving model input", plan.case_id)
             adapter.save_input(model)
 
             if plan.model_spec.run_steady:
+                logger.info(
+                    "Case %s: Starting steady-state simulation...", plan.case_id
+                )
                 adapter.run_steady(model)
+                logger.info("Case %s: Steady-state simulation completed", plan.case_id)
                 journal.event("steady_done")
 
             if plan.model_spec.run_unsteady:
+                logger.info("Case %s: Checking simulation time", plan.case_id)
                 sim_time = adapter.simulation_time(model)
+                logger.info("Case %s: Simulation time = %s", plan.case_id, sim_time)
                 if sim_time > 0:
+                    logger.info(
+                        "Case %s: Starting unsteady simulation...", plan.case_id
+                    )
                     adapter.run_unsteady(model)
+                    logger.info("Case %s: Unsteady simulation completed", plan.case_id)
                     journal.event("unsteady_done")
 
             # --- Extract results while model is open (single pass) ---
+            logger.info("Case %s: Extracting results...", plan.case_id)
             extracted = extract_all(model, plan.scenario, adapter)
+            logger.info("Case %s: Extraction completed", plan.case_id)
             journal.event(
                 "extracted",
                 has_components=not extracted["components"].empty,
@@ -144,6 +210,11 @@ def run_one_case(plan: CasePlan) -> dict[str, Any]:
             # --- Run custom extractors while model is open ---
             custom_extracted: dict[str, Any] = {}
             cache = ParquetCache(plan.case_dir)
+            logger.info(
+                "Case %s: Running %d custom extractors",
+                plan.case_id,
+                len(plan.extractors),
+            )
             for extractor_spec in plan.extractors:
                 extractor_name = extractor_spec.get("name")
                 extractor_params = extractor_spec.get("params", {})
@@ -187,17 +258,28 @@ def run_one_case(plan: CasePlan) -> dict[str, Any]:
                     )
 
         # --- Cache extracted data (standard + custom) to Parquet ---
+        logger.info("Case %s: WANDA session closed, writing cache...", plan.case_id)
         cache = ParquetCache(plan.case_dir)
         artefacts = cache.write(extracted)
         custom_artefacts = cache.write_custom(custom_extracted)
         artefacts.update(custom_artefacts)
+        logger.info(
+            "Case %s: Cache written with %d artefacts", plan.case_id, len(artefacts)
+        )
         journal.event("cached", artefacts=artefacts)
 
         # --- Post-processing: run methodology-driven steps ---
+        logger.info(
+            "Case %s: Starting post-processing (%s)...",
+            plan.case_id,
+            plan.methodology_name,
+        )
+        theme = get_theme(plan.scenario.post_processing.theme)
         pp_ctx = CaseContext(
             cache=cache,
             scenario=plan.scenario,
             case_dir=plan.case_dir,
+            theme=theme,
         )
         with journal:
             journal.transition("RUNNING", postprocess_status="RUNNING")
@@ -205,6 +287,11 @@ def run_one_case(plan: CasePlan) -> dict[str, Any]:
             pp_ctx,
             methodology_name=plan.methodology_name,
             methodology_params=plan.methodology_params,
+        )
+        logger.info(
+            "Case %s: Post-processing completed with results: %s",
+            plan.case_id,
+            pp_results,
         )
 
         pp_success = all(pp_results.values())

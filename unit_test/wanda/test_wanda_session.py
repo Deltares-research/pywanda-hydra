@@ -4,6 +4,7 @@ import unittest
 from pathlib import Path
 
 from pywandahydra.config.models import ModelSpecification
+from pywandahydra.wanda.locate import find_wanda_bin
 from pywandahydra.wanda.session import wanda_session
 
 
@@ -12,12 +13,16 @@ class TestWandaSession(unittest.TestCase):
 
     def setUp(self) -> None:
         """Set up a Wanda model for testing."""
+        try:
+            wanda_bin = find_wanda_bin()
+        except FileNotFoundError as exc:
+            self.skipTest(f"WANDA not available: {exc}")
         self.model_spec = ModelSpecification(
             model_path=Path(__file__).parents[2]
             / "test_data"
             / "wanda"
             / "base_model.wdi",
-            wanda_bin=Path(r"c:\Program Files (x86)\Deltares\Wanda 4.7\Bin"),
+            wanda_bin=wanda_bin,
             base_model_name="base_model",
             run_steady=False,
             run_unsteady=False,

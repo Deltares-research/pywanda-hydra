@@ -547,9 +547,9 @@ class RoutePlotSpecification(BaseModel):
 class PostProcessingConfig(BaseModel):
     """Typed post-processing configuration attached to each scenario.
 
-    Groups all post-processing inputs (table exports, route plots) and the
-    optional allow-list of step names to run. An empty ``enabled_steps``
-    means "run every applicable registered step".
+    Groups all post-processing inputs (table exports, route plots), the
+    optional allow-list of step names to run, and plot theme selection.
+    An empty ``enabled_steps`` means "run every applicable registered step".
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -558,6 +558,8 @@ class PostProcessingConfig(BaseModel):
     routes: list[RoutePlotSpecification] = Field(default_factory=list)
     # Allow-list of post-processing step names; empty = all applicable steps.
     enabled_steps: list[str] = Field(default_factory=list)
+    # Plot theme name (e.g., 'default', 'deltares_light'). Defaults to 'default'.
+    theme: str = "default"
 
 
 # Resolve the forward reference used on ScenarioSpecification.post_processing.

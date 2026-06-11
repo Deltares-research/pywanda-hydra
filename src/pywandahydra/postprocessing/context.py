@@ -10,6 +10,7 @@ from ..scenarios.schema import ScenarioSpecification
 from ..wanda.adapter import WandaAdapter
 from .cache import ParquetCache
 from .export import DEFAULT_TABLE_EXPORT_PROPS, build_figure_export_props
+from .plotting.renderer import PlotTheme
 
 
 @dataclass(frozen=True)
@@ -50,6 +51,7 @@ class CaseContext:
     cache: ParquetCache
     scenario: ScenarioSpecification
     case_dir: Path
+    theme: PlotTheme = field(default_factory=PlotTheme)
     export_figure_props: dict[str, dict[str, Any]] = field(
         default_factory=build_figure_export_props
     )

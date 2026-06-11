@@ -49,12 +49,12 @@ class PlotTheme:
     """Styling and layout knobs for report pages."""
 
     figure_size: tuple[float, float] = (8.27, 11.69)  # A4 portrait
-    min_color: str = "k"
+    min_color: str = "#000000"  # Zwart (Deltares house style)
     min_linestyle: str = "-."
-    max_color: str = "#c82536"
+    max_color: str = "#FF960D"  # Academy orange (Deltares house style)
     max_linestyle: str = "--"
-    current_color: str = "#2f7ea8"
-    elevation_color: str = "#8fb59a"
+    current_color: str = "#0D38E0"  # Blauw (Deltares house style)
+    elevation_color: str = "#00CC96"  # Groen (Deltares house style)
     elevation_linewidth: float = 2.0
     elevation_alpha: float = 0.40
     envelope_alpha: float = 0.08
@@ -64,6 +64,11 @@ class PlotTheme:
     legend_fontsize: int = 12
     footer_fontsize: int = 8
     logo_alpha: float = 0.30
+
+    # Font families for text elements (Deltares house style: Arial/Helvetica)
+    title_font: str = "Arial"
+    legend_font: str = "Arial"
+    footer_font: str = "Arial"
 
     # Normalized page layout coordinates (0..1)
     frame_x0: float = 0.04
@@ -258,10 +263,10 @@ def _plot_route_series(
         ax.set_xlabel("S-distance (m)")
 
     title = spec.title or f"{spec.route_id}_{spec.property}"
-    ax.set_title(title, fontsize=theme.axis_title_size)
+    ax.set_title(title, fontsize=theme.axis_title_size, fontfamily=theme.title_font)
     ax.grid(True, linestyle=theme.grid_linestyle, alpha=theme.grid_alpha)
 
-    _annotate_route_endpoints(ax, route_data)
+    _annotate_route_endpoints(ax, route_data, theme)
 
     box = ax.get_position()
     shrink = min(0.035, box.height * 0.20)
@@ -274,6 +279,7 @@ def _plot_route_series(
         ncol=5,
         frameon=True,
         fontsize=theme.legend_fontsize,
+        prop={"family": theme.legend_font},
     )
 
 
@@ -308,8 +314,12 @@ def _extract_time_zero_series(route_data: dict[str, pd.DataFrame]) -> pd.Series 
     return ser.groupby(level=0).mean().sort_index()
 
 
-def _annotate_route_endpoints(ax: Axes, route_data: dict[str, pd.DataFrame]) -> None:
+def _annotate_route_endpoints(
+    ax: Axes, route_data: dict[str, pd.DataFrame], theme: PlotTheme | None = None
+) -> None:
     """Annotate start/end component labels from cached timeseries columns."""
+    if theme is None:
+        theme = PlotTheme()
     ts = route_data.get("timeseries")
     if (
         ts is None
@@ -340,8 +350,8 @@ def _annotate_route_endpoints(ax: Axes, route_data: dict[str, pd.DataFrame]) -> 
     ymin, ymax = ax.get_ylim()
     stepx = (xmax - xmin) * 0.05
     stepy = (ymax - ymin) * 0.05
-    ax.text(xmin + stepx, ymin + stepy, start_label)
-    ax.text(xmax - 3 * stepx, ymin + stepy, end_label)
+    ax.text(xmin + stepx, ymin + stepy, start_label, fontfamily=theme.title_font)
+    ax.text(xmax - 3 * stepx, ymin + stepy, end_label, fontfamily=theme.title_font)
 
 
 def _extract_profile_series(
@@ -410,6 +420,7 @@ def _draw_report_frame(fig: Figure, meta: ReportMeta, theme: PlotTheme) -> None:
         ha="left",
         color="black",
         fontsize=theme.footer_fontsize,
+        fontfamily=theme.footer_font,
     )
     fig.text(
         (v1 + (v2 - v1) / 2.0),
@@ -419,6 +430,7 @@ def _draw_report_frame(fig: Figure, meta: ReportMeta, theme: PlotTheme) -> None:
         ha="center",
         color="black",
         fontsize=theme.footer_fontsize,
+        fontfamily=theme.footer_font,
     )
     fig.text(
         (v1 + (v2 - v1) / 2.0),
@@ -428,6 +440,7 @@ def _draw_report_frame(fig: Figure, meta: ReportMeta, theme: PlotTheme) -> None:
         ha="center",
         color="black",
         fontsize=theme.footer_fontsize,
+        fontfamily=theme.footer_font,
     )
     fig.text(
         (v2 + (v3 - v2) / 2.0),
@@ -437,6 +450,7 @@ def _draw_report_frame(fig: Figure, meta: ReportMeta, theme: PlotTheme) -> None:
         ha="center",
         color="black",
         fontsize=theme.footer_fontsize,
+        fontfamily=theme.footer_font,
     )
     fig.text(
         (v2 + (v3 - v2) / 2.0),
@@ -446,6 +460,7 @@ def _draw_report_frame(fig: Figure, meta: ReportMeta, theme: PlotTheme) -> None:
         ha="center",
         color="black",
         fontsize=theme.footer_fontsize,
+        fontfamily=theme.footer_font,
     )
     fig.text(
         (v1 + (v3 - v1) / 2.0),
@@ -455,6 +470,7 @@ def _draw_report_frame(fig: Figure, meta: ReportMeta, theme: PlotTheme) -> None:
         ha="center",
         color="black",
         fontsize=theme.footer_fontsize,
+        fontfamily=theme.footer_font,
     )
 
     imgax = fig.add_axes((v1, h0, v3 - v1, h3 - h0), zorder=-10)
@@ -474,6 +490,7 @@ def render_route_plot(
     output_dir: Path | None = None,
     filename: str | None = None,
     export_props: dict[str, dict[str, Any]] | None = None,
+    theme: PlotTheme | None = None,
 ) -> Figure | None:
     """Render a route plot from cached data.
 
@@ -490,6 +507,9 @@ def render_route_plot(
     Returns:
         The matplotlib Figure, or None if no data is available.
     """
+    if theme is None:
+        theme = PlotTheme()
+
     title = spec.title or f"{spec.route_id}_{spec.property}"
     route_data = cache.read_route(title)
     envelope = route_data.get("envelope")
@@ -518,8 +538,8 @@ def render_route_plot(
     if not spec.x_axis.label:
         ax.set_xlabel("s_location [m]")
 
-    ax.set_title(title)
-    ax.legend(loc="best", fontsize=8)
+    ax.set_title(title, fontfamily=theme.title_font)
+    ax.legend(loc="best", fontsize=8, prop={"family": theme.legend_font})
     ax.grid(True, alpha=0.3)
     fig.tight_layout()
 
@@ -546,6 +566,7 @@ def render_time_series_plot(
     output_dir: Path | None = None,
     filename: str | None = None,
     export_props: dict[str, dict[str, Any]] | None = None,
+    theme: PlotTheme | None = None,
 ) -> Figure | None:
     """Render a time-series plot from cached component data.
 
@@ -562,10 +583,14 @@ def render_time_series_plot(
             If None, figure is returned but not saved.
         filename: Output filename stem. Defaults to a safe title-based stem.
         export_props: Per-format save options. Defaults to PNG + SVG.
+        theme: PlotTheme instance for styling. Defaults to PlotTheme().
 
     Returns:
         The matplotlib Figure, or None if no data is available.
     """
+    if theme is None:
+        theme = PlotTheme()
+
     df = cache.read_components()
     if df.empty:
         logger.warning("No cached component data — skipping time series render.")
@@ -610,8 +635,8 @@ def render_time_series_plot(
     if y_axis:
         _apply_axis_spec(ax, y_axis, axis="y")
 
-    ax.set_title(title or f"{property_name}")
-    ax.legend(loc="best", fontsize=8)
+    ax.set_title(title or f"{property_name}", fontfamily=theme.title_font)
+    ax.legend(loc="best", fontsize=8, prop={"family": theme.legend_font})
     ax.grid(True, alpha=0.3)
     fig.tight_layout()
 

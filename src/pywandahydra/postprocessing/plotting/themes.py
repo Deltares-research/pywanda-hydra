@@ -10,7 +10,15 @@ from .renderer import PlotTheme
 logger = logging.getLogger(__name__)
 
 DEFAULT_THEME = PlotTheme()
-DELTARES_LIGHT = PlotTheme()
+# Deltares light theme: uses lighter colors and Deltares house style
+DELTARES_LIGHT = PlotTheme(
+    min_color="#000000",  # Zwart
+    max_color="#FF960D",  # Academy orange (for high values - warning color)
+    current_color="#0D38E0",  # Blauw (for current state)
+    elevation_color="#00E6A1",  # Lichtgroen (lighter for visibility)
+    envelope_alpha=0.15,  # Slightly more visible
+    logo_alpha=0.20,  # Slightly more visible
+)
 
 _THEMES: dict[str, PlotTheme] = {}
 
@@ -50,7 +58,9 @@ def bootstrap() -> None:
                 else:
                     raise TypeError("Callable theme plugin must return PlotTheme")
             else:
-                raise TypeError("Theme plugin must be PlotTheme or callable returning PlotTheme")
+                raise TypeError(
+                    "Theme plugin must be PlotTheme or callable returning PlotTheme"
+                )
         except Exception:
             logger.exception("Failed to load pywandahydra.themes plugin %r", ep.name)
 

@@ -1,0 +1,100 @@
+"""Example script demonstrating how to run PyWandaHydra from a YAML config.
+
+For production use, prefer the CLI::
+
+    pywandahydra run test_data/run_config.yaml --workers 4 --resume
+"""
+
+from __future__ import annotations
+
+import argparse
+import logging
+from pathlib import Path
+
+from pywandahydra.config.loader import (
+    apply_post_processing_overrides,
+    build_run_context,
+    load_run_config,
+    validate_run_paths,
+)
+from pywandahydra.execution.runner import run
+from pywandahydra.scenarios.mapper import load_scenarios
+
+# Enable console logging to see all messages
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
+
+
+def main() -> None:
+    """Run scenarios using settings loaded from a YAML config file."""
+    repo_root = Path(__file__).parents[1]
+    default_config = repo_root / "test_data" / "run_config.yaml"
+
+    parser = argparse.ArgumentParser(
+        description="Run PyWandaHydra scenarios from a YAML config file."
+    )
+    parser.add_argument(
+        "config",
+        nargs="?",
+        default=default_config,
+        type=Path,
+        help=f"Path to run config YAML (default: {default_config})",
+    )
+    args = parser.parse_args()
+
+    config_path = args.config.expanduser().resolve()
+    cfg = load_run_config(config_path)
+    validate_run_paths(cfg, config_dir=config_path.parent)
+
+    scenario_path = cfg.scenario_file
+    if not scenario_path.is_absolute():
+        scenario_path = config_path.parent / scenario_path
+
+    scenarios = load_scenarios(path=scenario_path)
+    apply_post_processing_overrides(cfg, scenarios)
+    ctx = build_run_context(cfg)
+
+    try:
+        result = run(
+            model=cfg.model,
+            ctx=ctx,
+            scenarios=scenarios,
+            n_workers=cfg.execution.n_workers,
+            mode=cfg.execution.mode,
+            resume=cfg.execution.resume,
+            verbose=cfg.execution.verbose,
+            methodology_name=cfg.execution.methodology.name,
+            methodology_params=cfg.execution.methodology.params,
+            extractors=cfg.execution.extractors,
+        )
+
+        print(
+            f"Done: {result.n_success} succeeded, {result.n_failed} failed, "
+            f"{result.n_skipped} skipped"
+        )
+
+        # Show individual case results if any failed
+        if result.n_failed > 0:
+            print("\n--- Failed Cases ---")
+            for case_result in result.results:
+                if not case_result.get("success"):
+                    print(
+                        f"  {case_result.get('case_id')}: {case_result.get('error', 'Unknown error')}"
+                    )
+
+        # Check logs
+        log_dir = Path(ctx.root_dir) / "logs"
+        if log_dir.exists():
+            print(f"\nLogs available at: {log_dir}")
+    except Exception as e:
+        print(f"ERROR: {e}")
+        import traceback
+
+        traceback.print_exc()
+        raise
+
+
+if __name__ == "__main__":
+    main()

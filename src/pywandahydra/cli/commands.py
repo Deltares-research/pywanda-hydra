@@ -47,6 +47,7 @@ def run(
 
     from ..config.loader import (
         Provenance,
+        apply_post_processing_overrides,
         build_run_context,
         load_run_config,
         validate_run_paths,
@@ -113,6 +114,12 @@ def run(
         scenarios = load_scenarios(scenario_path)
     except (ValueError, FileNotFoundError) as e:
         typer.echo(f"Error loading scenarios: {e}", err=True)
+        raise typer.Exit(code=1) from None
+
+    try:
+        apply_post_processing_overrides(cfg, scenarios)
+    except ValueError as e:
+        typer.echo(f"Invalid post_processing config: {e}", err=True)
         raise typer.Exit(code=1) from None
 
     logger.info(
