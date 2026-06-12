@@ -8,7 +8,11 @@ For production use, prefer the CLI::
 from __future__ import annotations
 
 import argparse
+import faulthandler
 import logging
+import os
+import sys
+from importlib.util import find_spec
 from pathlib import Path
 
 from pywandahydra.config.loader import (
@@ -19,6 +23,7 @@ from pywandahydra.config.loader import (
 )
 from pywandahydra.execution.runner import run
 from pywandahydra.scenarios.mapper import load_scenarios
+from pywandahydra.wanda.validation import assert_preflight_valid
 
 # Enable console logging to see all messages
 logging.basicConfig(
@@ -26,9 +31,39 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 
+# Suppress verbose third-party debug logs while keeping pywandahydra debug logs
+logging.getLogger("PIL").setLevel(logging.WARNING)
+logging.getLogger("PIL.PngImagePlugin").setLevel(logging.WARNING)
+logging.getLogger("matplotlib").setLevel(logging.WARNING)
+
+
+def _print_startup_banner() -> None:
+    """Print runtime details to make environment mismatches obvious."""
+    pywandahydra_spec = find_spec("pywandahydra")
+    pywanda_spec = find_spec("pywanda")
+
+    print("=== PyWandaHydra Startup Banner ===")
+    print(f"python.executable: {sys.executable}")
+    print(f"cwd: {os.getcwd()}")
+    print(f"sys.path[0]: {sys.path[0] if sys.path else ''}")
+    print(
+        "pywandahydra.location: "
+        f"{pywandahydra_spec.origin if pywandahydra_spec else 'NOT FOUND'}"
+    )
+    print(
+        "pywanda.location: " f"{pywanda_spec.origin if pywanda_spec else 'NOT FOUND'}"
+    )
+    print("===================================")
+
 
 def main() -> None:
     """Run scenarios using settings loaded from a YAML config file."""
+    # Dump the Python stack to stderr on a native crash (access violation in
+    # pywanda/WANDA DLLs kills the process without a traceback otherwise).
+    faulthandler.enable()
+
+    _print_startup_banner()
+
     repo_root = Path(__file__).parents[1]
     default_config = repo_root / "test_data" / "run_config.yaml"
 
@@ -53,6 +88,7 @@ def main() -> None:
         scenario_path = config_path.parent / scenario_path
 
     scenarios = load_scenarios(path=scenario_path)
+    assert_preflight_valid(model_spec=cfg.model, scenarios=scenarios)
     apply_post_processing_overrides(cfg, scenarios)
     ctx = build_run_context(cfg)
 

@@ -79,7 +79,7 @@ class TestWandaAPI(unittest.TestCase):
         # Arrange
         with self.get_wanda_session() as model:
             # Act
-            change = ParameterChange(component="PUMP P1", property="disuse", value=1)
+            change = ParameterChange(component="PUMP P1", property="disuse", value=0)
             apply_parameter_change(model, change)
             pump = model.get_component("PUMP P1")
 

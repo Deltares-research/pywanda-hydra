@@ -250,3 +250,6 @@ test_data/**/*
 
 
 *.zip
+
+.tmp_parameter_wanda
+code_structure.csv

@@ -8,6 +8,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from pywandahydra.disuse import parse_disuse_value
 from pywandahydra.postprocessing.plotting.specifications import AxisSpec
 
 ChangeMode = Literal["set", "scale", "offset"]
@@ -66,8 +67,8 @@ class ParameterChange(BaseModel):
 
         Inputs:
 
-        Yes: 1, 1.0, "1", "yes", "true", "y", "disuse" (case-insensitive)
-        No: 0, 0.0, "0", "no", "false", "n", "use" (case-insensitive)
+        Disused: 0, 0.0, "0", "yes", "true", "y", "disuse"
+        In use:  1, 1.0, "1", "no", "false", "n", "use"
 
         Parameters
         ----------
@@ -84,36 +85,7 @@ class ParameterChange(BaseModel):
         if info.data.get("property", "").strip().lower() != "disuse" or v is None:
             return v
 
-        # If already boolean, return as is
-        if isinstance(v, bool):
-            return v
-
-        # Normalize string inputs
-        if isinstance(v, str):
-            v_lower = v.strip().lower()
-            if v_lower in ("1", "yes", "true", "y", "disuse"):
-                return True
-            elif v_lower in ("0", "no", "false", "n", "use"):
-                return False
-            else:
-                raise ValueError(
-                    f"Cannot normalize string '{v}' to boolean for 'disuse' property"
-                )
-
-        # Normalize numeric inputs
-        if isinstance(v, int | float):
-            if v == 1 or v == 1.0:
-                return True
-            elif v == 0 or v == 0.0:
-                return False
-            else:
-                raise ValueError(
-                    f"Cannot normalize numeric value '{v}' to boolean for 'disuse' property"
-                )
-
-        raise ValueError(
-            f"Cannot normalize value of type '{type(v)}' to boolean for 'disuse' property"
-        )
+        return parse_disuse_value(v)
 
 
 class ScenarioMeta(BaseModel):

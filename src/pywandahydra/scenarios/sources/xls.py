@@ -115,7 +115,12 @@ def _extract_analysis_meta(
         # Find the full column tuple where the first level matches col
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", category=pd.errors.PerformanceWarning)
-            return input_data.loc[:, (col, "")].values[prop_row]
+            value = input_data.loc[:, (col, "")].values[prop_row]
+        # pandas 3.x can hand back a length-1 ndarray here; unwrap it so
+        # downstream pydantic validation receives a plain scalar.
+        if isinstance(value, np.ndarray) and value.size == 1:
+            return value.item()
+        return value
 
     return AnalysisMeta(
         analysis_description=_as_str_or_none(get_cell(opts.global_description_col)),

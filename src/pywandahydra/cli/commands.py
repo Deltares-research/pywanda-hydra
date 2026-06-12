@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import faulthandler
 import json
 import logging
 import os
@@ -42,6 +43,10 @@ def run(
     ),
 ) -> None:
     """Run WANDA scenarios from a configuration file."""
+    # Dump the Python stack to stderr on a native crash (access violation in
+    # pywanda/WANDA DLLs kills the process without a traceback otherwise).
+    faulthandler.enable()
+
     setup_logging(log_level)
     logger = logging.getLogger(__name__)
 
@@ -54,6 +59,7 @@ def run(
     )
     from ..execution.runner import run as run_scenarios
     from ..scenarios.mapper import load_scenarios
+    from ..wanda.validation import assert_preflight_valid
 
     # Load and validate config
     try:
@@ -114,6 +120,12 @@ def run(
         scenarios = load_scenarios(scenario_path)
     except (ValueError, FileNotFoundError) as e:
         typer.echo(f"Error loading scenarios: {e}", err=True)
+        raise typer.Exit(code=1) from None
+
+    try:
+        assert_preflight_valid(model_spec=cfg.model, scenarios=scenarios)
+    except ValueError as e:
+        typer.echo(str(e), err=True)
         raise typer.Exit(code=1) from None
 
     try:

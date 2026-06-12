@@ -8,6 +8,7 @@ from typing import Any, Literal
 
 import pywanda
 
+from ..disuse import parse_disuse_value
 from ..scenarios.schema import ParameterChange
 
 ItemType = Literal["component", "node", "signal_line"]
@@ -52,7 +53,9 @@ def get_item(model: pywanda.WandaModel, ref: WandaItemRef) -> Any:
     raise ValueError(f"Unknown item type: {ref.type}")
 
 
-def find_items_with_keyword(model: pywanda.WandaModel, keyword: str) -> list[WandaItemRef]:
+def find_items_with_keyword(
+    model: pywanda.WandaModel, keyword: str
+) -> list[WandaItemRef]:
     """Find items in the Wanda model matching a keyword.
 
     Parameters
@@ -109,7 +112,8 @@ def find_items_with_keyword(model: pywanda.WandaModel, keyword: str) -> list[Wan
 def _all_pipes(model: pywanda.WandaModel) -> list[WandaItemRef]:
     """Return references to all pipe components in the model."""
     return [
-        WandaItemRef(pipe.get_complete_name_spec(), "component") for pipe in model.get_all_pipes()
+        WandaItemRef(pipe.get_complete_name_spec(), "component")
+        for pipe in model.get_all_pipes()
     ]
 
 
@@ -290,7 +294,9 @@ def _pipe_direction_from_route_component_index(
     return 1
 
 
-def _build_component_graph(components: list[Any]) -> dict[Any, dict[Any, dict[int, Any]]]:
+def _build_component_graph(
+    components: list[Any],
+) -> dict[Any, dict[Any, dict[int, Any]]]:
     """Build a connection graph for the given components."""
     allowed = set(components)
     component_graph: dict[Any, dict[Any, dict[int, Any]]] = {}
@@ -315,7 +321,9 @@ def _order_components_by_connection(components: list[Any]) -> list[Any]:
         return components
 
     endpoints = [
-        component for component, neighbours in component_graph.items() if len(neighbours) <= 1
+        component
+        for component, neighbours in component_graph.items()
+        if len(neighbours) <= 1
     ]
 
     start = endpoints[0] if endpoints else components[0]
@@ -347,7 +355,9 @@ def _normalize_pipe_route_orientation(
         return pipes_with_direction
 
     if all(direction < 0 for _, direction in pipes_with_direction):
-        return [(pipe, -direction) for pipe, direction in reversed(pipes_with_direction)]
+        return [
+            (pipe, -direction) for pipe, direction in reversed(pipes_with_direction)
+        ]
 
     return pipes_with_direction
 
@@ -457,9 +467,10 @@ def apply_parameter_change(model: pywanda.WandaModel, change: ParameterChange) -
         # Handling of 'disuse' property
         if change.property.lower() == "disuse":
             # Set disuse on all matched items
+            disuse_value = parse_disuse_value(change.value)
             for item_ref in item_refs:
                 item = get_item(model, item_ref)
-                item.set_disused(bool(change.value))
+                item.set_disused(disuse_value)
             return
 
         # Apply change to all matched items

@@ -24,6 +24,8 @@ class ModelSpecification(BaseModel):
 
     readonly : bool, optional
         If model output exists, the model is treated as read-only (default is True).
+    upgrade : bool, optional
+        Upgrade the model to the installed WANDA version on open (default is False).
 
     run_steady : bool, optional
         Whether to run steady simulations (default is True).
@@ -41,6 +43,10 @@ class ModelSpecification(BaseModel):
     readonly: bool = Field(
         default=True,
         description="If model output exists, the model is treated as read-only.",
+    )
+    upgrade: bool = Field(
+        default=False,
+        description="Upgrade the model to the installed WANDA version on open.",
     )
 
     # Optional execution settings you may want centrally:
