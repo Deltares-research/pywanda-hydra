@@ -22,6 +22,11 @@ def _default_logo() -> Any:
     return plt.imread(str(logo_path))
 
 
+def load_default_logo() -> Any:
+    """Return the default Deltares logo image array."""
+    return _default_logo()
+
+
 # Layout constants
 _XO = 0.04
 _YO = 0.03
@@ -50,6 +55,7 @@ class PageMetadata(BaseModel):
     # Rendering options
     fontsize: int = 8
     font_family: str = "Arial"  # Deltares house style
+    watermark_alpha: float = 0.30
 
     @computed_field
     def effective_date(self) -> datetime:
@@ -58,8 +64,6 @@ class PageMetadata(BaseModel):
     @field_validator(
         "title",
         "case_title",
-        "case_description",
-        "section_name",
         "fig_name",
         "company_name",
         "software_version",
@@ -219,6 +223,5 @@ def draw_layout(fig: Figure, meta: PageMetadata) -> None:
 
     # Watermark image (logo)
     imgax = fig.add_axes((v1, h0, v3 - v1, h3 - h0), zorder=-10)
-    imgax.imshow(cast(Any, img), alpha=0.3, interpolation="none")
-    imgax.axis("off")
+    imgax.imshow(cast(Any, img), alpha=meta.watermark_alpha, interpolation="none")
     imgax.axis("off")

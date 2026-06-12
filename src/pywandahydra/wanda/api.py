@@ -139,7 +139,7 @@ def resolve_items(
 ) -> list[WandaItemRef]:
     """Resolve item references from an identifier.
 
-    Methodology:
+    Resolution order:
     0. Bulk selectors: ``PALL`` (all pipes), ``CALL`` (all components).
     1. Exact node match if identifier matches node style (e.g. "H-node" in name).
     2. Exact signal line match if identifier matches signal line style (e.g. "Signal" in name).

@@ -3,8 +3,7 @@ from __future__ import annotations
 import numpy as np
 from matplotlib.axes._axes import Axes
 
-from pywandahydra.postprocessing.plotting.schema import RouteData
-from pywandahydra.postprocessing.plotting.specifications import AxisSpec
+from pywandahydra.postprocessing.plotting.models import AxisSpec, RouteData
 
 from .plot_object import DataPlot
 

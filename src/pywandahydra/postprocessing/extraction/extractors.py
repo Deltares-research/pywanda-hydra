@@ -8,9 +8,13 @@ outputs are cached alongside standard extraction results.
 from __future__ import annotations
 
 import logging
-from typing import Any, ClassVar, Protocol, runtime_checkable
+from importlib.metadata import entry_points
+from typing import TYPE_CHECKING, Any, ClassVar, Protocol, cast, runtime_checkable
 
 from pydantic import BaseModel
+
+if TYPE_CHECKING:
+    from ..core.context import ExtractionContext
 
 logger = logging.getLogger(__name__)
 
@@ -136,3 +140,28 @@ def resolve_extractor(name: str, params: dict[str, Any] | None = None) -> Extrac
     cls = get_extractor_class(name)
     validated = cls.Params.model_validate(params or {})
     return cast(Extractor, cls(validated))
+
+
+def bootstrap() -> None:
+    """Load all extractor entry points and register them.
+
+    This is idempotent; calling multiple times is safe.
+    """
+    group_name = "pywandahydra.extractors"
+    eps = entry_points()
+
+    # Handle both importlib.metadata API versions
+    if hasattr(eps, "select"):
+        # Python 3.10+
+        extractors_eps = eps.select(group=group_name)
+    else:
+        # Python 3.9
+        extractors_eps = cast(Any, eps.get(group_name, []))
+
+    for ep in extractors_eps:
+        try:
+            extractor_class = ep.load()
+            register_extractor(extractor_class)
+            logger.debug("Loaded extractor from entry point: %s=%s", ep.name, ep.value)
+        except Exception as e:
+            logger.warning("Failed to load extractor entry point '%s': %s", ep.name, e)

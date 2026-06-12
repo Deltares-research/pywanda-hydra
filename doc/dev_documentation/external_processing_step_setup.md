@@ -1,4 +1,4 @@
-# External Processing Step Setup Guide
+﻿# External Processing Step Setup Guide
 
 This guide shows how to add a custom processing step from another package (outside this repository) and make it discoverable by pywandahydra.
 
@@ -10,7 +10,7 @@ Supported groups:
 
 - `pywandahydra.case_steps`: case-level postprocessing steps
 - `pywandahydra.run_steps`: run-level postprocessing steps
-- `pywandahydra.methodologies`: methodologies that assemble steps
+- `pywandahydra.workflows`: workflows that assemble steps
 - `pywandahydra.themes`: plotting themes
 - `pywandahydra.scenario_sources`: scenario input loaders
 
@@ -18,9 +18,9 @@ For cross-case analysis and comparison figures, use a `run_step`.
 
 ### Related Guides
 
-- **[custom_extractors.md](custom_extractors.md)** – Create custom extractors to pull additional model data during execution (more powerful than case steps; recommended for accessing live model).
-- **[case_step_data_export.md](case_step_data_export.md)** – Use case steps to export derived metrics from already-cached data, preparing for run-step aggregation.
-- **Extending extraction** – See the "Extending Extracted Data" section in [case_step_data_export.md](case_step_data_export.md#extending-extracted-data).
+- **[custom_extractors.md](custom_extractors.md)** â€“ Create custom extractors to pull additional model data during execution (more powerful than case steps; recommended for accessing live model).
+- **[case_step_data_export.md](case_step_data_export.md)** â€“ Use case steps to export derived metrics from already-cached data, preparing for run-step aggregation.
+- **Extending extraction** â€“ See the "Extending Extracted Data" section in [case_step_data_export.md](case_step_data_export.md#extending-extracted-data).
 
 ## 1. Create a Separate Python Package
 
@@ -32,12 +32,12 @@ my-hydra-plugins/
   my_hydra_plugins/
     __init__.py
     run_steps.py
-    methodology.py
+    workflow.py
 ```
 
   ## 2. Implement a Cross-Case Run Step (Comparison + Plot)
 
-  Run steps receive a `RunStepContext` and can read all case outputs from one run.
+  Run steps receive a `PostProcessingRunContext` and can read all case outputs from one run.
 
   Create a class with:
 
@@ -121,7 +121,7 @@ from pydantic import BaseModel, ConfigDict
 
 Notes:
 
-- `ctx` for run steps is a `RunStepContext` with:
+- `ctx` for run steps is a `PostProcessingRunContext` with:
   - `run_root`: run output root directory
   - `run_id`: run identifier
   - `case_results`: tuple of per-case result dicts
@@ -147,15 +147,15 @@ Install your plugin into the same environment as pywandahydra.
 
 ## 4. Make It Executable From Config
 
-A step alone is not automatically executed unless included by a methodology.
+A step alone is not automatically executed unless included by a workflow.
 
 Two ways to run it:
 
-### Option A: Use the built-in composed methodology (recommended)
+### Option A: Use the built-in composed workflow (recommended)
 
 ```yaml
 execution:
-  methodology:
+  workflow:
     name: composed
     params:
       case_steps: []
@@ -167,11 +167,11 @@ execution:
             output_basename: pressure_comparison
 ```
 
-### Option B: Ship your own methodology plugin
+### Option B: Ship your own workflow plugin
 
-Implement a methodology class and register it in `pywandahydra.methodologies`.
+Implement a workflow class and register it in `pywandahydra.workflows`.
 
-Minimal example (`my_hydra_plugins/methodology.py`):
+Minimal example (`my_hydra_plugins/workflow.py`):
 
 ```python
 from __future__ import annotations
@@ -181,9 +181,9 @@ from pydantic import BaseModel, ConfigDict
 from my_hydra_plugins.run_steps import CompareCasesPressureStep
 
 
-class MyMethodology:
-  name = "my_comparison_methodology"
-  description = "Custom methodology including cross-case comparison plots"
+class MyWorkflow:
+  name = "my_comparison_workflow"
+  description = "Custom workflow including cross-case comparison plots"
 
     class Params(BaseModel):
         model_config = ConfigDict(extra="forbid")
@@ -201,16 +201,16 @@ class MyMethodology:
 Register it in plugin `pyproject.toml`:
 
 ```toml
-[project.entry-points."pywandahydra.methodologies"]
-my_comparison_methodology = "my_hydra_plugins.methodology:MyMethodology"
+[project.entry-points."pywandahydra.workflows"]
+my_comparison_workflow = "my_hydra_plugins.workflow:MyWorkflow"
 ```
 
-Example run config using custom methodology:
+Example run config using custom workflow:
 
 ```yaml
 execution:
-  methodology:
-    name: my_comparison_methodology
+  workflow:
+    name: my_comparison_workflow
     params: {}
 ```
 
@@ -222,7 +222,7 @@ After installation, run:
 python -m pywandahydra plugins
 ```
 
-You should see your step under `Run steps` and your methodology under `Methodologies`.
+You should see your step under `Run steps` and your workflow under `Workflows`.
 
 ## 6. Troubleshooting
 
@@ -230,11 +230,11 @@ You should see your step under `Run steps` and your methodology under `Methodolo
   - Ensure plugin is installed in the same Python environment used by pywandahydra.
   - Confirm entry-point group names exactly match expected names.
 - Step listed but not executed:
-  - Ensure the selected methodology includes your run step.
-  - Check `execution.methodology.params` content and schema.
-- Methodology fails to resolve:
-  - Check `name` and `Params` in methodology class.
-  - Validate `execution.methodology.params` matches `Params` schema.
+  - Ensure the selected workflow includes your run step.
+  - Check `execution.workflow.params` content and schema.
+- Workflow fails to resolve:
+  - Check `name` and `Params` in workflow class.
+  - Validate `execution.workflow.params` matches `Params` schema.
 - Step constructor errors:
   - Ensure nested `Params` model exists and accepts supplied `params` values.
 
@@ -255,7 +255,7 @@ You should see your step under `Run steps` and your methodology under `Methodolo
 
 Short answer: no, not directly.
 
-- `run_steps` run after all cases are completed and only receive `RunStepContext` (`run_root`, `run_id`, `case_results`). They do not receive a live WANDA model handle.
+- `run_steps` run after all cases are completed and only receive `PostProcessingRunContext` (`run_root`, `run_id`, `case_results`). They do not receive a live WANDA model handle.
 - `case_steps` receive `CaseContext` with cache/scenario paths, but also do not receive the live WANDA model handle.
 - Therefore, plugin steps can only read data that already exists in generated artifacts (cache parquet, exported tables/figures, or files your own prior steps wrote).
 
@@ -273,3 +273,5 @@ Use one of these patterns:
 
 3. Add custom in-case postprocessing from existing cache:
 - For metrics derivable from already extracted route/component series (for example pressure/head along route), compute them in a case step and persist as csv/parquet for run-level comparison.
+
+

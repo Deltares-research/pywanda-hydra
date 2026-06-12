@@ -44,7 +44,7 @@ class TestWorkerWithFakeAdapter(unittest.TestCase):
             )
 
             with patch(
-                "pywandahydra.execution.worker.bootstrap_methodologies",
+                "pywandahydra.execution.worker.bootstrap_workflows",
                 return_value=None,
             ):
                 with patch(

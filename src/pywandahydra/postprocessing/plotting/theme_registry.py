@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from importlib.metadata import entry_points
 
-from .renderer import PlotTheme
+from .renderers.theme import PlotTheme
 
 logger = logging.getLogger(__name__)
 

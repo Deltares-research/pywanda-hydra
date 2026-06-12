@@ -8,8 +8,9 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
-from ..context import CaseContext
-from ..plotting.renderer import PlotTheme, ReportMeta, render_route_report_pages
+from ..core.context import CaseContext
+from ..plotting.renderers.report_page import ReportMeta, render_route_report_pages
+from ..plotting.renderers.theme import PlotTheme
 
 logger = logging.getLogger(__name__)
 

@@ -5,7 +5,6 @@ from __future__ import annotations
 import faulthandler
 import json
 import logging
-import os
 from pathlib import Path
 
 import typer
@@ -35,9 +34,6 @@ def run(
     resume: bool = typer.Option(
         False, "--resume", "-r", help="Skip already-completed cases."
     ),
-    mode: str | None = typer.Option(
-        None, "--mode", "-m", help="Execution mode: sequential or multiprocessing."
-    ),
     log_level: str = typer.Option(
         "INFO", "--log-level", "-l", help="Log level (DEBUG, INFO, WARNING, ERROR)."
     ),
@@ -51,7 +47,7 @@ def run(
     logger = logging.getLogger(__name__)
 
     from ..config.loader import (
-        Provenance,
+        RunMetadata,
         apply_post_processing_overrides,
         build_run_context,
         load_run_config,
@@ -69,37 +65,11 @@ def run(
         raise typer.Exit(code=1) from None
 
     # Apply CLI overrides
-    effective_mode = cfg.execution.mode
-    if mode is not None:
-        if mode not in ("sequential", "multiprocessing"):
-            typer.echo(
-                f"Invalid mode: '{mode}'. Use 'sequential' or 'multiprocessing'.",
-                err=True,
-            )
+    if workers is not None:
+        if workers < 1:
+            typer.echo("--workers must be >= 1", err=True)
             raise typer.Exit(code=1)
-        effective_mode = mode  # type: ignore[assignment]
-
-    if workers is not None and workers < 1:
-        typer.echo("--workers must be >= 1", err=True)
-        raise typer.Exit(code=1)
-
-    # Keep worker selection deterministic and mode-driven.
-    if effective_mode == "sequential":
-        effective_workers = 1 if workers is None else workers
-        if effective_workers != 1:
-            typer.echo(
-                "Invalid worker selection: sequential mode requires --workers=1.",
-                err=True,
-            )
-            raise typer.Exit(code=1)
-    else:
-        default_workers = max(2, os.cpu_count() or 2)
-        effective_workers = workers if workers is not None else cfg.execution.n_workers
-        if effective_workers < 2:
-            effective_workers = default_workers
-
-    cfg.execution.mode = effective_mode  # type: ignore[assignment]
-    cfg.execution.n_workers = effective_workers
+        cfg.execution.n_workers = workers
 
     if resume:
         cfg.execution.resume = True
@@ -112,9 +82,8 @@ def run(
         raise typer.Exit(code=1) from None
 
     # Load scenarios from the scenario file
+    # (validate_run_paths already resolved scenario_file against the config dir)
     scenario_path = cfg.scenario_file
-    if not scenario_path.is_absolute():
-        scenario_path = config.parent / scenario_path
 
     try:
         scenarios = load_scenarios(scenario_path)
@@ -144,15 +113,15 @@ def run(
     # Build run context
     ctx = build_run_context(cfg)
 
-    # Write provenance
+    # Write run metadata
     from ..execution.artifacts import create_run_directories
 
     run_root = Path(ctx.root_dir)
     create_run_directories(ctx)
-    provenance = Provenance()
-    prov_path = run_root / "provenance.json"
-    prov_path.write_text(
-        json.dumps(provenance.model_dump(), indent=2, default=str),
+    run_metadata = RunMetadata()
+    metadata_path = run_root / "run_metadata.json"
+    metadata_path.write_text(
+        json.dumps(run_metadata.model_dump(), indent=2, default=str),
         encoding="utf-8",
     )
 
@@ -162,10 +131,9 @@ def run(
         ctx=ctx,
         scenarios=scenarios,
         n_workers=cfg.execution.n_workers,
-        mode=cfg.execution.mode,
         resume=cfg.execution.resume,
-        methodology_name=cfg.execution.methodology.name,
-        methodology_params=cfg.execution.methodology.params,
+        workflow_name=cfg.execution.workflow.name,
+        workflow_params=cfg.execution.workflow.params,
         extractors=cfg.execution.extractors,
     )
 
@@ -241,7 +209,9 @@ def validate(
 
     try:
         cfg = load_run_config(config)
-        typer.echo(f"Config OK: run_id={cfg.run_id}, mode={cfg.execution.mode}")
+        typer.echo(
+            f"Config OK: run_id={cfg.run_id}, n_workers={cfg.execution.n_workers}"
+        )
     except (ValueError, FileNotFoundError) as e:
         typer.echo(f"Config INVALID: {e}", err=True)
         raise typer.Exit(code=1) from None
@@ -252,12 +222,9 @@ def validate(
         typer.echo(f"Runtime paths INVALID: {e}", err=True)
         raise typer.Exit(code=1) from None
 
-    scenario_path = cfg.scenario_file
-    if not scenario_path.is_absolute():
-        scenario_path = config.parent / scenario_path
-
     try:
-        scenarios = load_scenarios(scenario_path)
+        # validate_run_paths already resolved scenario_file against the config dir.
+        scenarios = load_scenarios(cfg.scenario_file)
         n_included = sum(1 for s in scenarios if s.meta.include)
         typer.echo(f"Scenarios OK: {len(scenarios)} total, {n_included} included")
     except (ValueError, FileNotFoundError) as e:
@@ -275,23 +242,26 @@ def validate(
 @app.command()
 def plugins() -> None:
     """List discovered post-processing and scenario-source plugins."""
-    from ..postprocessing.extractors import bootstrap as bootstrap_extractors
-    from ..postprocessing.extractors import get_extractor_class, list_extractors
-    from ..postprocessing.methodologies import bootstrap as bootstrap_methodologies
-    from ..postprocessing.methodologies import (
-        get_case_step_class,
-        get_methodology_class,
-        get_run_step_class,
-        list_case_steps,
-        list_methodologies,
-        list_run_steps,
+    from ..postprocessing.extraction.extractors import bootstrap as bootstrap_extractors
+    from ..postprocessing.extraction.extractors import (
+        get_extractor_class,
+        list_extractors,
     )
-    from ..postprocessing.plotting import themes
+    from ..postprocessing.plotting import theme_registry
+    from ..postprocessing.workflows import bootstrap as bootstrap_workflows
+    from ..postprocessing.workflows import (
+        get_case_step_class,
+        get_run_step_class,
+        get_workflow_class,
+        list_case_steps,
+        list_run_steps,
+        list_workflows,
+    )
     from ..scenarios import sources
 
-    bootstrap_methodologies()
+    bootstrap_workflows()
     bootstrap_extractors()
-    themes.bootstrap()
+    theme_registry.bootstrap()
     sources.bootstrap()
 
     def _params_schema(cls: type) -> str:
@@ -308,9 +278,9 @@ def plugins() -> None:
         typer.echo(f"  - {name}: {desc}")
         typer.echo(f"    params={_params_schema(cls)}")
 
-    typer.echo("Methodologies:")
-    for name in list_methodologies():
-        cls = get_methodology_class(name)
+    typer.echo("Workflows:")
+    for name in list_workflows():
+        cls = get_workflow_class(name)
         desc = getattr(cls, "description", "")
         typer.echo(f"  - {name}: {desc}")
         typer.echo(f"    params={_params_schema(cls)}")
@@ -328,7 +298,7 @@ def plugins() -> None:
         typer.echo(f"    params={_params_schema(cls)}")
 
     typer.echo("Themes:")
-    for name in themes.list_themes():
+    for name in theme_registry.list_themes():
         typer.echo(f"  - {name}")
 
     typer.echo("Scenario sources:")
@@ -354,8 +324,8 @@ def plot(
     ),
 ) -> None:
     """Render plots from cached extraction data (no WANDA required)."""
-    from ..postprocessing.cache import ParquetCache
-    from ..postprocessing.plotting.renderer import render_route_plot
+    from ..postprocessing.io.cache import ParquetCache
+    from ..postprocessing.plotting.renderers.route_plot import render_route_plot
 
     scenarios_dir = run_dir / "scenarios"
     if not scenarios_dir.exists():
@@ -380,7 +350,7 @@ def plot(
         typer.echo(f"  {case_dir.name}: rendering plots...")
 
         # Build export props from requested format
-        from ..postprocessing.export import build_figure_export_props
+        from ..postprocessing.io.export import build_figure_export_props
 
         export_props = build_figure_export_props(
             include_pdf=(fmt == "pdf"),
@@ -404,7 +374,7 @@ def plot(
         else:
             # Render all available routes from cache
             for route_title in cache.list_routes():
-                from ..postprocessing.plotting.specifications import AxisSpec
+                from ..postprocessing.plotting.models import AxisSpec
                 from ..scenarios.schema import RoutePlotSpecification
 
                 spec = RoutePlotSpecification(

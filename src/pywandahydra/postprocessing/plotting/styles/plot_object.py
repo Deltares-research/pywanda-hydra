@@ -7,7 +7,7 @@ import numpy as np
 from matplotlib.axes._axes import Axes
 from pydantic import BaseModel
 
-from pywandahydra.postprocessing.plotting.specifications import AxisSpec
+from pywandahydra.postprocessing.plotting.models import AxisSpec
 
 
 class PlotObject(ABC):

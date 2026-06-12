@@ -6,7 +6,7 @@ from typing import ClassVar, Protocol, runtime_checkable
 
 from pydantic import BaseModel
 
-from .context import CaseContext, RunStepContext
+from .context import CaseContext, PostProcessingRunContext
 
 
 @runtime_checkable
@@ -26,12 +26,12 @@ class RunStep(Protocol):
 
     name: ClassVar[str]
 
-    def run(self, ctx: RunStepContext) -> None: ...
+    def run(self, ctx: PostProcessingRunContext) -> None: ...
 
 
 @runtime_checkable
-class Methodology(Protocol):
-    """Protocol for configurable post-processing methodologies."""
+class PostProcessingWorkflow(Protocol):
+    """Protocol for configurable post-processing workflows."""
 
     name: ClassVar[str]
     description: ClassVar[str]
@@ -41,4 +41,4 @@ class Methodology(Protocol):
 
     def case_steps(self, ctx: CaseContext) -> list[CaseStep]: ...
 
-    def run_steps(self, ctx: RunStepContext) -> list[RunStep]: ...
+    def run_steps(self, ctx: PostProcessingRunContext) -> list[RunStep]: ...

@@ -1,24 +1,24 @@
-# `pywanda-hydra` Refactor Plan
+﻿# `pywanda-hydra` Refactor Plan
 
 Sequential, reviewable steps to reach the target architecture described in
 the architectural review. Each step is independently shippable: code keeps
 running between steps, tests stay green, and the public surface only
-hardens — it never breaks silently.
+hardens â€” it never breaks silently.
 
 Conventions used in this document:
 
-- **Goal** — single sentence the step achieves.
-- **Why** — rationale linked to the review item.
-- **Changes** — concrete file-level edits.
-- **Verify** — what proves the step is done.
-- **Risk / Rollback** — the failure mode and how to back out.
+- **Goal** â€” single sentence the step achieves.
+- **Why** â€” rationale linked to the review item.
+- **Changes** â€” concrete file-level edits.
+- **Verify** â€” what proves the step is done.
+- **Risk / Rollback** â€” the failure mode and how to back out.
 
-Numbering matches the review items (§3.x) where applicable so reviewers
+Numbering matches the review items (Â§3.x) where applicable so reviewers
 can cross-check.
 
 ---
 
-## Step 0 — Baseline & branch hygiene
+## Step 0 â€” Baseline & branch hygiene
 
 **Goal.** Make sure the starting point is clean before any structural
 change.
@@ -36,7 +36,7 @@ change.
 
 ---
 
-## Step 1 — Path-typed configs and `RunResult` cleanup  (§3.8, §3.9)
+## Step 1 â€” Path-typed configs and `RunResult` cleanup  (Â§3.8, Â§3.9)
 
 **Goal.** Eliminate `str | Path` lies, idiomatic `field(default_factory=list)`,
 and centralise the str-at-the-pywanda-boundary rule.
@@ -45,7 +45,7 @@ and centralise the str-at-the-pywanda-boundary rule.
 declare `str | Path` but always coerce to `str`, forcing every consumer to
 re-wrap with `Path(...)`. `pywanda.WandaModel(...)` cannot accept `Path`
 objects (it expects `str`), which is the only legitimate reason to ever
-materialise the path as text — and that reason lives at exactly one
+materialise the path as text â€” and that reason lives at exactly one
 boundary.
 
 **Changes.**
@@ -56,7 +56,7 @@ boundary.
      strip whitespace, then `Path(...)`).
    - For `wanda_bin`, keep the trailing-separator rule but apply it on a
      `Path` (use `Path` + a small helper that returns a `Path` whose
-     `str()` ends with `"\\\\"` — store as `Path` and only stringify at
+     `str()` ends with `"\\\\"` â€” store as `Path` and only stringify at
      the pywanda call-site).
 2. In [src/pywandahydra/config/loader.py](../../src/pywandahydra/config/loader.py),
    `RunConfig.output_root` and `scenario_file` become `Path` with the
@@ -82,12 +82,12 @@ boundary.
   YAML; only the *internal* type changed).
 - `grep` shows no remaining `str | Path` in `config/`.
 
-**Risk / Rollback.** Low — purely internal type tightening. Rollback: revert
+**Risk / Rollback.** Low â€” purely internal type tightening. Rollback: revert
 the commit; nothing else depends on the new types.
 
 ---
 
-## Step 2 — Library-friendly logging  (§3.12)
+## Step 2 â€” Library-friendly logging  (Â§3.12)
 
 **Goal.** Stop touching the root logger and the module-level `LOG_LEVEL`
 global.
@@ -113,7 +113,7 @@ configuration interferes with library users embedding `pywandahydra`.
 
 ---
 
-## Step 3 — Fix known minor schema/typing issues  (§3.16)
+## Step 3 â€” Fix known minor schema/typing issues  (Â§3.16)
 
 **Goal.** Clear out the small but real bugs before deeper refactors land
 on top.
@@ -123,12 +123,11 @@ on top.
 1. `wanda/create_scenario.py`: reorder `prepare_scenario_model` parameters
    so positional args precede `*, readonly`. Document which arguments are
    keyword-only. Update all call sites.
-2. `postprocessing/plotting/specifications.py` — `AxisSpec.label`: pick
-   one of:
-   - `label: str | None = None` *(preferred — matches actual default)*;
+2. `postprocessing/plotting/models.py` - `AxisSpec.label`: pick one of:
+   - `label: str | None = None` *(preferred - matches actual default)*;
    - `label: str = ""`.
    Update consumers accordingly.
-3. `postprocessing/plotting/styles/layout.py` — fix the `PageMetadata`
+3. `postprocessing/plotting/styles/layout.py` - fix the `PageMetadata`
    name typo (rename via the language server so all references update).
 4. `execution/case_plan.py` `_compute_hash`:
    - Drop `case_id` from the hashed payload (renaming a scenario should
@@ -147,13 +146,13 @@ upgrade). Acceptable for a pre-1.0 package; document in `CHANGELOG.md`.
 
 ---
 
-## Step 4 — Adapter pattern: own the full WANDA surface  (§3.1, §3.11)
+## Step 4 â€” Adapter pattern: own the full WANDA surface  (Â§3.1, Â§3.11)
 
 **Goal.** The worker must import nothing from `pywanda`. Every WANDA call
 goes through `WandaAdapter`.
 
 **Why.** Without this, the post-processing plugin model is window-dressing
-— core execution stays Windows-only and untestable in CI.
+â€” core execution stays Windows-only and untestable in CI.
 
 **Changes.**
 
@@ -177,24 +176,24 @@ goes through `WandaAdapter`.
 
    `ModelHandle = Any` (opaque to callers).
 2. Move `wanda_session` body into `PywandaAdapter.session()` (this is the
-   single place that calls `pywanda.WandaModel(str(path), str(bin))` —
-   the **only** legitimate `str(Path)` boundary; see §3.9 answer).
+   single place that calls `pywanda.WandaModel(str(path), str(bin))` â€”
+   the **only** legitimate `str(Path)` boundary; see Â§3.9 answer).
 3. Move `apply_parameter_change`, `prepare_scenario_model` invocations
    behind adapter methods. The free functions in `wanda/api.py` stay
    (they're the implementation), but only the adapter is allowed to
    import them.
 4. Rewrite [src/pywandahydra/execution/worker.py](../../src/pywandahydra/execution/worker.py)
    to import **only** `pywandahydra.wanda.adapter`:
-   - Resolve `adapter_class` from a string on `CasePlan` (see §3.1
+   - Resolve `adapter_class` from a string on `CasePlan` (see Â§3.1
      answer): `module, _, attr = path.partition(":"); cls = getattr(import_module(module), attr); adapter = cls()`.
    - All `pywanda` symbols disappear from worker.
-5. Add `unit_test/wanda/fakes.py` — an in-memory `FakeWandaAdapter` that
+5. Add `unit_test/wanda/fakes.py` â€” an in-memory `FakeWandaAdapter` that
    returns canned numpy arrays and a stub `ModelHandle`. Add tests for
    `worker.run_one_case` that use it (no `pywanda` import required).
 
-**Serializability check (answer to §3.1).** `PywandaAdapter` is stateless,
+**Serializability check (answer to Â§3.1).** `PywandaAdapter` is stateless,
 so it pickles trivially. The convention is: `CasePlan.adapter_class` is a
-**string** (`"pywandahydra.wanda.pywanda_adapter:PywandaAdapter"`) — the
+**string** (`"pywandahydra.wanda.pywanda_adapter:PywandaAdapter"`) â€” the
 adapter *instance* never travels through the pool. Each worker
 instantiates its own. The `ModelHandle` is created and disposed inside
 the worker and never crosses a process boundary.
@@ -205,14 +204,14 @@ the worker and never crosses a process boundary.
 - New `test_worker_with_fake_adapter.py` runs on Linux CI without
   `pywanda` installed.
 
-**Risk / Rollback.** Medium — touches the hot path. Mitigation: the real
+**Risk / Rollback.** Medium â€” touches the hot path. Mitigation: the real
 `PywandaAdapter` is unchanged in behaviour; we only re-route call sites.
 Add an integration test (Windows-only marker) that exercises the full
 real-WANDA path once before merging.
 
 ---
 
-## Step 5 — Merge `plots/` into `plotting/`  (§3.6)
+## Step 5 â€” Merge `plots/` into `plotting/`  (Â§3.6)
 
 **Goal.** One plotting package with obvious structure.
 
@@ -220,7 +219,7 @@ real-WANDA path once before merging.
 
 1. Move files (use `git mv` so history follows):
    ```
-   postprocessing/plots/renderer.py  →  postprocessing/plotting/renderer.py
+   postprocessing/plots/renderer.py  ->  postprocessing/plotting/renderers/
    ```
 2. Remove the `postprocessing/plots/` package entirely; the merged
    `postprocessing/plotting/` becomes the only home.
@@ -232,7 +231,7 @@ nothing. Tests pass.
 
 **Risk / Rollback.** Pure rename; revert is mechanical.
 
-### Step 5b — Themeable, extensible plotting  (§3.6)
+### Step 5b â€” Themeable, extensible plotting  (Â§3.6)
 
 **Goal.** Allow external/adjustable `PlotTheme` without forking the
 renderer.
@@ -240,8 +239,9 @@ renderer.
 **Changes.**
 
 1. Keep `PlotTheme` as a `frozen=True` dataclass in
-   `postprocessing/plotting/themes.py`.
-2. Add a small theme registry next to it:
+   `postprocessing/plotting/renderers/theme.py`.
+2. Add a small theme registry in
+   `postprocessing/plotting/theme_registry.py`:
 
    ```python
    _THEMES: dict[str, PlotTheme] = {}
@@ -272,9 +272,9 @@ renderer.
    ```
 
 4. Register `default` and `deltares_light` themes at module import in
-   `themes.py` (pure data — no import side effects beyond filling a dict).
+   `theme_registry.py` (pure data - no import side effects beyond filling a dict).
 5. Renderer accepts a `PlotTheme` instance; never reads YAML directly.
-6. Entry-point hook for external themes (mirrors §6):
+6. Entry-point hook for external themes (mirrors Â§6):
 
    ```toml
    [project.entry-points."pywandahydra.themes"]
@@ -285,11 +285,11 @@ renderer.
 register a theme, resolve via `ThemeSpec(name=..., overrides={...})`,
 assert `dataclasses.replace` semantics.
 
-**Risk / Rollback.** Low — purely additive.
+**Risk / Rollback.** Low â€” purely additive.
 
 ---
 
-## Step 6 — Methodology is the only post-processing entry point  (§3.2, §3.7)
+## Step 6 â€” Workflow is the only post-processing entry point  (Â§3.2, Â§3.7)
 
 **Goal.** Delete the duplicate `_STEPS` registry and the import-time
 `register_step` side effects.
@@ -298,7 +298,7 @@ assert `dataclasses.replace` semantics.
 
 1. In [src/pywandahydra/postprocessing/pipeline.py](../../src/pywandahydra/postprocessing/pipeline.py):
    - Delete `_STEPS`, `register_step`, `get_steps`, `clear_steps`.
-   - Make `methodology` a **required** argument of `run_postprocessing`.
+   - Make `workflow` a **required** argument of `run_postprocessing`.
 2. In [src/pywandahydra/postprocessing/steps/](../../src/pywandahydra/postprocessing/steps/):
    - Remove the `register_step(...)` call at the bottom of
      `summary_table.py` and `route_plots.py`.
@@ -306,25 +306,25 @@ assert `dataclasses.replace` semantics.
 3. Defer matplotlib imports (`pyplot`, `PdfPages`) to inside `run()` so
    `pywandahydra status` doesn't pay the import cost.
 4. `unit_test/postprocessing/`: remove any `clear_steps()` calls; rely on
-   methodology objects passed explicitly.
+   workflow objects passed explicitly.
 
 **Verify.** Importing `pywandahydra.postprocessing.steps.summary_table`
 does **not** mutate any module-level dict. `pywandahydra status` is
 measurably faster.
 
 **Risk / Rollback.** Anyone calling `register_step` externally is broken
-— but nothing in this repo does, and the package is pre-1.0. Note in
+â€” but nothing in this repo does, and the package is pre-1.0. Note in
 `CHANGELOG.md`.
 
 ---
 
-## Step 7 — `RunStep` protocol + move run-level aggregation out of the runner  (§3.5)
+## Step 7 â€” `RunStep` protocol + move run-level aggregation out of the runner  (Â§3.5)
 
 **Goal.** No post-processing import in `execution/runner.py`.
 
 **Changes.**
 
-1. In `postprocessing/protocols.py` (new file — see Step 9):
+1. In `postprocessing/protocols.py` (new file â€” see Step 9):
 
    ```python
    @runtime_checkable
@@ -336,23 +336,23 @@ measurably faster.
    @runtime_checkable
    class RunStep(Protocol):
        name: ClassVar[str]
-       def run(self, ctx: RunStepContext) -> None: ...
+       def run(self, ctx: PostProcessingRunContext) -> None: ...
    ```
 
-2. `RunStepContext` (dataclass) bundles `run_root`, `run_id`, and a
+2. `PostProcessingRunContext` (dataclass) bundles `run_root`, `run_id`, and a
    read-only iterable of per-case results.
-3. Extend `Methodology` protocol with `run_steps(ctx)` returning
+3. Extend `Workflow` protocol with `run_steps(ctx)` returning
    `list[RunStep]` (alongside `case_steps`).
 4. Move the bodies of `merge_case_figure_pdfs` and `aggregate_tables`
    into two `RunStep` implementations: `MergePdfsStep`, `AggregateTablesStep`.
-5. `DefaultMethodology.run_steps()` returns
+5. `DefaultWorkflow.run_steps()` returns
    `[AggregateTablesStep(), MergePdfsStep()]`.
 6. In [runner.py](../../src/pywandahydra/execution/runner.py):
    - Delete the inline `if n_success > 0: ... aggregate_tables / merge_...`
      block.
    - After the worker pool drains:
      ```python
-     for step in methodology.run_steps(rsctx):
+     for step in workflow.run_steps(rsctx):
          try: step.run(rsctx)
          except Exception: logger.exception("Run step %r failed", step.name)
      ```
@@ -361,41 +361,41 @@ measurably faster.
 returns nothing. Run-level outputs (merged PDF, summary tables) are
 byte-identical to the previous behaviour for the same input.
 
-**Risk / Rollback.** Medium — the aggregation order matters. Add an
+**Risk / Rollback.** Medium â€” the aggregation order matters. Add an
 integration test that runs the example config end-to-end (mocked
 adapter) and checks for the expected files.
 
 ---
 
-## Step 8 — Configurable methodologies (Pydantic `Params`)  (§3.4)
+## Step 8 â€” Configurable workflows (Pydantic `Params`)  (Â§3.4)
 
-**Goal.** Methodologies are first-class configurable objects.
+**Goal.** Workflows are first-class configurable objects.
 
 **Changes.**
 
-1. Update the `Methodology` protocol:
+1. Update the `Workflow` protocol:
 
    ```python
-   class Methodology(Protocol):
+   class Workflow(Protocol):
        name: ClassVar[str]
        description: ClassVar[str]
        Params: ClassVar[type[BaseModel]]
        def __init__(self, params: BaseModel) -> None: ...
        def case_steps(self, ctx: CaseContext) -> list[CaseStep]: ...
-       def run_steps(self, ctx: RunStepContext) -> list[RunStep]: ...
+       def run_steps(self, ctx: PostProcessingRunContext) -> list[RunStep]: ...
    ```
 
-2. Replace `ExecutionConfig.methodology: str` with a discriminated
+2. Replace `ExecutionConfig.workflow: str` with a discriminated
    wrapper:
 
    ```python
-   class MethodologySpec(BaseModel):
+   class WorkflowSpec(BaseModel):
        model_config = ConfigDict(extra="forbid")
        name: str = "default"
        params: dict[str, Any] = Field(default_factory=dict)
 
    class ExecutionConfig(BaseModel):
-       methodology: MethodologySpec = Field(default_factory=MethodologySpec)
+       workflow: WorkflowSpec = Field(default_factory=WorkflowSpec)
        ...
    ```
 
@@ -405,25 +405,25 @@ adapter) and checks for the expected files.
    @model_validator(mode="before")
    @classmethod
    def _coerce_str(cls, data):
-       if isinstance(data.get("methodology"), str):
-           data["methodology"] = {"name": data["methodology"]}
+       if isinstance(data.get("workflow"), str):
+           data["workflow"] = {"name": data["workflow"]}
        return data
    ```
 
 3. Resolution helper:
 
    ```python
-   def resolve_methodology(spec: MethodologySpec) -> Methodology:
-       cls = get_methodology_class(spec.name)
+   def resolve_workflow(spec: WorkflowSpec) -> Workflow:
+       cls = get_workflow_class(spec.name)
        params = cls.Params.model_validate(spec.params)
        return cls(params)
    ```
 
-4. Built-in **composed** methodology — the no-code path for YAML/XLS users
-   (§3.4 answer):
+4. Built-in **composed** workflow â€” the no-code path for YAML/XLS users
+   (Â§3.4 answer):
 
    ```python
-   class ComposedMethodology:
+   class ConfigDrivenWorkflow:
        name = "composed"
        class Params(BaseModel):
            case_steps: list[StepSpec] = []
@@ -437,12 +437,12 @@ adapter) and checks for the expected files.
    keyed by step name, each step exposing its own `Params` class.
 
 5. XLS input: extend the existing scenario source registry so a
-   `Methodology` sheet (if present) is parsed into the same
-   `MethodologySpec` model.
+   `Workflow` sheet (if present) is parsed into the same
+   `WorkflowSpec` model.
 
-**Verify.** Unit tests for `MethodologySpec` (bare string accepted),
-`resolve_methodology` (rejects unknown name, rejects extra params),
-`ComposedMethodology` (renders a real run with two steps from YAML
+**Verify.** Unit tests for `WorkflowSpec` (bare string accepted),
+`resolve_workflow` (rejects unknown name, rejects extra params),
+`ConfigDrivenWorkflow` (renders a real run with two steps from YAML
 only).
 
 **Risk / Rollback.** Public-config change but covered by the
@@ -450,26 +450,26 @@ only).
 
 ---
 
-## Step 9 — Plugin discovery via entry points  (§3.3)
+## Step 9 â€” Plugin discovery via entry points  (Â§3.3)
 
-**Goal.** Third parties can register methodologies, steps, themes, and
+**Goal.** Third parties can register workflows, steps, themes, and
 scenario sources by installing a wheel.
 
 **Changes.**
 
 1. New file `postprocessing/registry.py` (consolidates the three
-   methodology/case-step/run-step registries):
+   workflow/case-step/run-step registries):
 
    ```python
    from importlib.metadata import entry_points
 
-   _METHOD_CLASSES: dict[str, type[Methodology]] = {}
+   _METHOD_CLASSES: dict[str, type[Workflow]] = {}
    _CASE_STEPS:     dict[str, type[CaseStep]]    = {}
    _RUN_STEPS:      dict[str, type[RunStep]]     = {}
 
    def bootstrap() -> None:
        _register_builtins()
-       _load_group("pywandahydra.methodologies", _METHOD_CLASSES)
+       _load_group("pywandahydra.workflows", _METHOD_CLASSES)
        _load_group("pywandahydra.case_steps",    _CASE_STEPS)
        _load_group("pywandahydra.run_steps",     _RUN_STEPS)
 
@@ -483,13 +483,13 @@ scenario sources by installing a wheel.
    ```
 
 2. Declare built-in entry points in `pyproject.toml` so the *first-party*
-   methodologies/steps load through the same mechanism as third-party
+   workflows/steps load through the same mechanism as third-party
    ones (no special-case code path):
 
    ```toml
-   [project.entry-points."pywandahydra.methodologies"]
-   default  = "pywandahydra.postprocessing.methodologies.default:DefaultMethodology"
-   composed = "pywandahydra.postprocessing.methodologies.composed:ComposedMethodology"
+   [project.entry-points."pywandahydra.workflows"]
+   default  = "pywandahydra.postprocessing.workflows.default:DefaultWorkflow"
+   composed = "pywandahydra.postprocessing.workflows.composed:ConfigDrivenWorkflow"
 
    [project.entry-points."pywandahydra.case_steps"]
    summary_table = "pywandahydra.postprocessing.steps.summary_table:SummaryTableStep"
@@ -503,23 +503,23 @@ scenario sources by installing a wheel.
 3. `bootstrap()` is called once at CLI entry and once per worker (already
    idempotent).
 4. CLI: add `pywandahydra plugins` subcommand that prints all registered
-   methodologies/steps/themes and their `Params` schemas (great for
-   onboarding and §3.14).
+   workflows/steps/themes and their `Params` schemas (great for
+   onboarding and Â§3.14).
 
-**Example: shipping a third-party methodology (§3.3 answer).**
+**Example: shipping a third-party workflow (Â§3.3 answer).**
 
 ```toml
 # downstream package "wanda-surge-pack"
 [project]
 dependencies = ["pywanda-hydra"]
 
-[project.entry-points."pywandahydra.methodologies"]
-surge = "wanda_surge_pack.methodologies:SurgeMethodology"
+[project.entry-points."pywandahydra.workflows"]
+surge = "wanda_surge_pack.workflows:SurgeWorkflow"
 ```
 
 ```python
-# wanda_surge_pack/methodologies.py
-class SurgeMethodology:
+# wanda_surge_pack/workflows.py
+class SurgeWorkflow:
     name = "surge"
     description = "Pressure surge focused report"
     class Params(BaseModel):
@@ -533,7 +533,7 @@ class SurgeMethodology:
 ```yaml
 # user's run_config.yaml
 execution:
-  methodology:
+  workflow:
     name: surge
     params: { include_envelope: true }
 ```
@@ -542,44 +542,44 @@ execution:
 `unit_test/postprocessing/test_entry_points.py` registers a fake plugin
 via `EntryPoint.load`-style monkeypatch and asserts it's discoverable.
 
-**Risk / Rollback.** Low — entry points are stdlib and failures only
+**Risk / Rollback.** Low â€” entry points are stdlib and failures only
 emit a log line.
 
 ---
 
-## Step 10 — Reconcile methodology vs `enabled_steps`  (§3.10)
+## Step 10 â€” Reconcile workflow vs `enabled_steps`  (Â§3.10)
 
 **Goal.** Make the two filters explicit and validated.
 
 **Changes.**
 
-1. In the runner, after resolving `methodology.case_steps(ctx)`, compute:
+1. In the runner, after resolving `workflow.case_steps(ctx)`, compute:
 
    ```python
-   catalogue = {s.name for s in methodology.case_steps(case_ctx)}
+   catalogue = {s.name for s in workflow.case_steps(case_ctx)}
    requested = set(scenario.post_processing.enabled_steps)
    unknown = requested - catalogue
    if unknown:
        raise ValueError(
            f"Scenario '{scenario.meta.name}' enables steps "
-           f"{sorted(unknown)} not provided by methodology "
-           f"'{methodology.name}'. Available: {sorted(catalogue)}"
+           f"{sorted(unknown)} not provided by workflow "
+           f"'{workflow.name}'. Available: {sorted(catalogue)}"
        )
    ```
 
 2. Document the contract in
    [scenarios/schema.py](../../src/pywandahydra/scenarios/schema.py)
    `PostProcessingConfig.enabled_steps`: "allow-list **within the
-   resolved methodology's catalogue**; empty = run all applicable steps
-   from the methodology".
+   resolved workflow's catalogue**; empty = run all applicable steps
+   from the workflow".
 
-3. Each step's `applicable()` keeps the `enabled_steps` check — it stays
-   the single point that decides per-scenario opt-out — but the runner
+3. Each step's `applicable()` keeps the `enabled_steps` check â€” it stays
+   the single point that decides per-scenario opt-out â€” but the runner
    guarantees the names are valid up front so failures are loud, not
    silent.
 
 **Verify.** Unit test: scenario with `enabled_steps=["does_not_exist"]`
-under `default` methodology raises `ValueError` with the unknown name.
+under `default` workflow raises `ValueError` with the unknown name.
 
 **Risk / Rollback.** Surfaces previously-silent misconfigurations as
 errors. Bump major version of the config schema. Add the new failure
@@ -587,7 +587,7 @@ case to `pywandahydra validate`.
 
 ---
 
-## Step 11 — Curated public API and CLI polish
+## Step 11 â€” Curated public API and CLI polish
 
 **Goal.** The package has a small, documented surface so external code
 knows what's stable.
@@ -600,21 +600,22 @@ knows what's stable.
    ```python
    from .config.loader import RunConfig, load_run_config
    from .execution.runner import RunResult, run
-   from .postprocessing.context import CaseContext, RunStepContext
-   from .postprocessing.protocols import CaseStep, Methodology, RunStep
+   from .postprocessing.context import CaseContext, PostProcessingRunContext
+   from .postprocessing.protocols import CaseStep, Workflow, RunStep
    from .postprocessing.registry import (
        bootstrap,
        register_case_step,
-       register_methodology,
+       register_workflow,
        register_run_step,
    )
-   from .postprocessing.plotting.themes import PlotTheme, register_theme
+   from .postprocessing.plotting.theme_registry import register_theme
+   from .postprocessing.plotting.renderers.theme import PlotTheme
 
    __all__ = [
        "RunConfig", "load_run_config", "run", "RunResult",
-       "CaseContext", "RunStepContext",
-       "CaseStep", "RunStep", "Methodology",
-       "bootstrap", "register_methodology", "register_case_step",
+       "CaseContext", "PostProcessingRunContext",
+       "CaseStep", "RunStep", "Workflow",
+       "bootstrap", "register_workflow", "register_case_step",
        "register_run_step", "PlotTheme", "register_theme",
    ]
    ```
@@ -625,7 +626,7 @@ knows what's stable.
 3. Skipped: full README rewrite and integration-test suite (deferred per
    user direction).
 
-**Verify.** `from pywandahydra import Methodology, register_methodology`
+**Verify.** `from pywandahydra import Workflow, register_workflow`
 works. `mypy --strict src/pywandahydra/__init__.py` passes.
 
 **Risk / Rollback.** Pure addition.
@@ -636,54 +637,54 @@ works. `mypy --strict src/pywandahydra/__init__.py` passes.
 
 ```
 pywandahydra/
-├── __init__.py                  # curated re-exports
-├── app_logging.py               # library-friendly, no globals
-├── cli/
-│   └── commands.py              # typer; thin over the service layer
-├── config/
-│   ├── models.py                # Pydantic models, Path-typed
-│   └── loader.py                # YAML/JSON → RunConfig
-├── scenarios/
-│   ├── schema.py                # ParameterChange, ScenarioSpecification, ...
-│   ├── mapper.py
-│   └── sources/                 # registry + entry_points
-│       ├── base.py
-│       └── xls.py
-├── wanda/
-│   ├── adapter.py               # Protocol: session + ops + extract
-│   ├── pywanda_adapter.py       # the ONE place str(Path) hits pywanda
-│   ├── api.py                   # low-level helpers used by the adapter
-│   └── create_scenario.py
-├── execution/
-│   ├── case_plan.py             # CasePlan carries adapter_class: str
-│   ├── journal.py
-│   ├── artifacts.py
-│   ├── worker.py                # imports only wanda.adapter
-│   └── runner.py                # imports only postprocessing.protocols/registry
-└── postprocessing/
-    ├── context.py               # CaseContext, RunStepContext
-    ├── protocols.py             # CaseStep, RunStep, Methodology
-    ├── registry.py              # entry_points discovery + register_* helpers
-    ├── cache.py                 # ParquetCache
-    ├── extract.py
-    ├── methodologies/
-    │   ├── default.py
-    │   └── composed.py          # YAML/XLS-defined composition
-    ├── steps/                   # inert on import; one file per step
-    │   ├── summary_table.py
-    │   ├── route_plots.py
-    │   ├── aggregate_tables.py
-    │   └── merge_pdfs.py
-    └── plotting/                # merged; only plotting package
-        ├── renderer.py
-        ├── themes.py            # PlotTheme + registry
-        ├── specifications.py
-        ├── styles/
-        └── image_data/
+â”œâ”€â”€ __init__.py                  # curated re-exports
+â”œâ”€â”€ app_logging.py               # library-friendly, no globals
+â”œâ”€â”€ cli/
+â”‚   â””â”€â”€ commands.py              # typer; thin over the service layer
+â”œâ”€â”€ config/
+â”‚   â”œâ”€â”€ models.py                # Pydantic models, Path-typed
+â”‚   â””â”€â”€ loader.py                # YAML/JSON â†’ RunConfig
+â”œâ”€â”€ scenarios/
+â”‚   â”œâ”€â”€ schema.py                # ParameterChange, ScenarioSpecification, ...
+â”‚   â”œâ”€â”€ mapper.py
+â”‚   â””â”€â”€ sources/                 # registry + entry_points
+â”‚       â”œâ”€â”€ base.py
+â”‚       â””â”€â”€ xls.py
+â”œâ”€â”€ wanda/
+â”‚   â”œâ”€â”€ adapter.py               # Protocol: session + ops + extract
+â”‚   â”œâ”€â”€ pywanda_adapter.py       # the ONE place str(Path) hits pywanda
+â”‚   â”œâ”€â”€ api.py                   # low-level helpers used by the adapter
+â”‚   â””â”€â”€ create_scenario.py
+â”œâ”€â”€ execution/
+â”‚   â”œâ”€â”€ case_plan.py             # CasePlan carries adapter_class: str
+â”‚   â”œâ”€â”€ journal.py
+â”‚   â”œâ”€â”€ artifacts.py
+â”‚   â”œâ”€â”€ worker.py                # imports only wanda.adapter
+â”‚   â””â”€â”€ runner.py                # imports only postprocessing.protocols/registry
+â””â”€â”€ postprocessing/
+    â”œâ”€â”€ context.py               # CaseContext, PostProcessingRunContext
+    â”œâ”€â”€ protocols.py             # CaseStep, RunStep, Workflow
+    â”œâ”€â”€ registry.py              # entry_points discovery + register_* helpers
+    â”œâ”€â”€ cache.py                 # ParquetCache
+    â”œâ”€â”€ extract.py
+    â”œâ”€â”€ workflows/
+    â”‚   â”œâ”€â”€ default.py
+    â”‚   â””â”€â”€ composed.py          # YAML/XLS-defined composition
+    â”œâ”€â”€ steps/                   # inert on import; one file per step
+    â”‚   â”œâ”€â”€ summary_table.py
+    â”‚   â”œâ”€â”€ route_plots.py
+    â”‚   â”œâ”€â”€ aggregate_tables.py
+    â”‚   â””â”€â”€ merge_pdfs.py
+    â””â”€â”€ plotting/                # merged; only plotting package
+        â”œâ”€â”€ renderer.py
+        â”œâ”€â”€ themes.py            # PlotTheme + registry
+        â”œâ”€â”€ specifications.py
+        â”œâ”€â”€ styles/
+        â””â”€â”€ image_data/
 ```
 
 **Plugin contract recap.** A downstream wheel registers via entry points
-under `pywandahydra.methodologies`, `pywandahydra.case_steps`,
+under `pywandahydra.workflows`, `pywandahydra.case_steps`,
 `pywandahydra.run_steps`, `pywandahydra.themes`, or
 `pywandahydra.scenario_sources`. No code changes in `pywanda-hydra`
 needed to add new post-processing routines.
@@ -701,7 +702,9 @@ needed to add new post-processing routines.
 | 5/5b | plotting rename + themes               | Low    | mechanical, prepares Step 7 |
 | 6    | delete `_STEPS`                        | Low    | now safe because nobody uses it |
 | 7    | RunStep + move run-level aggregation   | Medium | makes runner extensible |
-| 8    | configurable methodologies (`Params`)  | Medium | enables YAML/XLS composition |
+| 8    | configurable workflows (`Params`)  | Medium | enables YAML/XLS composition |
 | 9    | entry_points discovery                 | Low    | the headline of the architecture |
-| 10   | methodology vs `enabled_steps`         | Low    | turns silent misconfig into errors |
+| 10   | workflow vs `enabled_steps`         | Low    | turns silent misconfig into errors |
 | 11   | curated `__init__.py` + plugins CLI    | Low    | external contract |
+
+

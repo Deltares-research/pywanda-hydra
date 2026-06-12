@@ -31,6 +31,7 @@ class ScenarioLoadOptions:
     # Post-processing sheet names (set to None to skip)
     output_sheet: str | None = "Output"
     rplots_sheet: str | None = "Rplots"
+    tplots_sheet: str | None = "Tplots"
 
     # Strict validation: raise on missing/malformed post-processing sheets,
     # missing required columns, duplicate route titles, or duplicate

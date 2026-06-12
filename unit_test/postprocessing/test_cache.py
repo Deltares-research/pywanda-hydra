@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from pywandahydra.postprocessing.cache import ParquetCache
+from pywandahydra.postprocessing.io.cache import ParquetCache
 
 
 class TestParquetCacheRouteProfile(unittest.TestCase):
@@ -37,4 +37,6 @@ class TestParquetCacheRouteProfile(unittest.TestCase):
             profile = route["profile"]
             self.assertIn("elevation", profile.columns)
             self.assertListEqual(list(profile.index.astype(float)), [0.0, 5.0, 10.0])
-            self.assertListEqual(list(profile["elevation"].astype(float)), [0.5, 0.25, 0.75])
+            self.assertListEqual(
+                list(profile["elevation"].astype(float)), [0.5, 0.25, 0.75]
+            )

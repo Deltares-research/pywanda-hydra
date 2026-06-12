@@ -25,8 +25,8 @@ class CasePlan:
         case_dir: Absolute path to the case output directory.
         model_spec: Model specification (paths, run flags, global overrides).
         scenario: The full scenario specification.
-        methodology_name: Post-processing methodology name.
-        methodology_params: Post-processing methodology parameters.
+        workflow_name: Post-processing workflow name.
+        workflow_params: Post-processing workflow parameters.
         adapter_class: Import path for the WandaAdapter implementation.
         attempt: Current attempt number (for retries).
         config_hash: SHA-256 hash of the plan for idempotency checks.
@@ -36,8 +36,8 @@ class CasePlan:
     case_dir: Path
     model_spec: ModelSpecification
     scenario: ScenarioSpecification
-    methodology_name: str = "default"
-    methodology_params: dict[str, Any] = field(default_factory=dict)
+    workflow_name: str = "default"
+    workflow_params: dict[str, Any] = field(default_factory=dict)
     extractors: list[dict[str, Any]] = field(default_factory=list)
     adapter_class: str = "pywandahydra.wanda.pywanda_adapter:PywandaAdapter"
     attempt: int = 1
@@ -58,8 +58,8 @@ class CasePlan:
             "v": 2,
             "model_path": str(self.model_spec.model_path),
             "model_bytes_sha256": model_bytes_hash,
-            "methodology_name": self.methodology_name,
-            "methodology_params": self.methodology_params,
+            "workflow_name": self.workflow_name,
+            "workflow_params": self.workflow_params,
             "extractors": self.extractors,
             "run_steady": self.model_spec.run_steady,
             "run_unsteady": self.model_spec.run_unsteady,
@@ -79,8 +79,8 @@ def build_case_plans(
     model_spec: ModelSpecification,
     scenarios: list[ScenarioSpecification],
     run_root: Path,
-    methodology_name: str = "default",
-    methodology_params: dict[str, Any] | None = None,
+    workflow_name: str = "default",
+    workflow_params: dict[str, Any] | None = None,
     extractors: list[dict[str, Any]] | None = None,
     adapter_class: str = "pywandahydra.wanda.pywanda_adapter:PywandaAdapter",
 ) -> list[CasePlan]:
@@ -90,8 +90,8 @@ def build_case_plans(
         model_spec: The model specification for the run.
         scenarios: All loaded scenarios (filtering by include happens here).
         run_root: Root directory for the run output.
-        methodology_name: Post-processing methodology name.
-        methodology_params: Post-processing methodology parameters.
+        workflow_name: Post-processing workflow name.
+        workflow_params: Post-processing workflow parameters.
         extractors: List of extractor specifications (name + params).
         adapter_class: Import path for the WandaAdapter implementation.
 
@@ -112,8 +112,8 @@ def build_case_plans(
                 case_dir=case_dir,
                 model_spec=model_spec,
                 scenario=scenario,
-                methodology_name=methodology_name,
-                methodology_params=dict(methodology_params or {}),
+                workflow_name=workflow_name,
+                workflow_params=dict(workflow_params or {}),
                 extractors=list(extractors or []),
                 adapter_class=adapter_class,
             )

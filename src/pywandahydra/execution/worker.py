@@ -22,21 +22,25 @@ from filelock import Timeout
 
 from ..execution.case_plan import CasePlan
 from ..execution.journal import CaseJournal, _now_iso, resume_decision
-from ..postprocessing.cache import ParquetCache
-from ..postprocessing.context import CaseContext, ExtractionContext
-from ..postprocessing.extract import extract_all
-from ..postprocessing.extractors import bootstrap as bootstrap_extractors
-from ..postprocessing.extractors import resolve_extractor
-from ..postprocessing.methodologies import bootstrap as bootstrap_methodologies
-from ..postprocessing.pipeline import run_postprocessing
-from ..postprocessing.plotting.themes import get_theme
+from ..postprocessing.core.context import CaseContext, ExtractionContext
+from ..postprocessing.core.pipeline import run_postprocessing
+from ..postprocessing.extraction.extract import extract_all
+from ..postprocessing.extraction.extractors import bootstrap as bootstrap_extractors
+from ..postprocessing.extraction.extractors import resolve_extractor
+from ..postprocessing.io.cache import ParquetCache
+from ..postprocessing.plotting.theme_registry import get_theme
+from ..postprocessing.workflows import bootstrap as bootstrap_workflows
 from ..wanda.adapter import WandaAdapter
 
 logger = logging.getLogger(__name__)
 
 
 def _load_adapter(plan: CasePlan) -> WandaAdapter:
-    """Instantiate the configured adapter class for this case."""
+    """Instantiate the configured adapter class for this case.
+
+    Implemented to support loading of custom adapter (e.g., FakeAdapter for testing)
+    specified by import path in the CasePlan.
+    """
     module_name, _, class_name = plan.adapter_class.partition(":")
     if not module_name or not class_name:
         raise ValueError(
@@ -63,10 +67,10 @@ def run_one_case(plan: CasePlan) -> dict[str, Any]:
     """
     journal = CaseJournal(plan.case_dir)
 
-    # Ensure built-in methodologies are registered in this process (idempotent,
+    # Ensure built-in workflows are registered in this process (idempotent,
     # required under multiprocessing 'spawn' where module-level side effects
     # do not propagate from the parent process).
-    bootstrap_methodologies()
+    bootstrap_workflows()
     bootstrap_extractors()
 
     # Hold the case lock for the entire execution so two processes can never
@@ -74,6 +78,7 @@ def run_one_case(plan: CasePlan) -> dict[str, Any]:
     # the same model files blocks indefinitely inside pywanda.WandaModel.
     # FileLock is reentrant, so nested `with journal:` transitions still work.
     try:
+        # Only continue if we can acquire the lock.
         journal.acquire()
     except Timeout:
         error_msg = (
@@ -268,14 +273,14 @@ def _execute_case(plan: CasePlan, journal: CaseJournal) -> dict[str, Any]:
         )
         journal.event("cached", artefacts=artefacts)
 
-        # --- Post-processing: run methodology-driven steps ---
+        # --- Post-processing: run workflow-driven steps ---
         logger.info(
             "Case %s: Starting post-processing (%s)...",
             plan.case_id,
-            plan.methodology_name,
+            plan.workflow_name,
         )
         theme = get_theme(plan.scenario.post_processing.theme)
-        pp_ctx = CaseContext(
+        postprocessing_ctx = CaseContext(
             cache=cache,
             scenario=plan.scenario,
             case_dir=plan.case_dir,
@@ -283,23 +288,23 @@ def _execute_case(plan: CasePlan, journal: CaseJournal) -> dict[str, Any]:
         )
         with journal:
             journal.transition("RUNNING", postprocess_status="RUNNING")
-        pp_results = run_postprocessing(
-            pp_ctx,
-            methodology_name=plan.methodology_name,
-            methodology_params=plan.methodology_params,
+        postprocessing_results = run_postprocessing(
+            postprocessing_ctx,
+            workflow_name=plan.workflow_name,
+            workflow_params=plan.workflow_params,
         )
         logger.info(
             "Case %s: Post-processing completed with results: %s",
             plan.case_id,
-            pp_results,
+            postprocessing_results,
         )
 
-        pp_success = all(pp_results.values())
-        pp_status = "DONE" if pp_success else "FAILED"
+        postprocessing_success = all(postprocessing_results.values())
+        postprocessing_status = "DONE" if postprocessing_success else "FAILED"
 
         journal.event(
             "postprocessed",
-            steps={name: ok for name, ok in pp_results.items()},
+            steps={name: ok for name, ok in postprocessing_results.items()},
         )
 
         # --- Transition: SUCCEEDED ---
@@ -309,7 +314,7 @@ def _execute_case(plan: CasePlan, journal: CaseJournal) -> dict[str, Any]:
                 "SUCCEEDED",
                 finished_at=_now_iso(),
                 duration_s=round(duration, 2),
-                postprocess_status=pp_status,
+                postprocess_status=postprocessing_status,
                 artefacts=artefacts,
             )
 
@@ -330,12 +335,14 @@ def _execute_case(plan: CasePlan, journal: CaseJournal) -> dict[str, Any]:
                 "FAILED",
                 finished_at=_now_iso(),
                 duration_s=round(duration, 2),
+                postprocess_status="FAILED",
                 error=error_msg,
             )
         logger.error("Case %s failed: %s", plan.case_id, error_msg)
         return {
             "case_id": plan.case_id,
             "success": False,
+            "postprocess_status": "FAILED",
             "error": error_msg,
             "duration_s": round(duration, 2),
             "scenario_dir": str(plan.case_dir),

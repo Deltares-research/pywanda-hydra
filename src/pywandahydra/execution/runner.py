@@ -11,16 +11,16 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from multiprocessing import get_context
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any
 
 from ..config.models import ModelSpecification, RunContext
 from ..execution.artifacts import create_run_directories, write_run_log
 from ..execution.case_plan import CasePlan, build_case_plans
 from ..execution.journal import CaseJournal, resume_decision
 from ..execution.worker import run_one_case
-from ..postprocessing.context import RunStepContext
-from ..postprocessing.methodologies import bootstrap as bootstrap_methodologies
-from ..postprocessing.methodologies.base import resolve_methodology
+from ..postprocessing.core.context import PostProcessingRunContext
+from ..postprocessing.workflows import bootstrap as bootstrap_workflows
+from ..postprocessing.workflows.base import resolve_workflow
 from ..scenarios.schema import ScenarioSpecification
 
 logger = logging.getLogger(__name__)
@@ -55,12 +55,11 @@ def run(
     ctx: RunContext,
     scenarios: Sequence[ScenarioSpecification],
     n_workers: int = 1,
-    mode: Literal["sequential", "multiprocessing"] = "sequential",
     persist_manifest: bool = True,
     resume: bool = False,
     verbose: bool = False,
-    methodology_name: str = "default",
-    methodology_params: dict[str, Any] | None = None,
+    workflow_name: str = "default",
+    workflow_params: dict[str, Any] | None = None,
     extractors: list[dict[str, Any]] | None = None,
     adapter_class: str = "pywandahydra.wanda.pywanda_adapter:PywandaAdapter",
 ) -> RunResult:
@@ -74,13 +73,13 @@ def run(
         model: The model specification for the run.
         ctx: The run context containing directory paths.
         scenarios: The list of scenario specifications to run.
-        n_workers: Number of parallel workers (default 1 = sequential).
-        mode: Execution mode used to select sequential vs multiprocessing.
+        n_workers: Number of parallel workers; 1 runs sequentially, >1 uses
+            multiprocessing.
         persist_manifest: Write run-level manifest/log file.
         resume: Skip already-completed cases with matching config hash.
         verbose: Enable detailed logging during execution.
-        methodology_name: Post-processing methodology name.
-        methodology_params: Post-processing methodology parameters.
+        workflow_name: Post-processing workflow name.
+        workflow_params: Post-processing workflow parameters.
         extractors: List of custom extractor specs to run during model execution.
         adapter_class: Import path for the WandaAdapter implementation.
 
@@ -94,8 +93,8 @@ def run(
         logging.getLogger("pywandahydra").setLevel(logging.DEBUG)
         logger.debug("Verbose logging enabled for execution")
 
-    bootstrap_methodologies()
-    methodology = resolve_methodology(methodology_name, methodology_params)
+    bootstrap_workflows()
+    workflow = resolve_workflow(workflow_name, workflow_params)
 
     # Create run directories and write log manifest
     create_run_directories(ctx)
@@ -111,8 +110,8 @@ def run(
         model,
         list(scenarios),
         run_root,
-        methodology_name=methodology.name,
-        methodology_params=methodology_params,
+        workflow_name=workflow.name,
+        workflow_params=workflow_params,
         extractors=extractors,
         adapter_class=adapter_class,
     )
@@ -152,9 +151,7 @@ def run(
                 plans_to_run.append(plan)
 
     # Execute
-    use_multiprocessing = (
-        mode == "multiprocessing" and n_workers > 1 and len(plans_to_run) > 1
-    )
+    use_multiprocessing = n_workers > 1 and len(plans_to_run) > 1
 
     if not use_multiprocessing:
         results = [run_one_case(plan) for plan in plans_to_run]
@@ -165,14 +162,14 @@ def run(
     n_success = sum(1 for r in results if r.get("success") is True)
     n_failed = sum(1 for r in results if r.get("success") is False)
 
-    run_ctx = RunStepContext(
+    post_processing_run_ctx = PostProcessingRunContext(
         run_root=run_root,
         run_id=ctx.run_id,
         case_results=tuple(results),
     )
-    for step in methodology.run_steps(run_ctx):
+    for step in workflow.run_steps(post_processing_run_ctx):
         try:
-            step.run(run_ctx)
+            step.run(post_processing_run_ctx)
         except Exception:
             logger.exception("Run step %r failed", step.name)
 

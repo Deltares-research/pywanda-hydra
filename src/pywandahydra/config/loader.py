@@ -15,7 +15,7 @@ import socket
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any
 
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -28,8 +28,8 @@ from .models import ModelSpecification, RunContext
 # ---------------------------------------------------------------------------
 
 
-class MethodologySpec(BaseModel):
-    """Config wrapper for methodology name + validated parameter dict."""
+class WorkflowSpec(BaseModel):
+    """Config wrapper for workflow name + validated parameter dict."""
 
     model_config = ConfigDict(extra="forbid")
     name: str = "default"
@@ -37,24 +37,23 @@ class MethodologySpec(BaseModel):
 
 
 class ExecutionConfig(BaseModel):
-    """Execution mode and worker configuration.
+    """Execution worker configuration.
 
     Attributes:
-        mode: Execution strategy.
-        n_workers: Number of parallel workers (only used when mode != sequential).
+        n_workers: Number of parallel workers; 1 runs sequentially, >1 uses
+            multiprocessing.
         resume: Whether to skip already-completed cases.
-        methodology: Post-processing methodology name + params.
+        workflow: Post-processing workflow name + params.
         extractors: List of custom extractors to run during model execution.
         verbose: Enable detailed logging during execution (default False).
     """
 
     model_config = ConfigDict(extra="forbid")
 
-    mode: Literal["sequential", "multiprocessing"] = "sequential"
     n_workers: int = Field(default=1, ge=1)
     resume: bool = False
     verbose: bool = False
-    methodology: MethodologySpec = Field(default_factory=MethodologySpec)
+    workflow: WorkflowSpec = Field(default_factory=WorkflowSpec)
     extractors: list[dict[str, Any]] = Field(
         default_factory=list,
         description="List of extractor specs: [{name: str, params: dict}]",
@@ -62,29 +61,20 @@ class ExecutionConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def _coerce_methodology_str(cls, data: Any) -> Any:
-        if isinstance(data, dict) and isinstance(data.get("methodology"), str):
+    def _coerce_workflow_str(cls, data: Any) -> Any:
+        if isinstance(data, dict) and isinstance(data.get("workflow"), str):
             data = dict(data)
-            data["methodology"] = {"name": data["methodology"]}
+            data["workflow"] = {"name": data["workflow"]}
         return data
 
-    @model_validator(mode="after")
-    def validate_mode_workers(self) -> ExecutionConfig:
-        """Ensure execution mode and worker settings are coherent."""
-        if self.mode == "sequential" and self.n_workers != 1:
-            raise ValueError(
-                "execution.n_workers must be 1 when execution.mode='sequential'"
-            )
-        return self
-
 
 # ---------------------------------------------------------------------------
-# Provenance (auto-captured)
+# Run metadata (auto-captured)
 # ---------------------------------------------------------------------------
 
 
-class Provenance(BaseModel):
-    """Auto-captured environment provenance for reproducibility.
+class RunMetadata(BaseModel):
+    """Auto-captured run metadata for reproducibility.
 
     Attributes:
         timestamp: ISO UTC timestamp of the run.
@@ -276,7 +266,7 @@ def apply_post_processing_overrides(
     if theme_name is None:
         return
 
-    from ..postprocessing.plotting.themes import list_themes
+    from ..postprocessing.plotting.theme_registry import list_themes
 
     known = list_themes()
     if theme_name not in known:

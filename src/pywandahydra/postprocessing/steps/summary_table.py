@@ -6,8 +6,8 @@ import logging
 
 from pydantic import BaseModel, ConfigDict
 
-from ..context import CaseContext
-from ..tables import render_summary_table
+from ..core.context import CaseContext
+from ..reports.tables import render_summary_table
 
 logger = logging.getLogger(__name__)
 

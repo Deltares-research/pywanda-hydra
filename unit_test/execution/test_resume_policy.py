@@ -103,7 +103,7 @@ class TestResumePolicy(unittest.TestCase):
                 )
 
             with patch(
-                "pywandahydra.execution.worker.bootstrap_methodologies",
+                "pywandahydra.execution.worker.bootstrap_workflows",
                 return_value=None,
             ):
                 result = run_one_case(plan)

@@ -1,4 +1,4 @@
-# Custom Extractors Developer Guide
+﻿# Custom Extractors Developer Guide
 
 This guide explains how to implement **custom extractors** to pull additional data from live WANDA models during case execution, enabling advanced post-processing and cross-case comparisons.
 
@@ -17,15 +17,15 @@ This guide explains how to implement **custom extractors** to pull additional da
 
 ```
 Model Open
-├─ extract_all()          → components, routes
-├─ extractors[0].extract() → {"my_metric": df}
-├─ extractors[1].extract() → {"energy_data": df}
-└─ Model Close
-    ↓
+â”œâ”€ extract_all()          â†’ components, routes
+â”œâ”€ extractors[0].extract() â†’ {"my_metric": df}
+â”œâ”€ extractors[1].extract() â†’ {"energy_data": df}
+â””â”€ Model Close
+    â†“
 cache.write_custom()
-├─ case_dir/data/custom/my_metric.parquet
-└─ case_dir/data/custom/energy_data.parquet
-    ↓
+â”œâ”€ case_dir/data/custom/my_metric.parquet
+â””â”€ case_dir/data/custom/energy_data.parquet
+    â†“
 case_steps: ctx.cache.read_custom("my_metric")
 ```
 
@@ -76,9 +76,9 @@ class CustomMetricsExtractor:
                 - ctx.cache: optional pre-extracted cache
 
         Returns:
-            Dict mapping metric name → DataFrame. Can be:
-            - {"metric": df}  → persists as metric.parquet
-            - {"route_data": {"ts": df, "envelope": df}}  → nested structure
+            Dict mapping metric name â†’ DataFrame. Can be:
+            - {"metric": df}  â†’ persists as metric.parquet
+            - {"route_data": {"ts": df, "envelope": df}}  â†’ nested structure
         """
         try:
             # Access extracted components (if available from prior extraction)
@@ -174,7 +174,6 @@ model:
 scenario_file: ./scenarios.xlsx
 
 execution:
-  mode: sequential
   n_workers: 1
   resume: false
   
@@ -186,7 +185,7 @@ execution:
         energy_threshold: 100.0
   
   # Post-processing (runs after extraction + caching)
-  methodology:
+  workflow:
     name: default
     params: {}
 ```
@@ -231,7 +230,7 @@ class MyAnalysisStep:
 After all cases, run steps can aggregate custom extracted data:
 
 ```python
-from pywandahydra.postprocessing.context import RunStepContext
+from pywandahydra.postprocessing.context import PostProcessingRunContext
 
 class AggregateMetricsStep:
     name = "aggregate_metrics"
@@ -242,7 +241,7 @@ class AggregateMetricsStep:
     def __init__(self, params: Params | None = None) -> None:
         self._p = params or self.Params()
     
-    def run(self, ctx: RunStepContext) -> None:
+    def run(self, ctx: PostProcessingRunContext) -> None:
         scenarios_dir = ctx.run_root / "scenarios"
         all_metrics = []
         
@@ -287,7 +286,7 @@ Extractors return a `dict[str, Any]` where each value is either:
 ### Simple DataFrame
 ```python
 return {
-    "my_metrics": df  # → persists as case_dir/data/custom/my_metrics.parquet
+    "my_metrics": df  # â†’ persists as case_dir/data/custom/my_metrics.parquet
 }
 ```
 
@@ -295,8 +294,8 @@ return {
 ```python
 return {
     "route_custom": {
-        "timeseries": df,  # → case_dir/data/custom/route_custom/timeseries.parquet
-        "profile": df,     # → case_dir/data/custom/route_custom/profile.parquet
+        "timeseries": df,  # â†’ case_dir/data/custom/route_custom/timeseries.parquet
+        "profile": df,     # â†’ case_dir/data/custom/route_custom/profile.parquet
     }
 }
 ```
@@ -436,3 +435,5 @@ def test_energy_loss_extractor(tmp_path):
 - Check [case_step_data_export.md](case_step_data_export.md) to see how case steps read custom extracted data
 - See [external_processing_step_setup.md](external_processing_step_setup.md) for cross-case run-step examples
 - Run `python -m pywandahydra plugins` to list all available extractors
+
+

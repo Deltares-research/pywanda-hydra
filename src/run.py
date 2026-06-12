@@ -5,13 +5,16 @@ For production use, prefer the CLI::
     pywandahydra run config.yaml --workers 4 --resume
 """
 
+import json
 import os
 import sys
 from datetime import datetime
 from importlib.util import find_spec
 from pathlib import Path
 
+from pywandahydra.config.loader import RunMetadata
 from pywandahydra.config.models import ModelSpecification, RunContext
+from pywandahydra.execution.artifacts import create_run_directories
 from pywandahydra.execution.runner import run
 from pywandahydra.scenarios.mapper import load_scenarios
 from pywandahydra.wanda.validation import assert_preflight_valid
@@ -64,6 +67,14 @@ def main() -> None:
         run_id=run_id,
         root_dir=run_dir,
         timestamp=datetime.now().strftime("%Y%m%d_%H%M%S"),
+    )
+
+    create_run_directories(ctx)
+    run_metadata = RunMetadata()
+    metadata_path = Path(ctx.root_dir) / "run_metadata.json"
+    metadata_path.write_text(
+        json.dumps(run_metadata.model_dump(), indent=2, default=str),
+        encoding="utf-8",
     )
 
     # Execute all scenarios (sequential, with resume support)

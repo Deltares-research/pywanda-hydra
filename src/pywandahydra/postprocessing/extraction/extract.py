@@ -31,12 +31,13 @@ import numpy as np
 import pandas as pd
 import pywanda
 
-from ..scenarios.schema import (
+from ...scenarios.schema import (
     ExportTableSpecification,
     RoutePlotSpecification,
     ScenarioSpecification,
+    TimePlotSpecification,
 )
-from ..wanda.adapter import WandaAdapter
+from ...wanda.adapter import WandaAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +49,7 @@ logger = logging.getLogger(__name__)
 
 def extract_component_outputs(
     model: pywanda.WandaModel,
-    specs: Sequence[ExportTableSpecification],
+    specs: Sequence[ExportTableSpecification | TimePlotSpecification],
     adapter: WandaAdapter,
 ) -> pd.DataFrame:
     """Extract time-series data for every *Output* specification.
@@ -219,14 +220,17 @@ def extract_route_outputs(
         route_id = spec.route_id.strip()
         if not route_id:
             logger.warning(
-                "Route spec with title '%s' has an empty route_id – skipping.", spec.title
+                "Route spec with title '%s' has an empty route_id – skipping.",
+                spec.title,
             )
             continue
         prop_name = spec.property.strip()
 
         pipes_with_dir = adapter.resolve_route_pipes(model, route_id)
         if not pipes_with_dir:
-            logger.warning("Route identifier '%s' has no pipe components – skipping.", route_id)
+            logger.warning(
+                "Route identifier '%s' has no pipe components – skipping.", route_id
+            )
             continue
 
         ts_frames: list[pd.DataFrame] = []
@@ -287,11 +291,15 @@ def extract_route_outputs(
                 max_vals = np.asarray(max_vals, dtype=float).ravel()
                 n_s_env = min(len(min_vals), len(max_vals))
                 s_local_env = np.linspace(0.0, length, n_s_env)
-                s_env = s_offset + (s_local_env if direction > 0 else (length - s_local_env))
+                s_env = s_offset + (
+                    s_local_env if direction > 0 else (length - s_local_env)
+                )
                 if direction < 0:
                     min_vals = min_vals[:n_s_env][::-1]
                     max_vals = max_vals[:n_s_env][::-1]
-                for s, mn, mx in zip(s_env, min_vals[:n_s_env], max_vals[:n_s_env], strict=False):
+                for s, mn, mx in zip(
+                    s_env, min_vals[:n_s_env], max_vals[:n_s_env], strict=False
+                ):
                     env_rows.append({"s_location [m]": float(s), "min": mn, "max": mx})
             except Exception:
                 logger.debug(
@@ -336,7 +344,9 @@ def extract_route_outputs(
             suffix = 2
             while f"{key}_{suffix}" in seen_keys:
                 suffix += 1
-            logger.warning("Duplicate route result key '%s' – stored as '%s_%d'.", key, key, suffix)
+            logger.warning(
+                "Duplicate route result key '%s' – stored as '%s_%d'.", key, key, suffix
+            )
             key = f"{key}_{suffix}"
         seen_keys.add(key)
 
@@ -344,7 +354,9 @@ def extract_route_outputs(
         if ts_frames:
             route_result["timeseries"] = pd.concat(ts_frames, axis=1)
         if env_rows:
-            route_result["envelope"] = pd.DataFrame(env_rows).set_index("s_location [m]")
+            route_result["envelope"] = pd.DataFrame(env_rows).set_index(
+                "s_location [m]"
+            )
         if profile_rows:
             profile_df = pd.DataFrame(profile_rows).set_index("s_location [m]")
             profile_df = profile_df.sort_index().groupby(level=0).mean()
@@ -372,7 +384,8 @@ def _normalise_pipe_series(
         return arr.T
     if arr.shape[0] == arr.shape[1] == n_times:
         logger.debug(
-            "Pipe '%s' property '%s' series is square (%d x %d); " "assuming first axis is time.",
+            "Pipe '%s' property '%s' series is square (%d x %d); "
+            "assuming first axis is time.",
             pipe_name,
             prop_name,
             n_times,
@@ -398,8 +411,8 @@ def extract_all(
     model : pywanda.WandaModel
         An open WANDA model that has been simulated.
     scenario : ScenarioSpecification
-        The scenario whose ``outputs`` and ``route_plots`` lists drive
-        the extraction.
+        The scenario whose ``tables``, ``time_plots`` and ``routes``
+        post-processing lists drive the extraction.
     adapter : WandaAdapter
         Adapter used for route-related model operations.
 
@@ -411,10 +424,17 @@ def extract_all(
         Inner ``"routes"`` values have keys ``"timeseries"``,
         ``"envelope"`` and optionally ``"profile"``.
     """
+    # Time plots read from the same components cache, so their
+    # (component, property) pairs are extracted alongside the Output sheet
+    # specifications; duplicates are de-duplicated inside the extractor.
+    component_specs: list[ExportTableSpecification | TimePlotSpecification] = [
+        *scenario.post_processing.tables,
+        *scenario.post_processing.time_plots,
+    ]
     return {
         "components": extract_component_outputs(
             model,
-            scenario.post_processing.tables,
+            component_specs,
             adapter,
         ),
         "routes": extract_route_outputs(

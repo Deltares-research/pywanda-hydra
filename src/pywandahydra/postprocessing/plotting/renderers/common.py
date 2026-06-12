@@ -1,0 +1,36 @@
+"""Shared helpers used by plotting renderers."""
+
+from __future__ import annotations
+
+import matplotlib.pyplot as plt
+from matplotlib.axes import Axes
+
+from ..models import AxisSpec
+
+
+def configure_matplotlib_defaults() -> None:
+    """Apply module-level matplotlib defaults for post-processing plots."""
+    plt.rcParams.update(
+        {
+            # Keep x-axis tight by default (no automatic side padding).
+            "axes.xmargin": 0.0,
+        }
+    )
+
+
+def apply_axis_spec(ax: Axes, spec: AxisSpec, *, axis: str) -> None:
+    """Apply an AxisSpec to a matplotlib Axes."""
+    if axis == "x":
+        if spec.label:
+            ax.set_xlabel(spec.label)
+        if spec.min is not None:
+            ax.set_xlim(left=spec.min)
+        if spec.max is not None:
+            ax.set_xlim(right=spec.max)
+    else:
+        if spec.label:
+            ax.set_ylabel(spec.label)
+        if spec.min is not None:
+            ax.set_ylim(bottom=spec.min)
+        if spec.max is not None:
+            ax.set_ylim(top=spec.max)

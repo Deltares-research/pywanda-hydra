@@ -1,4 +1,5 @@
-# models/spec.py
+"""Configuration models for PyWANDA Hydra."""
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -20,7 +21,7 @@ class ModelSpecification(BaseModel):
     wanda_bin : Path
         Path to WANDA binaries and executables.
     base_model_name : str
-        Name of the base model.
+        Name of the wanda base model (without .wdi extension).
 
     readonly : bool, optional
         If model output exists, the model is treated as read-only (default is True).
@@ -93,6 +94,44 @@ class ModelSpecification(BaseModel):
             The normalized path.
         """
         return Path(str(v).strip()).expanduser()
+
+    # Ensure base_model_name has no WANDA file suffixes (e.g., .wdi, .wdo, .wdx).
+    @field_validator("base_model_name", mode="before")
+    @classmethod
+    def ensure_base_model_name_format(cls, v: str) -> str:
+        """Normalize base_model_name by stripping WANDA file suffixes.
+
+        Only WANDA extensions (e.g., .wdi, .wdo, .wdx) are removed; other
+        dot-segments (e.g. "model_v4.8") are preserved.
+
+        Parameters
+        ----------
+        v : str
+            The input base model name.
+
+        Returns
+        -------
+        str
+            The normalized base model name without WANDA file suffixes.
+        """
+        # Lowercase only: compared against a lowercased suffix below.
+        wanda_suffixes = {
+            ".wdi",
+            ".wdo",
+            ".wdx",
+            "._sm",
+            "._um",
+            ".__i",
+            ".__r",
+        }
+        name = Path(str(v).strip()).name
+        while (suffix := Path(name).suffix.lower()) in wanda_suffixes:
+            name = name[: -len(suffix)]
+
+        normalized = name.strip()
+        if not normalized:
+            raise ValueError("base_model_name must contain a non-empty name.")
+        return normalized
 
 
 class RunContext(BaseModel):

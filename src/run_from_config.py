@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import faulthandler
+import json
 import logging
 import os
 import sys
@@ -16,11 +17,13 @@ from importlib.util import find_spec
 from pathlib import Path
 
 from pywandahydra.config.loader import (
+    RunMetadata,
     apply_post_processing_overrides,
     build_run_context,
     load_run_config,
     validate_run_paths,
 )
+from pywandahydra.execution.artifacts import create_run_directories
 from pywandahydra.execution.runner import run
 from pywandahydra.scenarios.mapper import load_scenarios
 from pywandahydra.wanda.validation import assert_preflight_valid
@@ -92,17 +95,25 @@ def main() -> None:
     apply_post_processing_overrides(cfg, scenarios)
     ctx = build_run_context(cfg)
 
+    run_root = Path(ctx.root_dir)
+    create_run_directories(ctx)
+    run_metadata = RunMetadata()
+    metadata_path = run_root / "run_metadata.json"
+    metadata_path.write_text(
+        json.dumps(run_metadata.model_dump(), indent=2, default=str),
+        encoding="utf-8",
+    )
+
     try:
         result = run(
             model=cfg.model,
             ctx=ctx,
             scenarios=scenarios,
             n_workers=cfg.execution.n_workers,
-            mode=cfg.execution.mode,
             resume=cfg.execution.resume,
             verbose=cfg.execution.verbose,
-            methodology_name=cfg.execution.methodology.name,
-            methodology_params=cfg.execution.methodology.params,
+            workflow_name=cfg.execution.workflow.name,
+            workflow_params=cfg.execution.workflow.params,
             extractors=cfg.execution.extractors,
         )
 
@@ -116,9 +127,8 @@ def main() -> None:
             print("\n--- Failed Cases ---")
             for case_result in result.results:
                 if not case_result.get("success"):
-                    print(
-                        f"  {case_result.get('case_id')}: {case_result.get('error', 'Unknown error')}"
-                    )
+                    error_message = case_result.get("error", "Unknown error")
+                    print(f"  {case_result.get('case_id')}: {error_message}")
 
         # Check logs
         log_dir = Path(ctx.root_dir) / "logs"

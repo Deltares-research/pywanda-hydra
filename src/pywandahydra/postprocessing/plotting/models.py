@@ -1,12 +1,34 @@
-"""Object schemas for plotting specifications in post-processing."""
+"""Pydantic models used by plotting configuration and plot data layers."""
 
 from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 ScaleType = Literal["linear"]
+
+
+class AxisSpec(BaseModel):
+    """Specification for a plot axis."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    label: str | None = None
+    min: float | None = None
+    max: float | None = None
+    tick_interval: float | None = None
+    scale: ScaleType = "linear"
+    factor: float = Field(
+        default=1.0, gt=0.0, description="Scaling factor for the axis."
+    )
+
+    @field_validator("label")
+    @classmethod
+    def strip_label(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        return v.strip()
 
 
 class PlotTextAnnotation(BaseModel):
@@ -26,8 +48,8 @@ class RouteSeries(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    label: str  # e.g. "0 s", "60 s", "min", "max"
-    values: list[float]  # same length as RouteData.s_location
+    label: str
+    values: list[float]
 
 
 class RouteData(BaseModel):

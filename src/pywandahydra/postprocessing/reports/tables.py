@@ -8,9 +8,9 @@ from typing import Any
 
 import pandas as pd
 
-from ..scenarios.schema import ExportTableSpecification
-from .cache import ParquetCache
-from .export import save_table
+from ...scenarios.schema import ExportTableSpecification
+from ..io.cache import ParquetCache
+from ..io.export import save_table
 
 logger = logging.getLogger(__name__)
 

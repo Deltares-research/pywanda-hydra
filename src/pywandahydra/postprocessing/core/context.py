@@ -6,11 +6,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from ..scenarios.schema import ScenarioSpecification
-from ..wanda.adapter import WandaAdapter
-from .cache import ParquetCache
-from .export import DEFAULT_TABLE_EXPORT_PROPS, build_figure_export_props
-from .plotting.renderer import PlotTheme
+from ...scenarios.schema import ScenarioSpecification
+from ...wanda.adapter import WandaAdapter
+from ..io.cache import ParquetCache
+from ..io.export import DEFAULT_TABLE_EXPORT_PROPS, build_figure_export_props
+from ..plotting.renderers.theme import PlotTheme
 
 
 @dataclass(frozen=True)
@@ -61,7 +61,7 @@ class CaseContext:
 
 
 @dataclass(frozen=True)
-class RunStepContext:
+class PostProcessingRunContext:
     """Context passed to run-level post-processing steps."""
 
     run_root: Path

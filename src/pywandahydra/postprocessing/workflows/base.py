@@ -1,4 +1,4 @@
-"""Methodology and post-processing step registries."""
+"""Workflow and post-processing step registries."""
 
 from __future__ import annotations
 
@@ -7,11 +7,11 @@ from typing import Any, cast
 
 from pydantic import BaseModel, Field
 
-from ..protocols import CaseStep, Methodology, RunStep
+from ..core.protocols import CaseStep, PostProcessingWorkflow, RunStep
 
 logger = logging.getLogger(__name__)
 
-_METHODOLOGY_CLASSES: dict[str, type[Any]] = {}
+_WORKFLOW_CLASSES: dict[str, type[Any]] = {}
 _CASE_STEP_CLASSES: dict[str, type[Any]] = {}
 _RUN_STEP_CLASSES: dict[str, type[Any]] = {}
 
@@ -23,34 +23,37 @@ class StepSpec(BaseModel):
     params: dict[str, Any] = Field(default_factory=dict)
 
 
-def register_methodology(methodology_class: type[Any]) -> type[Any]:
-    """Register a methodology class by its declared name."""
-    existing = _METHODOLOGY_CLASSES.get(methodology_class.name)
+def register_workflow(workflow_class: type[Any]) -> type[Any]:
+    """Register a workflow class by its declared name."""
+    existing = _WORKFLOW_CLASSES.get(workflow_class.name)
     if existing is not None:
         return existing
-    _METHODOLOGY_CLASSES[methodology_class.name] = methodology_class
-    logger.debug("Registered methodology: %s", methodology_class.name)
-    return methodology_class
+    _WORKFLOW_CLASSES[workflow_class.name] = workflow_class
+    logger.debug("Registered workflow: %s", workflow_class.name)
+    return workflow_class
 
 
-def get_methodology_class(name: str) -> type[Any]:
-    """Look up a registered methodology class by name."""
-    if name not in _METHODOLOGY_CLASSES:
-        available = sorted(_METHODOLOGY_CLASSES.keys())
-        raise KeyError(f"Unknown methodology: '{name}'. Available: {available}")
-    return _METHODOLOGY_CLASSES[name]
+def get_workflow_class(name: str) -> type[Any]:
+    """Look up a registered workflow class by name."""
+    if name not in _WORKFLOW_CLASSES:
+        available = sorted(_WORKFLOW_CLASSES.keys())
+        raise KeyError(f"Unknown workflow: '{name}'. Available: {available}")
+    return _WORKFLOW_CLASSES[name]
 
 
-def list_methodologies() -> list[str]:
-    """Return names of all registered methodologies."""
-    return sorted(_METHODOLOGY_CLASSES.keys())
+def list_workflows() -> list[str]:
+    """Return names of all registered workflows."""
+    return sorted(_WORKFLOW_CLASSES.keys())
 
 
-def resolve_methodology(name: str, params: dict[str, Any] | None = None) -> Methodology:
-    """Instantiate a registered methodology with validated params."""
-    cls = get_methodology_class(name)
+def resolve_workflow(
+    name: str,
+    params: dict[str, Any] | None = None,
+) -> PostProcessingWorkflow:
+    """Instantiate a registered workflow with validated params."""
+    cls = get_workflow_class(name)
     validated = cls.Params.model_validate(params or {})
-    return cast(Methodology, cls(validated))
+    return cast(PostProcessingWorkflow, cls(validated))
 
 
 def register_case_step(step_class: type[Any]) -> type[Any]:

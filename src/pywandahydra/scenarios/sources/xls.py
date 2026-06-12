@@ -4,14 +4,15 @@ from __future__ import annotations
 
 import logging
 import warnings
+from collections.abc import Callable
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, TypeVar, cast
 
 import numpy as np
 import pandas as pd
 from pydantic import ValidationError
 
-from pywandahydra.postprocessing.plotting.specifications import AxisSpec
+from pywandahydra.postprocessing.plotting.models import AxisSpec
 
 from ..schema import (
     AnalysisMeta,
@@ -21,6 +22,7 @@ from ..schema import (
     RoutePlotSpecification,
     ScenarioMeta,
     ScenarioSpecification,
+    TimePlotSpecification,
 )
 from .base import register_source
 
@@ -207,6 +209,129 @@ def _read_output_sheet(
     return specs
 
 
+def _float_or_none(val: Any) -> float | None:
+    """Convert a cell value to float, returning None for NaN/empty/unparsable."""
+    if _is_nan(val) or val is None:
+        return None
+    try:
+        return float(val)
+    except (TypeError, ValueError):
+        return None
+
+
+_SpecT = TypeVar("_SpecT")
+
+# Case-insensitive cell getter bound to a single sheet row.
+_RowGetter = Callable[[str], Any]
+
+
+def _parse_plot_sheet(
+    path: str | Path,
+    sheet: str,
+    *,
+    strict: bool,
+    kind: str,
+    build_spec: Callable[
+        [_RowGetter, str, str, str | None, AxisSpec, AxisSpec], _SpecT
+    ],
+) -> list[_SpecT]:
+    """Parse a plot sheet (RPlots/TPlots) shared structure into specifications.
+
+    Handles the behavior common to both plot sheets: optional-sheet skipping,
+    case-insensitive column mapping, required-column checks, row filtering,
+    duplicate-title detection, and axis construction. ``build_spec`` receives
+    a case-insensitive cell getter plus the pre-parsed name/property/title and
+    axes, and returns the concrete specification model.
+
+    Parameters
+    ----------
+    path : str | Path
+        The path to the Excel file.
+    sheet : str
+        The sheet name to read.
+    strict : bool
+        Whether strict validation is enabled.
+    kind : str
+        Human-readable plot kind used in error messages (e.g. ``"route"``).
+    build_spec : Callable
+        Factory building one specification from a parsed row.
+
+    Returns
+    -------
+    list
+        Parsed plot specifications.
+    """
+    try:
+        df = cast(pd.DataFrame, pd.read_excel(path, sheet))
+    except ValueError:
+        # Sheet does not exist
+        if strict:
+            raise ValueError(
+                f"Strict validation: required sheet '{sheet}' is missing in {path}"
+            ) from None
+        return []
+
+    # Accept both lower-case and Excel-style capitalization.
+    columns_ci = {str(c).strip().lower(): c for c in df.columns}
+
+    required_cols = {"title", "name", "property"}
+    missing = required_cols - set(columns_ci)
+    if missing:
+        if strict:
+            raise ValueError(
+                f"Strict validation: sheet '{sheet}' missing required column(s) {sorted(missing)}."
+            )
+        return []
+
+    specs: list[_SpecT] = []
+    seen_titles: set[str] = set()
+
+    for idx, row in df.iterrows():
+
+        def get(key: str, row: pd.Series = row) -> Any:
+            actual = columns_ci.get(key.lower())
+            return row.get(actual) if actual is not None else None
+
+        comp = _as_str_or_none(get("name"))
+        prop = _as_str_or_none(get("property"))
+
+        if comp is None or prop is None:
+            if strict and not (comp is None and prop is None):
+                raise ValueError(
+                    f"Strict validation: incomplete row {idx} in sheet '{sheet}': "
+                    f"name={comp!r}, property={prop!r}."
+                )
+            continue
+
+        title = _as_str_or_none(get("title"))
+        if title is not None:
+            if title in seen_titles and strict:
+                raise ValueError(
+                    f"Strict validation: duplicate {kind} title {title!r} at row {idx} "
+                    f"in sheet '{sheet}'."
+                )
+            seen_titles.add(title)
+
+        x_axis = AxisSpec(
+            label=_as_str_or_none(get("xlabel")) or "",
+            min=_float_or_none(get("xmin")),
+            max=_float_or_none(get("xmax")),
+            tick_interval=_float_or_none(get("xtick")),
+            factor=_float_or_none(get("xscale")) or 1.0,
+        )
+        y_axis = AxisSpec(
+            label=_as_str_or_none(get("ylabel")) or "",
+            min=_float_or_none(get("ymin")),
+            max=_float_or_none(get("ymax")),
+            tick_interval=_float_or_none(get("ytick")),
+            factor=_float_or_none(get("yscale")) or 1.0,
+        )
+
+        specs.append(build_spec(get, comp, prop, title, x_axis, y_axis))
+
+    return specs
+
+
 def _read_rplots_sheet(
     path: str | Path,
     opts: ScenarioLoadOptions,
@@ -232,94 +357,84 @@ def _read_rplots_sheet(
     List[RoutePlotSpecification]
         Parsed route-plot specifications.
     """
-    try:
-        df = cast(pd.DataFrame, pd.read_excel(path, opts.rplots_sheet))
-    except ValueError:
-        # Sheet does not exist
-        if opts.strict_validation:
-            raise ValueError(
-                f"Strict validation: required sheet '{opts.rplots_sheet}' is missing in {path}"
-            ) from None
+    if opts.rplots_sheet is None:
         return []
 
-    # Accept both lower-case and Excel-style capitalization.
-    columns_ci = {str(c).strip().lower(): c for c in df.columns}
+    def build_spec(
+        get: _RowGetter,
+        comp: str,
+        prop: str,
+        title: str | None,
+        x_axis: AxisSpec,
+        y_axis: AxisSpec,
+    ) -> RoutePlotSpecification:
+        return RoutePlotSpecification(
+            route_id=comp,
+            property=prop,
+            title=title,
+            legend=_as_str_or_none(get("legend")),
+            fig=_as_str_or_none(get("fig")),
+            plot=get("plot"),
+            x_axis=x_axis,
+            y_axis=y_axis,
+        )
 
-    required_cols = {"title", "name", "property"}
-    missing = required_cols - set(columns_ci)
-    if missing:
-        if opts.strict_validation:
-            raise ValueError(
-                f"Strict validation: sheet '{opts.rplots_sheet}' missing required column(s) "
-                f"{sorted(missing)}."
-            )
+    return _parse_plot_sheet(
+        path,
+        opts.rplots_sheet,
+        strict=opts.strict_validation,
+        kind="route",
+        build_spec=build_spec,
+    )
+
+
+def _read_tplots_sheet(
+    path: str | Path,
+    opts: ScenarioLoadOptions,
+) -> list[TimePlotSpecification]:
+    """Read the *TPlots* sheet and return a list of plot specifications.
+
+    Expected sheet layout (with a header row)::
+
+        fig | plot | name | property | location | color | style | marker
+        title | Legend | Xlabel | Ylabel | Xmin | Xtick | Xmax | Xscale
+        Ymin | Ytick | Ymax | Yscale
+
+    The sheet is silently skipped (returns ``[]``) when it does not exist.
+    """
+    if opts.tplots_sheet is None:
         return []
 
-    def _float_or_none(val: Any) -> float | None:
-        if _is_nan(val) or val is None:
-            return None
-        try:
-            return float(val)
-        except (TypeError, ValueError):
-            return None
-
-    specs: list[RoutePlotSpecification] = []
-    seen_titles: set[str] = set()
-
-    def _row_get_ci(row: pd.Series, key: str) -> Any:
-        actual = columns_ci.get(key.lower())
-        return row.get(actual) if actual is not None else None
-
-    for idx, row in df.iterrows():
-        comp = _as_str_or_none(_row_get_ci(row, "name"))
-        prop = _as_str_or_none(_row_get_ci(row, "property"))
-
-        if comp is None or prop is None:
-            if opts.strict_validation and not (comp is None and prop is None):
-                raise ValueError(
-                    f"Strict validation: incomplete row {idx} in sheet '{opts.rplots_sheet}': "
-                    f"name={comp!r}, property={prop!r}."
-                )
-            continue
-
-        title = _as_str_or_none(_row_get_ci(row, "title"))
-        if title is not None:
-            if title in seen_titles and opts.strict_validation:
-                raise ValueError(
-                    f"Strict validation: duplicate route title {title!r} at row {idx} "
-                    f"in sheet '{opts.rplots_sheet}'."
-                )
-            seen_titles.add(title)
-
-        x_axis = AxisSpec(
-            label=_as_str_or_none(_row_get_ci(row, "xlabel")) or "",
-            min=_float_or_none(_row_get_ci(row, "xmin")),
-            max=_float_or_none(_row_get_ci(row, "xmax")),
-            tick_interval=_float_or_none(_row_get_ci(row, "xtick")),
-            factor=_float_or_none(_row_get_ci(row, "xscale")) or 1.0,
-        )
-        y_axis = AxisSpec(
-            label=_as_str_or_none(_row_get_ci(row, "ylabel")) or "",
-            min=_float_or_none(_row_get_ci(row, "ymin")),
-            max=_float_or_none(_row_get_ci(row, "ymax")),
-            tick_interval=_float_or_none(_row_get_ci(row, "ytick")),
-            factor=_float_or_none(_row_get_ci(row, "yscale")) or 1.0,
+    def build_spec(
+        get: _RowGetter,
+        comp: str,
+        prop: str,
+        title: str | None,
+        x_axis: AxisSpec,
+        y_axis: AxisSpec,
+    ) -> TimePlotSpecification:
+        return TimePlotSpecification(
+            component=comp,
+            property=prop,
+            title=title,
+            legend=_as_str_or_none(get("legend")),
+            fig=_as_str_or_none(get("fig")),
+            plot=get("plot"),
+            location=_float_or_none(get("location")),
+            color=_as_str_or_none(get("color")),
+            style=_as_str_or_none(get("style")),
+            marker=_as_str_or_none(get("marker")),
+            x_axis=x_axis,
+            y_axis=y_axis,
         )
 
-        specs.append(
-            RoutePlotSpecification(
-                route_id=comp or "",
-                property=prop or "",
-                title=title,
-                legend=_as_str_or_none(_row_get_ci(row, "legend")),
-                fig=_as_str_or_none(_row_get_ci(row, "fig")),
-                plot=_row_get_ci(row, "plot"),
-                x_axis=x_axis,
-                y_axis=y_axis,
-            )
-        )
-
-    return specs
+    return _parse_plot_sheet(
+        path,
+        opts.tplots_sheet,
+        strict=opts.strict_validation,
+        kind="time-plot",
+        build_spec=build_spec,
+    )
 
 
 def read_scenarios_from_excel(
@@ -328,7 +443,7 @@ def read_scenarios_from_excel(
     """Read scenarios from an Excel file.
 
     Reads the *Cases* sheet for scenario parameters, and optionally the
-    *Output* and *RPlots* sheets for post-processing specifications.
+    *Output*, *RPlots*, and *TPlots* sheets for post-processing specifications.
 
     Parameters
     ----------
@@ -381,6 +496,7 @@ def read_scenarios_from_excel(
     # Load post-processing specifications from optional sheets
     output_specs = _read_output_sheet(path, opts) if opts.output_sheet else []
     rplot_specs = _read_rplots_sheet(path, opts) if opts.rplots_sheet else []
+    tplot_specs = _read_tplots_sheet(path, opts) if opts.tplots_sheet else []
 
     # Construct scenarios
     scenarios: list[ScenarioSpecification] = []
@@ -453,6 +569,7 @@ def read_scenarios_from_excel(
                 post_processing=PostProcessingConfig(
                     tables=output_specs,
                     routes=rplot_specs,
+                    time_plots=tplot_specs,
                 ),
                 analysis_meta=analysis_context,
                 source={

@@ -2,9 +2,9 @@
 
 from .loader import (
     ExecutionConfig,
-    MethodologySpec,  # noqa: F401
-    Provenance,
     RunConfig,
+    RunMetadata,
+    WorkflowSpec,  # noqa: F401
     load_run_config,
 )
 from .models import ModelSpecification, RunContext  # noqa: F401

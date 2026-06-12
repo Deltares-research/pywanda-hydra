@@ -1,10 +1,10 @@
-# Case Step Data Export Guide
+﻿# Case Step Data Export Guide
 
 This guide explains how to implement a **case step** that exports custom-derived data during case post-processing, enabling later cross-case comparison and analysis.
 
 ### Related Guides
 
-- **[custom_extractors.md](custom_extractors.md)** – If you need to extract data while the model is open, use custom extractors instead. They have direct model access and are more powerful than case steps.
+- **[custom_extractors.md](custom_extractors.md)** â€“ If you need to extract data while the model is open, use custom extractors instead. They have direct model access and are more powerful than case steps.
 
 ## Architecture Overview
 
@@ -12,22 +12,22 @@ The data flow during case execution:
 
 ```
 Model Session (open)
-    ↓
-    ├─ Simulate (steady/unsteady)
-    ├─ extract_all()  → extracts component and route time-series
-    └─ cache.write()  → persists to parquet files
-    ↓
+    â†“
+    â”œâ”€ Simulate (steady/unsteady)
+    â”œâ”€ extract_all()  â†’ extracts component and route time-series
+    â””â”€ cache.write()  â†’ persists to parquet files
+    â†“
 Model Session (closes)
-    ↓
+    â†“
 Case Steps (run with CaseContext)
-    ├─ Read from cache (parquet files)
-    ├─ Compute metrics / reformat data
-    └─ Export to CSV / JSON / custom format
-    ↓
-Run Steps (run with RunStepContext after ALL cases complete)
-    ├─ Read per-case exports
-    ├─ Aggregate across cases
-    └─ Generate comparison plots/tables
+    â”œâ”€ Read from cache (parquet files)
+    â”œâ”€ Compute metrics / reformat data
+    â””â”€ Export to CSV / JSON / custom format
+    â†“
+Run Steps (run with PostProcessingRunContext after ALL cases complete)
+    â”œâ”€ Read per-case exports
+    â”œâ”€ Aggregate across cases
+    â””â”€ Generate comparison plots/tables
 ```
 
 **Key point:** Case steps execute *after* model extraction is complete. They cannot access the live WANDA model, but they can read cached extracted data (components, routes, timeseries, envelopes) and export derived metrics for downstream analysis.
@@ -57,7 +57,7 @@ my-hydra-plugins/
     __init__.py
     case_steps.py
     run_steps.py
-    methodology.py
+    workflow.py
 ```
 
 ### 2. Implement the Case Step
@@ -117,7 +117,7 @@ class ExportRouteStatisticsStep:
             route_data = ctx.cache.read_route(title)
             ts_df = route_data.get("timeseries")
             if ts_df is None or ts_df.empty:
-                logger.debug("Route '%s' has no timeseries data – skipping.", title)
+                logger.debug("Route '%s' has no timeseries data â€“ skipping.", title)
                 continue
 
             # Extract statistics from multi-index columns
@@ -173,7 +173,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from pydantic import BaseModel, ConfigDict
 
-from pywandahydra.postprocessing.context import RunStepContext
+from pywandahydra.postprocessing.context import PostProcessingRunContext
 
 
 class AggregateRouteStatisticsStep:
@@ -189,7 +189,7 @@ class AggregateRouteStatisticsStep:
     def __init__(self, params: Params | None = None) -> None:
         self._p = params or self.Params()
 
-    def run(self, ctx: RunStepContext) -> None:
+    def run(self, ctx: PostProcessingRunContext) -> None:
         """Read per-case statistics and create cross-case comparison."""
         scenarios_dir = ctx.run_root / "scenarios"
         comparisons_dir = ctx.run_root / "comparisons"
@@ -271,7 +271,7 @@ Example `run_config.yaml`:
 
 ```yaml
 execution:
-  methodology:
+  workflow:
     name: composed
     params:
       case_steps:
@@ -329,7 +329,7 @@ case_dir/data/
 1. **Robustness:** Always check if cache data exists before reading.
    ```python
    if not ctx.cache.exists():
-       logger.warning("No cache data for case – skipping.")
+       logger.warning("No cache data for case â€“ skipping.")
        return
    ```
 
@@ -348,14 +348,14 @@ case_dir/data/
    logger.info("Exported %d routes for case '%s'.", len(rows), ctx.case_dir.name)
    ```
 
-6. **Chain steps:** Case steps → per-case exports → run steps → aggregation/comparison.
+6. **Chain steps:** Case steps â†’ per-case exports â†’ run steps â†’ aggregation/comparison.
 
 ## Differences from Run Steps
 
 | Aspect | Case Step | Run Step |
 |--------|-----------|----------|
 | Timing | After extraction, per case | After all cases complete |
-| Context | `CaseContext` | `RunStepContext` |
+| Context | `CaseContext` | `PostProcessingRunContext` |
 | Cache access | Can read extracted data | Must read from exported files |
 | Can access model? | No | No |
 | Use case | Compute per-case metrics, reformat | Aggregate, cross-case comparison |
@@ -375,12 +375,12 @@ The extraction layer runs in [src/pywandahydra/postprocessing/extract.py](../../
 
 ```
 worker.py
-  ├─ adapter.run_steady() / adapter.run_unsteady()
-  └─ extract_all(model, scenario, adapter)
-      ├─ extract_component_outputs()  → reads specified component time-series
-      └─ extract_route_outputs()       → reads route plots (timeseries, envelope, profile)
-  ├─ cache.write(extracted)            → persists to parquet
-  └─ case steps now have access to cached data
+  â”œâ”€ adapter.run_steady() / adapter.run_unsteady()
+  â””â”€ extract_all(model, scenario, adapter)
+      â”œâ”€ extract_component_outputs()  â†’ reads specified component time-series
+      â””â”€ extract_route_outputs()       â†’ reads route plots (timeseries, envelope, profile)
+  â”œâ”€ cache.write(extracted)            â†’ persists to parquet
+  â””â”€ case steps now have access to cached data
 ```
 
 **Key constraint:** Extraction happens while the WANDA model session is open. Plugin case steps cannot hook into this phase because they receive `CaseContext` *after* the model is closed.
@@ -539,3 +539,5 @@ class LoggingAdapter(PywandaAdapter):
 | Plugin only, data derivable from components/routes | **Option 2:** Compute in case step |
 | Data exists in external files/databases | **Option 3:** Read from external source |
 | You need to capture data during model execution | **Option 1 or Option 4** (complex) |
+
+

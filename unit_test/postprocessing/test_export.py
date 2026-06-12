@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 
 matplotlib.use("Agg")
 
-from pywandahydra.postprocessing.export import (  # noqa: E402
+from pywandahydra.postprocessing.io.export import (  # noqa: E402
     DEFAULT_FIGURE_EXPORT_PROPS,
     OPTIONAL_FIGURE_EXPORT_PROPS,
     build_figure_export_props,

@@ -7,21 +7,22 @@ from unittest.mock import patch
 
 from pydantic import BaseModel, ConfigDict
 
-from pywandahydra.postprocessing.context import CaseContext, RunStepContext
-from pywandahydra.postprocessing.methodologies import (
-    bootstrap as bootstrap_methodologies,
+from pywandahydra.postprocessing.core.context import (
+    CaseContext,
+    PostProcessingRunContext,
 )
-from pywandahydra.postprocessing.methodologies import (
-    list_case_steps,
-    list_methodologies,
-    list_run_steps,
-)
-from pywandahydra.postprocessing.methodologies.base import resolve_methodology
-from pywandahydra.postprocessing.plotting.renderer import PlotTheme
-from pywandahydra.postprocessing.plotting.themes import (
+from pywandahydra.postprocessing.plotting.renderers.theme import PlotTheme
+from pywandahydra.postprocessing.plotting.theme_registry import (
     bootstrap as bootstrap_themes,
 )
-from pywandahydra.postprocessing.plotting.themes import list_themes
+from pywandahydra.postprocessing.plotting.theme_registry import list_themes
+from pywandahydra.postprocessing.workflows import bootstrap as bootstrap_workflows
+from pywandahydra.postprocessing.workflows import (
+    list_case_steps,
+    list_run_steps,
+    list_workflows,
+)
+from pywandahydra.postprocessing.workflows.base import resolve_workflow
 from pywandahydra.scenarios.schema import ScenarioMeta, ScenarioSpecification
 from pywandahydra.scenarios.sources import bootstrap as bootstrap_sources
 from pywandahydra.scenarios.sources import list_source_extensions
@@ -62,12 +63,12 @@ class _DummyRunStep:
     def __init__(self, params: Params | None = None) -> None:
         self._p = params or self.Params()
 
-    def run(self, ctx: RunStepContext) -> None:
+    def run(self, ctx: PostProcessingRunContext) -> None:
         del ctx
 
 
-class _DummyMethodology:
-    name = "dummy_methodology"
+class _DummyWorkflow:
+    name = "dummy_workflow"
     description = "dummy"
 
     class Params(BaseModel):
@@ -80,7 +81,7 @@ class _DummyMethodology:
         del ctx
         return [_DummyCaseStep()]
 
-    def run_steps(self, ctx: RunStepContext):
+    def run_steps(self, ctx: PostProcessingRunContext):
         del ctx
         return [_DummyRunStep()]
 
@@ -106,25 +107,25 @@ class _DummyScenarioSource:
 
 
 class TestEntryPointLoading(unittest.TestCase):
-    def test_methodology_bootstrap_loads_entry_points(self) -> None:
+    def test_workflow_bootstrap_loads_entry_points(self) -> None:
         def _eps(*, group: str):
-            if group == "pywandahydra.methodologies":
-                return [_FakeEntryPoint("dummy_methodology", _DummyMethodology)]
+            if group == "pywandahydra.workflows":
+                return [_FakeEntryPoint("dummy_workflow", _DummyWorkflow)]
             if group == "pywandahydra.case_steps":
                 return [_FakeEntryPoint("dummy_case_step", _DummyCaseStep)]
             if group == "pywandahydra.run_steps":
                 return [_FakeEntryPoint("dummy_run_step", _DummyRunStep)]
             return []
 
-        with patch("pywandahydra.postprocessing.methodologies.entry_points", _eps):
-            bootstrap_methodologies()
+        with patch("pywandahydra.postprocessing.workflows.entry_points", _eps):
+            bootstrap_workflows()
 
-        self.assertIn("dummy_methodology", list_methodologies())
+        self.assertIn("dummy_workflow", list_workflows())
         self.assertIn("dummy_case_step", list_case_steps())
         self.assertIn("dummy_run_step", list_run_steps())
 
-        meth = resolve_methodology("dummy_methodology")
-        self.assertEqual(meth.name, "dummy_methodology")
+        workflow = resolve_workflow("dummy_workflow")
+        self.assertEqual(workflow.name, "dummy_workflow")
 
     def test_scenario_source_bootstrap_loads_entry_points(self) -> None:
         def _eps(*, group: str):
@@ -145,7 +146,9 @@ class TestEntryPointLoading(unittest.TestCase):
                 return [_FakeEntryPoint("dummy_theme", custom_theme)]
             return []
 
-        with patch("pywandahydra.postprocessing.plotting.themes.entry_points", _eps):
+        with patch(
+            "pywandahydra.postprocessing.plotting.theme_registry.entry_points", _eps
+        ):
             bootstrap_themes()
 
         self.assertIn("dummy_theme", list_themes())

@@ -5,8 +5,7 @@ import unittest
 import matplotlib
 import matplotlib.pyplot as plt
 
-from pywandahydra.postprocessing.plotting.schema import RouteData, RouteSeries
-from pywandahydra.postprocessing.plotting.specifications import AxisSpec
+from pywandahydra.postprocessing.plotting.models import AxisSpec, RouteData, RouteSeries
 from pywandahydra.postprocessing.plotting.styles.route_plots import PlotRoute
 
 matplotlib.use("Agg")  # headless backend for CI / unit tests

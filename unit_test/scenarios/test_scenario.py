@@ -8,7 +8,7 @@ import pandas as pd
 
 from pywandahydra.scenarios.mapper import ScenarioLoadOptions, load_scenarios
 from pywandahydra.scenarios.schema import ScenarioSpecification
-from pywandahydra.scenarios.sources.xls import _read_rplots_sheet
+from pywandahydra.scenarios.sources.xls import _read_rplots_sheet, _read_tplots_sheet
 
 
 class TestScenarioLoading(unittest.TestCase):
@@ -87,3 +87,38 @@ class TestScenarioLoading(unittest.TestCase):
         self.assertEqual(specs[0].property, "Head")
         self.assertEqual(specs[0].fig, "c")
         self.assertEqual(specs[0].plot, 1)
+
+    def test_tplots_parses_styling_and_location_columns(self) -> None:
+        """Tplots parser should preserve style metadata in dedicated time-plot specs."""
+        tplots = pd.DataFrame(
+            {
+                "title": ["Node pressure over time"],
+                "name": ["PIPE-001"],
+                "property": ["Pressure"],
+                "fig": ["t1"],
+                "plot": [3],
+                "location": [125.5],
+                "color": ["#336699"],
+                "style": ["--"],
+                "marker": ["o"],
+                "Xlabel": ["t [s]"],
+                "Ylabel": ["P [bar]"],
+            }
+        )
+
+        with tempfile.TemporaryDirectory() as td:
+            xlsx = Path(td) / "tplots.xlsx"
+            with pd.ExcelWriter(xlsx, engine="openpyxl") as writer:
+                tplots.to_excel(writer, sheet_name="Tplots", index=False)
+
+            specs = _read_tplots_sheet(xlsx, ScenarioLoadOptions())
+
+        self.assertEqual(len(specs), 1)
+        self.assertEqual(specs[0].component, "PIPE-001")
+        self.assertEqual(specs[0].property, "Pressure")
+        self.assertEqual(specs[0].fig, "t1")
+        self.assertEqual(specs[0].plot, 3)
+        self.assertEqual(specs[0].location, 125.5)
+        self.assertEqual(specs[0].color, "#336699")
+        self.assertEqual(specs[0].style, "--")
+        self.assertEqual(specs[0].marker, "o")

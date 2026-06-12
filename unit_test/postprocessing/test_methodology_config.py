@@ -7,30 +7,33 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from pywandahydra.config.loader import ExecutionConfig
-from pywandahydra.postprocessing.cache import ParquetCache
-from pywandahydra.postprocessing.context import CaseContext, RunStepContext
-from pywandahydra.postprocessing.methodologies import bootstrap
-from pywandahydra.postprocessing.methodologies.base import resolve_methodology
+from pywandahydra.postprocessing.core.context import (
+    CaseContext,
+    PostProcessingRunContext,
+)
+from pywandahydra.postprocessing.io.cache import ParquetCache
+from pywandahydra.postprocessing.workflows import bootstrap
+from pywandahydra.postprocessing.workflows.base import resolve_workflow
 from pywandahydra.scenarios.schema import ScenarioMeta, ScenarioSpecification
 
 
-class TestMethodologyConfig(unittest.TestCase):
-    def test_execution_config_accepts_bare_methodology_string(self) -> None:
-        cfg = ExecutionConfig.model_validate({"methodology": "default"})
-        self.assertEqual(cfg.methodology.name, "default")
-        self.assertEqual(cfg.methodology.params, {})
+class TestWorkflowConfig(unittest.TestCase):
+    def test_execution_config_accepts_bare_workflow_string(self) -> None:
+        cfg = ExecutionConfig.model_validate({"workflow": "default"})
+        self.assertEqual(cfg.workflow.name, "default")
+        self.assertEqual(cfg.workflow.params, {})
 
-    def test_resolve_methodology_rejects_unknown(self) -> None:
+    def test_resolve_workflow_rejects_unknown(self) -> None:
         bootstrap()
         with self.assertRaises(KeyError):
-            resolve_methodology("does_not_exist")
+            resolve_workflow("does_not_exist")
 
-    def test_resolve_methodology_rejects_extra_params(self) -> None:
+    def test_resolve_workflow_rejects_extra_params(self) -> None:
         bootstrap()
         with self.assertRaises(ValidationError):
-            resolve_methodology("default", {"unexpected": 1})
+            resolve_workflow("default", {"unexpected": 1})
 
-    def test_composed_methodology_builds_case_and_run_steps(self) -> None:
+    def test_config_driven_workflow_builds_case_and_run_steps(self) -> None:
         bootstrap()
 
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -52,11 +55,11 @@ class TestMethodologyConfig(unittest.TestCase):
                 scenario=scenario,
                 case_dir=case_dir,
             )
-            run_ctx = RunStepContext(
+            post_processing_run_ctx = PostProcessingRunContext(
                 run_root=root, run_id="run_001", case_results=tuple()
             )
 
-            meth = resolve_methodology(
+            workflow = resolve_workflow(
                 "composed",
                 {
                     "case_steps": [{"name": "summary_table"}],
@@ -65,8 +68,9 @@ class TestMethodologyConfig(unittest.TestCase):
             )
 
             self.assertEqual(
-                [s.name for s in meth.case_steps(case_ctx)], ["summary_table"]
+                [s.name for s in workflow.case_steps(case_ctx)], ["summary_table"]
             )
             self.assertEqual(
-                [s.name for s in meth.run_steps(run_ctx)], ["aggregate_tables"]
+                [s.name for s in workflow.run_steps(post_processing_run_ctx)],
+                ["aggregate_tables"],
             )

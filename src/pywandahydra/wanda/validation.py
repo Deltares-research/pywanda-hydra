@@ -186,6 +186,18 @@ def validate_scenarios_against_model(
                     )
                 )
 
+            for time_spec in scenario.post_processing.time_plots:
+                issues.extend(
+                    _validate_component_property(
+                        model,
+                        scenario=scenario_name,
+                        source="post_processing.time_plots",
+                        component=time_spec.component,
+                        property_name=time_spec.property,
+                        value=None,
+                    )
+                )
+
         # Release any lingering pywanda wrapper objects (items/properties
         # point into native model memory) before the model is closed.
         gc.collect()
