@@ -39,6 +39,20 @@ class TestCreateRunDirectories(unittest.TestCase):
 
             self.assertTrue((ctx.root_dir / "config.yaml").exists())
 
+    def test_copies_scenario_file_when_given(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root_dir = Path(tmp_dir)
+            ctx = self._ctx(root_dir)
+
+            for scenario_name in ("scenarios.xls", "scenarios.xlsx", "scenarios.csv"):
+                with self.subTest(scenario_name=scenario_name):
+                    scenario_file = root_dir / scenario_name
+                    scenario_file.write_bytes(b"scenario data")
+
+                    create_run_directories(ctx, scenario_file=scenario_file)
+
+                    self.assertTrue((ctx.root_dir / scenario_name).exists())
+
 
 class TestWriteRunLog(unittest.TestCase):
     def test_writes_json_log_with_expected_contents(self) -> None:

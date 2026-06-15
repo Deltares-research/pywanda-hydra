@@ -14,6 +14,7 @@ from ..scenarios.schema import ScenarioSpecification
 def create_run_directories(
     context_object: RunContext,
     config_path: Path | None = None,
+    scenario_file: Path | None = None,
 ) -> None:
     """Create necessary directories for the run.
 
@@ -24,6 +25,10 @@ def create_run_directories(
     config_path : Path | None
         Path to the run configuration file that was used to start the run.
         If given, it is copied into the run directory for traceability.
+    scenario_file : Path | None
+        Path to the scenario definition file that was used to start the run
+        (e.g. .xls, .xlsx, or .csv). If given, it is copied into the run
+        directory for traceability.
     """
     # Extract root directory from context
     root = Path(context_object.root_dir)
@@ -40,6 +45,9 @@ def create_run_directories(
 
     if config_path is not None:
         shutil.copy2(config_path, root / config_path.name)
+
+    if scenario_file is not None:
+        shutil.copy2(scenario_file, root / scenario_file.name)
 
 
 def write_run_log(

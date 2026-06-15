@@ -117,7 +117,7 @@ def run(
     from ..execution.artifacts import create_run_directories
 
     run_root = Path(ctx.root_dir)
-    create_run_directories(ctx, config_path=config)
+    create_run_directories(ctx, config_path=config, scenario_file=scenario_path)
     run_metadata = RunMetadata()
     metadata_path = run_root / "run_metadata.json"
     metadata_path.write_text(

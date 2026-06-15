@@ -91,7 +91,7 @@ def main() -> None:
     ctx = build_run_context(cfg)
 
     run_root = Path(ctx.root_dir)
-    create_run_directories(ctx, config_path=config_path)
+    create_run_directories(ctx, config_path=config_path, scenario_file=scenario_path)
     run_metadata = RunMetadata()
     metadata_path = run_root / "run_metadata.json"
     metadata_path.write_text(
