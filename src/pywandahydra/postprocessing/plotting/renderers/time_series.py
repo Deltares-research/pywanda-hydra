@@ -51,11 +51,7 @@ def render_time_series_plot(
         if isinstance(df.columns, pd.MultiIndex):
             matching = [c for c in df.columns if c[0] == comp and c[1] == property_name]
             for col in matching:
-                if (
-                    len(col) >= 3
-                    and isinstance(col[2], float)
-                    and not math.isnan(col[2])
-                ):
+                if len(col) >= 3 and isinstance(col[2], float) and not math.isnan(col[2]):
                     label = f"{col[0]} @ s={col[2]:.1f} m"
                 else:
                     label = col[0]
@@ -68,9 +64,7 @@ def render_time_series_plot(
                 plotted = True
 
     if not plotted:
-        logger.warning(
-            "No matching data for components=%s, property=%s", components, property_name
-        )
+        logger.warning("No matching data for components=%s, property=%s", components, property_name)
         plt.close(fig)
         return None
 
@@ -88,9 +82,7 @@ def render_time_series_plot(
     fig.tight_layout()
 
     if output_dir:
-        safe_name = filename or (title or property_name).replace(" ", "_").replace(
-            "/", "_"
-        )
+        safe_name = filename or (title or property_name).replace(" ", "_").replace("/", "_")
         savefig(fig, output_dir, safe_name, export_props=export_props, close=True)
 
     return fig

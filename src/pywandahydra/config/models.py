@@ -167,9 +167,7 @@ class RunContext(BaseModel):
     )
 
     # Optional description and metadata
-    description: str | None = Field(
-        default=None, description="Optional description of the run."
-    )
+    description: str | None = Field(default=None, description="Optional description of the run.")
     metadata: dict[str, Any] = Field(
         default_factory=dict,
         description="Additional metadata for the run.",

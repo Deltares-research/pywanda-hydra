@@ -51,9 +51,7 @@ class CasePlan:
 
     def _compute_hash(self) -> str:
         """Compute a deterministic hash of the plan configuration."""
-        model_bytes_hash = hashlib.sha256(
-            self.model_spec.model_path.read_bytes()
-        ).hexdigest()
+        model_bytes_hash = hashlib.sha256(self.model_spec.model_path.read_bytes()).hexdigest()
         payload = {
             "v": 2,
             "model_path": str(self.model_spec.model_path),
@@ -66,9 +64,7 @@ class CasePlan:
             "global_overrides": [
                 ch.model_dump(mode="json") for ch in self.model_spec.global_overrides
             ],
-            "parameters": [
-                ch.model_dump(mode="json") for ch in self.scenario.parameters
-            ],
+            "parameters": [ch.model_dump(mode="json") for ch in self.scenario.parameters],
             "post_processing": self.scenario.post_processing.model_dump(mode="json"),
         }
         raw = json.dumps(payload, sort_keys=True, default=str)

@@ -28,12 +28,8 @@ def run(
     config: Path = typer.Argument(
         ..., help="Path to the run configuration file (.yaml or .json).", exists=True
     ),
-    workers: int | None = typer.Option(
-        None, "--workers", "-w", help="Override number of workers."
-    ),
-    resume: bool = typer.Option(
-        False, "--resume", "-r", help="Skip already-completed cases."
-    ),
+    workers: int | None = typer.Option(None, "--workers", "-w", help="Override number of workers."),
+    resume: bool = typer.Option(False, "--resume", "-r", help="Skip already-completed cases."),
     log_level: str = typer.Option(
         "INFO", "--log-level", "-l", help="Log level (DEBUG, INFO, WARNING, ERROR)."
     ),
@@ -154,9 +150,7 @@ def run(
 
 @app.command()
 def status(
-    run_dir: Path = typer.Argument(
-        ..., help="Path to the run output directory.", exists=True
-    ),
+    run_dir: Path = typer.Argument(..., help="Path to the run output directory.", exists=True),
 ) -> None:
     """Show status of all cases in a run directory."""
     from ..execution.journal import CaseJournal
@@ -172,9 +166,7 @@ def status(
         typer.echo("No cases found.")
         return
 
-    typer.echo(
-        f"{'Case ID':<30} {'Status':<12} {'PP Status':<12} {'Duration':<10} {'Error'}"
-    )
+    typer.echo(f"{'Case ID':<30} {'Status':<12} {'PP Status':<12} {'Duration':<10} {'Error'}")
     typer.echo("-" * 90)
 
     for case_dir in case_dirs:
@@ -209,9 +201,7 @@ def validate(
 
     try:
         cfg = load_run_config(config)
-        typer.echo(
-            f"Config OK: run_id={cfg.run_id}, n_workers={cfg.execution.n_workers}"
-        )
+        typer.echo(f"Config OK: run_id={cfg.run_id}, n_workers={cfg.execution.n_workers}")
     except (ValueError, FileNotFoundError) as e:
         typer.echo(f"Config INVALID: {e}", err=True)
         raise typer.Exit(code=1) from None
@@ -313,15 +303,11 @@ def plugins() -> None:
 
 @app.command()
 def plot(
-    run_dir: Path = typer.Argument(
-        ..., help="Path to the run output directory.", exists=True
-    ),
+    run_dir: Path = typer.Argument(..., help="Path to the run output directory.", exists=True),
     case_id: str | None = typer.Option(
         None, "--case", "-c", help="Specific case ID to plot. Plots all if omitted."
     ),
-    fmt: str = typer.Option(
-        "png", "--format", "-f", help="Output format (png, pdf, svg)."
-    ),
+    fmt: str = typer.Option("png", "--format", "-f", help="Output format (png, pdf, svg)."),
 ) -> None:
     """Render plots from cached extraction data (no WANDA required)."""
     from ..postprocessing.io.cache import ParquetCache
@@ -368,9 +354,7 @@ def plot(
                 from ..scenarios.schema import RoutePlotSpecification
 
                 spec = RoutePlotSpecification.model_validate(spec_data)
-                render_route_plot(
-                    spec, cache, output_dir=figures_dir, export_props=export_props
-                )
+                render_route_plot(spec, cache, output_dir=figures_dir, export_props=export_props)
         else:
             # Render all available routes from cache
             for route_title in cache.list_routes():
@@ -384,8 +368,6 @@ def plot(
                     x_axis=AxisSpec(label="Distance [m]"),
                     y_axis=AxisSpec(label=""),
                 )
-                render_route_plot(
-                    spec, cache, output_dir=figures_dir, export_props=export_props
-                )
+                render_route_plot(spec, cache, output_dir=figures_dir, export_props=export_props)
 
     typer.echo("Plotting complete.")

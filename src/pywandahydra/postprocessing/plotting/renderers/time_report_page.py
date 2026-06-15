@@ -94,11 +94,7 @@ def _warn_duplicate_axis_definitions(specs: list[TimePlotSpecification]) -> None
         if (
             len(defined) > 1
             and len(
-                {
-                    get_value(s).strip()
-                    for s in defined
-                    if get_value(s) not in (None, "", "None")
-                }
+                {get_value(s).strip() for s in defined if get_value(s) not in (None, "", "None")}
             )
             > 1
         ):
@@ -124,11 +120,7 @@ def _select_columns(
     if not isinstance(components.columns, pd.MultiIndex):
         return []
 
-    matching = [
-        c
-        for c in components.columns
-        if c[0] == spec.component and c[1] == spec.property
-    ]
+    matching = [c for c in components.columns if c[0] == spec.component and c[1] == spec.property]
     if not matching:
         return []
 

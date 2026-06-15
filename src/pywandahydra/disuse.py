@@ -21,9 +21,7 @@ def parse_disuse_value(value: Any) -> bool:
             return True
         if token in ("1", "no", "false", "n", "use"):
             return False
-        raise ValueError(
-            f"Cannot normalize string {value!r} to boolean for 'disuse' property"
-        )
+        raise ValueError(f"Cannot normalize string {value!r} to boolean for 'disuse' property")
 
     if isinstance(value, int | float):
         if value == 0 or value == 0.0:

@@ -176,7 +176,10 @@ class PywandaAdapter:
             handle.read_prop_output(prop)
         except Exception:
             logger.debug(
-                "read_prop_output failed for %s.%s", component, property_name, exc_info=True
+                "read_prop_output failed for %s.%s",
+                component,
+                property_name,
+                exc_info=True,
             )
         return cast(np.ndarray, to_si_units(np.array(prop.get_series(), dtype=np.float64), prop))
 
@@ -256,10 +259,14 @@ class PywandaAdapter:
             handle.read_prop_output(prop)
         except Exception:
             logger.debug(
-                "read_prop_output failed for pipe %s.%s", pipe_name, property_name, exc_info=True
+                "read_prop_output failed for pipe %s.%s",
+                pipe_name,
+                property_name,
+                exc_info=True,
             )
         return cast(
-            np.ndarray, to_si_units(np.asarray(prop.get_series_pipe(), dtype=np.float64), prop)
+            np.ndarray,
+            to_si_units(np.asarray(prop.get_series_pipe(), dtype=np.float64), prop),
         )
 
     def get_pipe_length(self, handle: pywanda.WandaModel, pipe_name: str) -> float:
@@ -285,7 +292,10 @@ class PywandaAdapter:
             handle.read_prop_output(prop)
         except Exception:
             logger.debug(
-                "read_prop_output failed for pipe %s.%s", pipe_name, property_name, exc_info=True
+                "read_prop_output failed for pipe %s.%s",
+                pipe_name,
+                property_name,
+                exc_info=True,
             )
         min_vals = to_si_units(np.asarray(prop.get_extr_min_pipe(), dtype=np.float64), prop)
         max_vals = to_si_units(np.asarray(prop.get_extr_max_pipe(), dtype=np.float64), prop)

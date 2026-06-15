@@ -178,9 +178,7 @@ class CaseJournal:
             if hasattr(state, key):
                 setattr(state, key, value)
         self.write_state(state)
-        self.event(
-            status.lower(), **{k: v for k, v in patch.items() if k != "artefacts"}
-        )
+        self.event(status.lower(), **{k: v for k, v in patch.items() if k != "artefacts"})
         return state
 
     # ---- Convenience helpers ---------------------------------------------

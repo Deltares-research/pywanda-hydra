@@ -103,9 +103,7 @@ def get_run_step_class(name: str) -> type[Any]:
 def build_case_step(spec: StepSpec) -> CaseStep:
     """Instantiate a registered case step from declarative StepSpec."""
     if spec.name not in _CASE_STEP_CLASSES:
-        raise KeyError(
-            f"Unknown case step '{spec.name}'. Available: {list_case_steps()}"
-        )
+        raise KeyError(f"Unknown case step '{spec.name}'. Available: {list_case_steps()}")
     cls = _CASE_STEP_CLASSES[spec.name]
     params_model = cls.Params.model_validate(spec.params)
     return cast(CaseStep, cls(params_model))

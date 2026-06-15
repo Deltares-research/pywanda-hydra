@@ -228,9 +228,7 @@ def extract_route_outputs(
 
         pipes_with_dir = adapter.resolve_route_pipes(model, route_id)
         if not pipes_with_dir:
-            logger.warning(
-                "Route identifier '%s' has no pipe components – skipping.", route_id
-            )
+            logger.warning("Route identifier '%s' has no pipe components – skipping.", route_id)
             continue
 
         ts_frames: list[pd.DataFrame] = []
@@ -239,7 +237,6 @@ def extract_route_outputs(
         s_offset = 0.0
 
         for pipe_name, direction in pipes_with_dir:
-
             try:
                 length = adapter.get_pipe_length(model, pipe_name)
             except Exception:
@@ -291,15 +288,11 @@ def extract_route_outputs(
                 max_vals = np.asarray(max_vals, dtype=float).ravel()
                 n_s_env = min(len(min_vals), len(max_vals))
                 s_local_env = np.linspace(0.0, length, n_s_env)
-                s_env = s_offset + (
-                    s_local_env if direction > 0 else (length - s_local_env)
-                )
+                s_env = s_offset + (s_local_env if direction > 0 else (length - s_local_env))
                 if direction < 0:
                     min_vals = min_vals[:n_s_env][::-1]
                     max_vals = max_vals[:n_s_env][::-1]
-                for s, mn, mx in zip(
-                    s_env, min_vals[:n_s_env], max_vals[:n_s_env], strict=False
-                ):
+                for s, mn, mx in zip(s_env, min_vals[:n_s_env], max_vals[:n_s_env], strict=False):
                     env_rows.append({"s_location [m]": float(s), "min": mn, "max": mx})
             except Exception:
                 logger.debug(
@@ -344,9 +337,7 @@ def extract_route_outputs(
             suffix = 2
             while f"{key}_{suffix}" in seen_keys:
                 suffix += 1
-            logger.warning(
-                "Duplicate route result key '%s' – stored as '%s_%d'.", key, key, suffix
-            )
+            logger.warning("Duplicate route result key '%s' – stored as '%s_%d'.", key, key, suffix)
             key = f"{key}_{suffix}"
         seen_keys.add(key)
 
@@ -354,9 +345,7 @@ def extract_route_outputs(
         if ts_frames:
             route_result["timeseries"] = pd.concat(ts_frames, axis=1)
         if env_rows:
-            route_result["envelope"] = pd.DataFrame(env_rows).set_index(
-                "s_location [m]"
-            )
+            route_result["envelope"] = pd.DataFrame(env_rows).set_index("s_location [m]")
         if profile_rows:
             profile_df = pd.DataFrame(profile_rows).set_index("s_location [m]")
             profile_df = profile_df.sort_index().groupby(level=0).mean()
@@ -384,8 +373,7 @@ def _normalise_pipe_series(
         return arr.T
     if arr.shape[0] == arr.shape[1] == n_times:
         logger.debug(
-            "Pipe '%s' property '%s' series is square (%d x %d); "
-            "assuming first axis is time.",
+            "Pipe '%s' property '%s' series is square (%d x %d); assuming first axis is time.",
             pipe_name,
             prop_name,
             n_times,

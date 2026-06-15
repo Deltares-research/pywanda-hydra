@@ -43,9 +43,7 @@ class PanelContext:
     theme: PlotTheme
 
 
-def _render_route_panel(
-    ax: Axes, specs: list[PlotSpec], ctx: PanelContext
-) -> bool:
+def _render_route_panel(ax: Axes, specs: list[PlotSpec], ctx: PanelContext) -> bool:
     spec = specs[0]
     assert isinstance(spec, RoutePlotSpecification)
     title = spec.title or f"{spec.route_id}_{spec.property}"
@@ -78,12 +76,8 @@ class PanelRenderer:
 
 
 PANEL_RENDERERS: dict[type, PanelRenderer] = {
-    RoutePlotSpecification: PanelRenderer(
-        render=_render_route_panel, max_specs_per_panel=1
-    ),
-    TimePlotSpecification: PanelRenderer(
-        render=_render_time_panel, max_specs_per_panel=None
-    ),
+    RoutePlotSpecification: PanelRenderer(render=_render_route_panel, max_specs_per_panel=1),
+    TimePlotSpecification: PanelRenderer(render=_render_time_panel, max_specs_per_panel=None),
 }
 
 
@@ -115,9 +109,7 @@ def render_combined_report_pages(
 
     figures: list[Figure] = []
     for fig_key in sorted(grouped.keys()):
-        fig = _create_combined_page_figure(
-            grouped[fig_key], ctx, report_meta_base, fig_key
-        )
+        fig = _create_combined_page_figure(grouped[fig_key], ctx, report_meta_base, fig_key)
         if fig is not None:
             figures.append(fig)
 
@@ -136,8 +128,7 @@ def _create_combined_page_figure(
         subplots.setdefault(key, []).append(spec)
 
     subplot_groups = [
-        subplots[k]
-        for k in sorted(subplots.keys(), key=lambda k: (isinstance(k, tuple), k))
+        subplots[k] for k in sorted(subplots.keys(), key=lambda k: (isinstance(k, tuple), k))
     ]
 
     for group in subplot_groups:
@@ -149,9 +140,7 @@ def _create_combined_page_figure(
                 "contain specifications of one type only."
             )
         renderer = PANEL_RENDERERS[next(iter(types))]
-        if renderer.max_specs_per_panel is not None and len(
-            group
-        ) > renderer.max_specs_per_panel:
+        if renderer.max_specs_per_panel is not None and len(group) > renderer.max_specs_per_panel:
             raise ValueError(
                 f"Figure '{fig_key}', plot {group[0].plot!r} has "
                 f"{len(group)} {next(iter(types)).__name__} specs but at most "

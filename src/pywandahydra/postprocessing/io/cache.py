@@ -142,9 +142,7 @@ class ParquetCache:
 
         ts_path = route_subdir / "timeseries.parquet"
         if ts_path.exists():
-            result["timeseries"] = _restore_flat_cols(
-                pd.read_parquet(ts_path, engine="pyarrow")
-            )
+            result["timeseries"] = _restore_flat_cols(pd.read_parquet(ts_path, engine="pyarrow"))
 
         env_path = route_subdir / "envelope.parquet"
         if env_path.exists():
@@ -220,9 +218,7 @@ class ParquetCache:
                     continue
                 path = custom_dir / f"{extractor_name}.parquet"
                 _write_with_flat_cols(data, path)
-                artefacts[f"custom_{extractor_name}"] = str(
-                    path.relative_to(self.data_dir.parent)
-                )
+                artefacts[f"custom_{extractor_name}"] = str(path.relative_to(self.data_dir.parent))
                 logger.info("Cached custom extraction: %s → %s", extractor_name, path)
             elif isinstance(data, dict):
                 # Nested structure: write each key to a sub-directory
@@ -250,9 +246,7 @@ class ParquetCache:
 
         return artefacts
 
-    def read_custom(
-        self, extractor_name: str
-    ) -> pd.DataFrame | dict[str, pd.DataFrame]:
+    def read_custom(self, extractor_name: str) -> pd.DataFrame | dict[str, pd.DataFrame]:
         """Read custom extracted data by extractor name.
 
         Returns a DataFrame if a simple extraction exists (case_dir/data/custom/<name>.parquet).

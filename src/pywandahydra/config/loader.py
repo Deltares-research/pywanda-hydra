@@ -149,12 +149,8 @@ class RunConfig(BaseModel):
 
     execution: ExecutionConfig = Field(default_factory=ExecutionConfig)
     model: ModelSpecification
-    scenario_file: Path = Field(
-        ..., description="Path to the scenario definition file."
-    )
-    post_processing: PostProcessingRunConfig = Field(
-        default_factory=PostProcessingRunConfig
-    )
+    scenario_file: Path = Field(..., description="Path to the scenario definition file.")
+    post_processing: PostProcessingRunConfig = Field(default_factory=PostProcessingRunConfig)
 
     @field_validator("output_root", "scenario_file", mode="before")
     @classmethod
@@ -193,14 +189,10 @@ def load_run_config(path: Path | str) -> RunConfig:
     elif ext == ".json":
         raw = json.loads(text)
     else:
-        raise ValueError(
-            f"Unsupported config format: '{ext}'. Use .yaml, .yml, or .json."
-        )
+        raise ValueError(f"Unsupported config format: '{ext}'. Use .yaml, .yml, or .json.")
 
     if not isinstance(raw, dict):
-        raise ValueError(
-            f"Config file must contain a mapping, got: {type(raw).__name__}"
-        )
+        raise ValueError(f"Config file must contain a mapping, got: {type(raw).__name__}")
 
     return RunConfig.model_validate(raw)
 
@@ -222,9 +214,7 @@ def validate_run_paths(config: RunConfig, *, config_dir: Path) -> None:
         model_path = config_dir / model_path
 
     if model_path.suffix.lower() != ".wdi":
-        raise ValueError(
-            f"model.model_path must point to a .wdi file, got: {model_path}"
-        )
+        raise ValueError(f"model.model_path must point to a .wdi file, got: {model_path}")
     if not model_path.exists():
         raise ValueError(f"model.model_path does not exist: {model_path}")
 
@@ -271,8 +261,7 @@ def apply_post_processing_overrides(
     known = list_themes()
     if theme_name not in known:
         raise ValueError(
-            f"post_processing.theme '{theme_name}' is not registered. "
-            f"Known themes: {known}"
+            f"post_processing.theme '{theme_name}' is not registered. Known themes: {known}"
         )
     for scenario in scenarios:
         scenario.post_processing.theme = theme_name

@@ -20,9 +20,7 @@ class ScenarioSpecification(BaseModel):
     meta: ScenarioMeta
     analysis_meta: AnalysisMeta = Field(default_factory=AnalysisMeta)
     parameters: list[ParameterChange] = Field(default_factory=list)
-    post_processing: PostProcessingConfig = Field(
-        default_factory=lambda: PostProcessingConfig()
-    )
+    post_processing: PostProcessingConfig = Field(default_factory=lambda: PostProcessingConfig())
     source: dict[str, Any] = Field(default_factory=dict)
 
     def iter_parameters(self) -> Iterable[tuple[str, str, Any, ChangeMode]]:

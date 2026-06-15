@@ -97,9 +97,7 @@ def _plot_route_series(
             zorder=-1,
         )
     if {"min", "max"}.issubset(envelope.columns):
-        ax.fill_between(
-            s_loc, envelope["min"], envelope["max"], alpha=theme.envelope_alpha
-        )
+        ax.fill_between(s_loc, envelope["min"], envelope["max"], alpha=theme.envelope_alpha)
 
     if spec.property.strip().lower() == "head":
         s_prof, elev_prof = _extract_profile_series(route_data)

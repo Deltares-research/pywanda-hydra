@@ -58,9 +58,7 @@ def bootstrap() -> None:
                 else:
                     raise TypeError("Callable theme plugin must return PlotTheme")
             else:
-                raise TypeError(
-                    "Theme plugin must be PlotTheme or callable returning PlotTheme"
-                )
+                raise TypeError("Theme plugin must be PlotTheme or callable returning PlotTheme")
         except Exception:
             logger.exception("Failed to load pywandahydra.themes plugin %r", ep.name)
 

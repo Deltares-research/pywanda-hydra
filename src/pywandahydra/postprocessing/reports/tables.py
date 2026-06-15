@@ -30,11 +30,7 @@ def render_summary_table(
     rows: list[dict[str, str | float]] = []
     for spec in specs:
         if isinstance(df.columns, pd.MultiIndex):
-            matching = [
-                c
-                for c in df.columns
-                if c[0] == spec.component and c[1] == spec.property
-            ]
+            matching = [c for c in df.columns if c[0] == spec.component and c[1] == spec.property]
             if not matching:
                 continue
             sub = df.loc[:, matching]

@@ -27,9 +27,7 @@ def bootstrap() -> None:
         try:
             register_source(ep.load())
         except Exception:
-            logger.exception(
-                "Failed to load pywandahydra.scenario_sources plugin %r", ep.name
-            )
+            logger.exception("Failed to load pywandahydra.scenario_sources plugin %r", ep.name)
 
 
 bootstrap()

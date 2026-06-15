@@ -19,9 +19,7 @@ class AxisSpec(BaseModel):
     max: float | None = None
     tick_interval: float | None = None
     scale: ScaleType = "linear"
-    factor: float = Field(
-        default=1.0, gt=0.0, description="Scaling factor for the axis."
-    )
+    factor: float = Field(default=1.0, gt=0.0, description="Scaling factor for the axis.")
 
     @field_validator("label")
     @classmethod

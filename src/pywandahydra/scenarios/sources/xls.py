@@ -185,9 +185,7 @@ def _read_output_sheet(
         mode_str = _as_str_or_none(row.iloc[2])
 
         if comp is None or prop is None or mode_str is None:
-            if opts.strict_validation and not (
-                comp is None and prop is None and mode_str is None
-            ):
+            if opts.strict_validation and not (comp is None and prop is None and mode_str is None):
                 raise ValueError(
                     f"Strict validation: incomplete row {idx} in sheet '{opts.output_sheet}': "
                     f"component={comp!r}, property={prop!r}, mode={mode_str!r}."
@@ -231,9 +229,7 @@ def _parse_plot_sheet(
     *,
     strict: bool,
     kind: str,
-    build_spec: Callable[
-        [_RowGetter, str, str, str | None, AxisSpec, AxisSpec], _SpecT
-    ],
+    build_spec: Callable[[_RowGetter, str, str, str | None, AxisSpec, AxisSpec], _SpecT],
 ) -> list[_SpecT]:
     """Parse a plot sheet (RPlots/TPlots) shared structure into specifications.
 
@@ -462,18 +458,14 @@ def read_scenarios_from_excel(
         path, opts.cases_sheet, header=None, skiprows=opts.cases_header_row_count
     )
     # Extract parameter columns
-    input_headers = pd.read_excel(path, opts.cases_sheet, header=None, nrows=1).values[
-        0
-    ]
+    input_headers = pd.read_excel(path, opts.cases_sheet, header=None, nrows=1).values[0]
     column_start = np.where(input_headers == "Name")[0][0] + 1
     param_columns = list(input_data.iloc[0, column_start:])
 
     # - Create a MultiIndex column names for the (Component, Property) pairs
     comp_prop: list[tuple[str, str]] = []
 
-    for component, prop_name in zip(
-        input_headers[column_start:], param_columns, strict=False
-    ):
+    for component, prop_name in zip(input_headers[column_start:], param_columns, strict=False):
         component_str = str(component).strip()
         prop_str = str(prop_name).strip()
         comp_prop.append((component_str, prop_str))
@@ -557,9 +549,7 @@ def read_scenarios_from_excel(
 
         # Construct ScenarioSpecification only if included
         if not meta.include:
-            logger.debug(
-                "Scenario '%s' (Number=%d) is not included.", meta.name, meta.number
-            )
+            logger.debug("Scenario '%s' (Number=%d) is not included.", meta.name, meta.number)
             continue
 
         scenarios.append(
