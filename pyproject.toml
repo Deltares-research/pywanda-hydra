@@ -110,6 +110,8 @@ omit = [
     "*/build/*",
     "*/dist/*",
     "*/notebooks/*",
+    "*/__main__.py",
+    "*/__init__.py",
 ]
 
 [tool.coverage.report]
@@ -117,6 +119,8 @@ omit = [
     "*/unit_test/*",
     "*/.venv/*",
     "*/venv/*",
+    "*/__main__.py",
+    "*/__init__.py",
 ]
 
 [tool.ruff]
