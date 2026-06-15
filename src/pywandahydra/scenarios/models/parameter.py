@@ -14,7 +14,16 @@ ChangeMode = Literal["set", "scale", "offset"]
 
 
 class ParameterChange(BaseModel):
-    """Data model representing a change to a parameter of a component."""
+    """Data model representing a change to a parameter of a component.
+
+    Attributes:
+        component (str): The name of the component whose parameter is to be changed.
+        property (str): The name of the parameter to be changed.
+        value (Any): The new value for the parameter. If the property is "disuse",
+        this value will be parsed into a boolean.
+        mode (ChangeMode): The mode of the change, which can be "set", "scale", or "offset".
+        Defaults to "set".
+    """
 
     model_config = ConfigDict(extra="forbid")
 

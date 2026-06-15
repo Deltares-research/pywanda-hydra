@@ -17,7 +17,24 @@ from .validators import (
 
 
 class TimePlotSpecification(BaseModel):
-    """Data model representing a time-plot specification loaded from a scenario file."""
+    """Data model representing a time-plot specification loaded from a scenario file.
+
+    Attributes:
+        component (str): The name of the component to plot.
+        property (str): The name of the property to plot.
+        title (str | None): The title of the plot.
+        legend (str | None): The legend label for the plot.
+        fig (str | None): The figure identifier for the plot.
+        plot (int | None): The plot number within the figure.
+        location (float | None): For pipes, the location (s-distance) at which the
+            property is plotted.
+        color (str | None): The color of the plot line.
+        style (str | None): The line style of the plot line.
+        marker (str | None): The marker style for the plot line.
+        x_axis (AxisSpec): The specification for the x-axis.
+        y_axis (AxisSpec): The specification for the y-axis.
+
+    """
 
     model_config = ConfigDict(extra="forbid")
 

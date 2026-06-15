@@ -6,15 +6,13 @@ import logging
 from dataclasses import dataclass
 from datetime import datetime
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 
 from ....scenarios.schema import RoutePlotSpecification
-from ...io.cache import ParquetCache
-from ..styles.layout import PageMetadata, draw_layout
+from ..styles.layout import PageMetadata
 from .common import apply_axis_spec
 from .theme import PlotTheme
 
@@ -33,84 +31,6 @@ class ReportMeta:
     figure_id: str
     wanda_version: str
     report_date: str
-
-
-def render_route_report_pages(
-    specs: list[RoutePlotSpecification],
-    cache: ParquetCache,
-    *,
-    report_meta_base: ReportMeta,
-    theme: PlotTheme | None = None,
-) -> list[Figure]:
-    """Render route plots into report-style A4 pages grouped by fig/plot metadata."""
-    if not specs:
-        return []
-
-    theme = theme or PlotTheme()
-
-    grouped: dict[str, list[RoutePlotSpecification]] = {}
-    for i, spec in enumerate(specs, start=1):
-        key = (spec.fig or "").strip() or f"{i:03d}"
-        grouped.setdefault(key, []).append(spec)
-
-    figures: list[Figure] = []
-    for fig_key in sorted(grouped.keys()):
-        group_specs = sorted(
-            grouped[fig_key], key=lambda s: (s.plot if s.plot is not None else 10_000)
-        )
-
-        fig = _create_report_page_figure(
-            group_specs, cache, report_meta_base, fig_key, theme
-        )
-        if fig is not None:
-            figures.append(fig)
-
-    return figures
-
-
-def _create_report_page_figure(
-    specs: list[RoutePlotSpecification],
-    cache: ParquetCache,
-    base_meta: ReportMeta,
-    fig_key: str,
-    theme: PlotTheme,
-) -> Figure | None:
-    valid_specs: list[
-        tuple[RoutePlotSpecification, pd.DataFrame, dict[str, pd.DataFrame]]
-    ] = []
-
-    for spec in specs:
-        title = spec.title or f"{spec.route_id}_{spec.property}"
-        route_data = cache.read_route(title)
-        envelope = route_data.get("envelope")
-        if envelope is None or envelope.empty:
-            logger.warning(
-                "No cached envelope for route '%s' - skipping render.", title
-            )
-            continue
-        valid_specs.append((spec, envelope, route_data))
-
-    if not valid_specs:
-        return None
-
-    fig = plt.figure(figsize=theme.figure_size)
-    meta = ReportMeta(
-        case_name=base_meta.case_name,
-        analysis_description=base_meta.analysis_description,
-        scenario_description=base_meta.scenario_description,
-        chapter=base_meta.chapter,
-        project_number=base_meta.project_number,
-        figure_id=f"{base_meta.figure_id}{fig_key}",
-        wanda_version=base_meta.wanda_version,
-        report_date=base_meta.report_date,
-    )
-    draw_layout(fig, _to_page_metadata(meta, theme))
-
-    axes = _create_content_axes(fig, len(valid_specs), theme)
-    for ax, (spec, envelope, route_data) in zip(axes, valid_specs, strict=False):
-        _plot_route_series(ax, spec, envelope, route_data, theme)
-
-    return fig
 
 
 def _create_content_axes(fig: Figure, count: int, theme: PlotTheme) -> list[Axes]:

@@ -9,9 +9,8 @@ from .theme import PlotTheme
 __all__ = [
     "PlotTheme",
     "ReportMeta",
+    "render_combined_report_pages",
     "render_route_plot",
-    "render_route_report_pages",
-    "render_time_report_pages",
     "render_time_series_plot",
 ]
 
@@ -22,18 +21,14 @@ def __getattr__(name: str) -> object:
         from .report_page import ReportMeta
 
         return ReportMeta
+    if name == "render_combined_report_pages":
+        from .combined_report import render_combined_report_pages
+
+        return render_combined_report_pages
     if name == "render_route_plot":
         from .route_plot import render_route_plot
 
         return render_route_plot
-    if name == "render_route_report_pages":
-        from .report_page import render_route_report_pages
-
-        return render_route_report_pages
-    if name == "render_time_report_pages":
-        from .time_report_page import render_time_report_pages
-
-        return render_time_report_pages
     if name == "render_time_series_plot":
         from .time_series import render_time_series_plot
 

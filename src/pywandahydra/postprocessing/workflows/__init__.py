@@ -21,9 +21,8 @@ from typing import Any
 
 from ..steps.aggregate_tables import AggregateTablesStep
 from ..steps.merge_pdfs import MergePdfsStep
-from ..steps.route_plots import RoutePlotStep
+from ..steps.plot_report import PlotReportStep
 from ..steps.summary_table import SummaryTableStep
-from ..steps.time_plots import TimePlotStep
 from .base import (
     build_case_step,
     build_run_step,
@@ -61,8 +60,7 @@ def bootstrap() -> None:
     process. Tests can call this to ensure a clean registration state.
     """
     register_case_step(SummaryTableStep)
-    register_case_step(RoutePlotStep)
-    register_case_step(TimePlotStep)
+    register_case_step(PlotReportStep)
     register_run_step(AggregateTablesStep)
     register_run_step(MergePdfsStep)
     register_workflow(DefaultWorkflow)

@@ -10,9 +10,8 @@ from ..core.context import CaseContext, PostProcessingRunContext
 from ..core.protocols import CaseStep, RunStep
 from ..steps.aggregate_tables import AggregateTablesStep
 from ..steps.merge_pdfs import MergePdfsStep
-from ..steps.route_plots import RoutePlotStep
+from ..steps.plot_report import PlotReportStep
 from ..steps.summary_table import SummaryTableStep
-from ..steps.time_plots import TimePlotStep
 
 
 class DefaultWorkflow:
@@ -29,9 +28,7 @@ class DefaultWorkflow:
 
     def case_steps(self, ctx: CaseContext) -> list[CaseStep]:
         del ctx
-        return cast(
-            list[CaseStep], [SummaryTableStep(), RoutePlotStep(), TimePlotStep()]
-        )
+        return cast(list[CaseStep], [SummaryTableStep(), PlotReportStep()])
 
     def run_steps(self, ctx: PostProcessingRunContext) -> list[RunStep]:
         del ctx
