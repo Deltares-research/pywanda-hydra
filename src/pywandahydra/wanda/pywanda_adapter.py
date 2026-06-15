@@ -2,18 +2,27 @@
 
 from __future__ import annotations
 
+import logging
 from contextlib import AbstractContextManager
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 import pywanda
 
 from ..config.models import ModelSpecification
 from ..scenarios.schema import ParameterChange
-from .api import apply_parameter_change, get_item, resolve_items, resolve_route_pipes
+from .api import (
+    apply_parameter_change,
+    get_item,
+    resolve_items,
+    resolve_route_pipes,
+    to_si_units,
+)
 from .create_scenario import prepare_scenario_model
 from .session import wanda_session
+
+logger = logging.getLogger(__name__)
 
 
 class PywandaAdapter:
@@ -98,9 +107,7 @@ class PywandaAdapter:
         """
         handle.save_model_input()
 
-    def apply_parameter_change(
-        self, handle: pywanda.WandaModel, change: ParameterChange
-    ) -> None:
+    def apply_parameter_change(self, handle: pywanda.WandaModel, change: ParameterChange) -> None:
         """Apply a parameter change using the existing api module.
 
         Args:
@@ -168,14 +175,12 @@ class PywandaAdapter:
         try:
             handle.read_prop_output(prop)
         except Exception:
-            pass
-        return np.array(prop.get_series(), dtype=np.float64) * float(
-            prop.get_unit_factor()
-        )
+            logger.debug(
+                "read_prop_output failed for %s.%s", component, property_name, exc_info=True
+            )
+        return cast(np.ndarray, to_si_units(np.array(prop.get_series(), dtype=np.float64), prop))
 
-    def get_scalar(
-        self, handle: pywanda.WandaModel, component: str, property_name: str
-    ) -> float:
+    def get_scalar(self, handle: pywanda.WandaModel, component: str, property_name: str) -> float:
         """Get scalar value for a component property.
 
         Args:
@@ -191,11 +196,9 @@ class PywandaAdapter:
             raise ValueError(f"Component '{component}' not found in model")
         item = get_item(handle, item_refs[0])
         prop = item.get_property(property_name)
-        return float(prop.get_scalar_float() * prop.get_unit_factor())
+        return float(to_si_units(prop.get_scalar_float(), prop))
 
-    def resolve_route_components(
-        self, handle: pywanda.WandaModel, route_id: str
-    ) -> list[str]:
+    def resolve_route_components(self, handle: pywanda.WandaModel, route_id: str) -> list[str]:
         """Resolve route identifier into component names.
 
         Args:
@@ -252,9 +255,11 @@ class PywandaAdapter:
         try:
             handle.read_prop_output(prop)
         except Exception:
-            pass
-        return np.asarray(prop.get_series_pipe(), dtype=np.float64) * float(
-            prop.get_unit_factor()
+            logger.debug(
+                "read_prop_output failed for pipe %s.%s", pipe_name, property_name, exc_info=True
+            )
+        return cast(
+            np.ndarray, to_si_units(np.asarray(prop.get_series_pipe(), dtype=np.float64), prop)
         )
 
     def get_pipe_length(self, handle: pywanda.WandaModel, pipe_name: str) -> float:
@@ -279,10 +284,11 @@ class PywandaAdapter:
         try:
             handle.read_prop_output(prop)
         except Exception:
-            pass
-        unit_factor = prop.get_unit_factor()
-        min_vals = np.asarray(prop.get_extr_min_pipe(), dtype=np.float64) * unit_factor
-        max_vals = np.asarray(prop.get_extr_max_pipe(), dtype=np.float64) * unit_factor
+            logger.debug(
+                "read_prop_output failed for pipe %s.%s", pipe_name, property_name, exc_info=True
+            )
+        min_vals = to_si_units(np.asarray(prop.get_extr_min_pipe(), dtype=np.float64), prop)
+        max_vals = to_si_units(np.asarray(prop.get_extr_max_pipe(), dtype=np.float64), prop)
         return min_vals, max_vals
 
     def get_pipe_profile_table(

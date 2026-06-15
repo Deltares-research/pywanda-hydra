@@ -22,8 +22,18 @@ def _resolve_level(level: str | int) -> int:
     raise ValueError(f"Value {level} is not a valid log level.")
 
 
+# Verbose, developer-facing format: shows where each message came from.
+_DEBUG_FORMAT = "%(asctime)s [%(name)s:%(lineno)d %(funcName)s][%(levelname)s] %(message)s"
+# Clean, user-facing format for normal runs.
+_DEFAULT_FORMAT = "%(asctime)s %(message)s"
+
+
 def setup_logging(level: str | int, colors: bool = True) -> None:
-    """Configure the package logger without mutating the root logger."""
+    """Configure the package logger without mutating the root logger.
+
+    Uses a verbose format (module, line, function) at DEBUG level for
+    developers, and a clean timestamp + message format otherwise.
+    """
     log_level = _resolve_level(level)
     logger = logging.getLogger(LOGGER_NAME)
     logger.setLevel(log_level)
@@ -32,13 +42,12 @@ def setup_logging(level: str | int, colors: bool = True) -> None:
     # Ensure repeated setup calls do not accumulate handlers.
     logger.handlers.clear()
 
+    fmt = _DEBUG_FORMAT if log_level <= logging.DEBUG else _DEFAULT_FORMAT
+
     if colors:
-        coloredlogs.install(log_level, logger=logger)
+        coloredlogs.install(log_level, logger=logger, fmt=fmt)
         return
 
     log_handler = logging.StreamHandler(sys.stdout)
-    formatter = logging.Formatter(
-        fmt="%(asctime)s [%(threadName)s][%(filename)s:%(lineno)d][%(levelname)s]: %(message)s"
-    )
-    log_handler.setFormatter(formatter)
+    log_handler.setFormatter(logging.Formatter(fmt=fmt))
     logger.addHandler(log_handler)

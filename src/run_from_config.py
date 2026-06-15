@@ -16,6 +16,7 @@ import sys
 from importlib.util import find_spec
 from pathlib import Path
 
+from pywandahydra.app_logging import setup_logging
 from pywandahydra.config.loader import (
     RunMetadata,
     apply_post_processing_overrides,
@@ -28,11 +29,8 @@ from pywandahydra.execution.runner import run
 from pywandahydra.scenarios.mapper import load_scenarios
 from pywandahydra.wanda.validation import assert_preflight_valid
 
-# Enable console logging to see all messages
-logging.basicConfig(
-    level=logging.DEBUG,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-)
+# Enable console logging to see all pywandahydra messages, in developer mode.
+setup_logging(logging.DEBUG)
 
 # Suppress verbose third-party debug logs while keeping pywandahydra debug logs
 logging.getLogger("PIL").setLevel(logging.WARNING)
@@ -50,18 +48,15 @@ def _print_startup_banner() -> None:
     print(f"cwd: {os.getcwd()}")
     print(f"sys.path[0]: {sys.path[0] if sys.path else ''}")
     print(
-        "pywandahydra.location: "
-        f"{pywandahydra_spec.origin if pywandahydra_spec else 'NOT FOUND'}"
+        f"pywandahydra.location: {pywandahydra_spec.origin if pywandahydra_spec else 'NOT FOUND'}"
     )
-    print(
-        "pywanda.location: " f"{pywanda_spec.origin if pywanda_spec else 'NOT FOUND'}"
-    )
+    print(f"pywanda.location: {pywanda_spec.origin if pywanda_spec else 'NOT FOUND'}")
     print("===================================")
 
 
 def main() -> None:
     """Run scenarios using settings loaded from a YAML config file."""
-    # Dump the Python stack to stderr on a native crash (access violation in
+    # Dump the Python stack to stderr on a native crash (access violation intea
     # pywanda/WANDA DLLs kills the process without a traceback otherwise).
     faulthandler.enable()
 
@@ -96,7 +91,7 @@ def main() -> None:
     ctx = build_run_context(cfg)
 
     run_root = Path(ctx.root_dir)
-    create_run_directories(ctx)
+    create_run_directories(ctx, config_path=config_path)
     run_metadata = RunMetadata()
     metadata_path = run_root / "run_metadata.json"
     metadata_path.write_text(

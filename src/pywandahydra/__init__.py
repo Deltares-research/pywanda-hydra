@@ -1,12 +1,11 @@
 """pywandahydra — Scenario runner for the pywanda package."""
 
+import logging
 from pathlib import Path
 
-from pywandahydra._dll_preload import preload_msvc_runtime
-
-# Must happen before pandas/pyarrow load their bundled (stale) MSVC runtime,
-# which otherwise crashes pywanda.WandaModel with an access violation.
-preload_msvc_runtime()
+# Silent by default for library consumers; call app_logging.setup_logging()
+# (or the CLI's --log-level option) to enable output.
+logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 __version__ = Path(__file__).parent.joinpath("VERSION").read_text().strip()
 

@@ -161,5 +161,4 @@ class TestWandaAPI(unittest.TestCase):
             with self.assertRaises(ValueError) as context:
                 get_item(model, unknown_ref)
 
-                self.assertEqual(str(context.exception), "Unknown item type: UNKNOWN")
-                self.assertEqual(context.exception.__class__, ValueError)
+            self.assertEqual(str(context.exception), "Unknown item type: UNKNOWN")

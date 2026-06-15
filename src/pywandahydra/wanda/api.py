@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any, Literal
@@ -11,7 +12,13 @@ import pywanda
 from ..disuse import parse_disuse_value
 from ..scenarios.schema import ParameterChange
 
+logger = logging.getLogger(__name__)
+
 ItemType = Literal["component", "node", "signal_line"]
+
+
+class ParameterApplicationError(RuntimeError):
+    """Raised when a parameter change cannot be applied to a Wanda model."""
 
 
 @dataclass(frozen=True)
@@ -53,9 +60,7 @@ def get_item(model: pywanda.WandaModel, ref: WandaItemRef) -> Any:
     raise ValueError(f"Unknown item type: {ref.type}")
 
 
-def find_items_with_keyword(
-    model: pywanda.WandaModel, keyword: str
-) -> list[WandaItemRef]:
+def find_items_with_keyword(model: pywanda.WandaModel, keyword: str) -> list[WandaItemRef]:
     """Find items in the Wanda model matching a keyword.
 
     Parameters
@@ -112,8 +117,7 @@ def find_items_with_keyword(
 def _all_pipes(model: pywanda.WandaModel) -> list[WandaItemRef]:
     """Return references to all pipe components in the model."""
     return [
-        WandaItemRef(pipe.get_complete_name_spec(), "component")
-        for pipe in model.get_all_pipes()
+        WandaItemRef(pipe.get_complete_name_spec(), "component") for pipe in model.get_all_pipes()
     ]
 
 
@@ -187,6 +191,26 @@ def resolve_items(
 
     # Fallback: keyword
     return find_items_with_keyword(model, identifier)
+
+
+def to_model_units(value: float, prop: Any) -> float:
+    """Convert a value from SI units to the model's native units.
+
+    Divides by the property's unit factor, guarding against a zero or
+    negative factor (in which case the value is returned unconverted).
+    """
+    unit_factor = float(prop.get_unit_factor())
+    if unit_factor > 0.0:
+        return value / unit_factor
+    return value
+
+
+def to_si_units(value: Any, prop: Any) -> Any:
+    """Convert a value from the model's native units to SI units.
+
+    Multiplies by the property's unit factor.
+    """
+    return value * float(prop.get_unit_factor())
 
 
 def _get_connected_nodes(component: Any) -> dict[int, Any]:
@@ -321,9 +345,7 @@ def _order_components_by_connection(components: list[Any]) -> list[Any]:
         return components
 
     endpoints = [
-        component
-        for component, neighbours in component_graph.items()
-        if len(neighbours) <= 1
+        component for component, neighbours in component_graph.items() if len(neighbours) <= 1
     ]
 
     start = endpoints[0] if endpoints else components[0]
@@ -355,9 +377,7 @@ def _normalize_pipe_route_orientation(
         return pipes_with_direction
 
     if all(direction < 0 for _, direction in pipes_with_direction):
-        return [
-            (pipe, -direction) for pipe, direction in reversed(pipes_with_direction)
-        ]
+        return [(pipe, -direction) for pipe, direction in reversed(pipes_with_direction)]
 
     return pipes_with_direction
 
@@ -407,7 +427,11 @@ def resolve_route_pipes(
             normalized = _normalize_pipe_route_orientation(ordered_pipes)
             return [(_pipe_name(pipe), direction) for pipe, direction in normalized]
     except Exception:
-        pass
+        logger.debug(
+            "get_route failed for '%s', falling back to item resolution",
+            route_id,
+            exc_info=True,
+        )
 
     item_refs = resolve_items(model, route_id)
     items: list[Any] = []
@@ -415,6 +439,7 @@ def resolve_route_pipes(
         try:
             item = get_item(model, ref)
         except Exception:
+            logger.debug("Could not resolve item %r on route '%s'", ref, route_id, exc_info=True)
             continue
         items.append(item)
 
@@ -462,7 +487,7 @@ def apply_parameter_change(model: pywanda.WandaModel, change: ParameterChange) -
         # Get items
         item_refs = resolve_items(model, change.component)
         if not item_refs:
-            raise Exception(f"Component '{change.component}' not found")
+            raise ParameterApplicationError(f"Component '{change.component}' not found")
 
         # Handling of 'disuse' property
         if change.property.lower() == "disuse":
@@ -477,13 +502,9 @@ def apply_parameter_change(model: pywanda.WandaModel, change: ParameterChange) -
         for item_ref in item_refs:
             item = get_item(model, item_ref)
             prop = item.get_property(change.property)
-            # Handle unit factors if required
-            if prop.get_unit_factor() > 0.0:
-                prop.set_scalar(change.value / prop.get_unit_factor())
-            else:
-                prop.set_scalar(change.value)
+            prop.set_scalar(to_model_units(change.value, prop))
 
     except Exception as e:
-        raise Exception(
+        raise ParameterApplicationError(
             f"Failed to apply {change.component}.{change.property}={change.value!r}: {e}"
         ) from e

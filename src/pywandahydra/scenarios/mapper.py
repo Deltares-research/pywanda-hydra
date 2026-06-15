@@ -72,7 +72,8 @@ def load_scenarios(
     # Use the registry to find the appropriate source.
     source_cls = get_source_for_extension(path.suffix)
 
-    # Instantiate and load
+    # Instantiate and load. The ScenarioSource protocol has no __init__, so
+    # mypy can't see that concrete sources accept `options`.
     source = source_cls(options=opts)  # type: ignore[call-arg]
     scenarios = source.load(path)
     logger.info("Loaded %d scenarios from %s", len(scenarios), path.name)

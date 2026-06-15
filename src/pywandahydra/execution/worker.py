@@ -16,7 +16,7 @@ import logging
 import os
 import time
 from importlib import import_module
-from typing import Any, cast
+from typing import Any, TypedDict, cast
 
 from filelock import Timeout
 
@@ -33,6 +33,22 @@ from ..postprocessing.workflows import bootstrap as bootstrap_workflows
 from ..wanda.adapter import WandaAdapter
 
 logger = logging.getLogger(__name__)
+
+
+class CaseResult(TypedDict, total=False):
+    """Result of executing a single case, returned by ``run_one_case``.
+
+    All fields are optional since the skip/success/failure branches each
+    populate a different subset.
+    """
+
+    case_id: str
+    success: bool
+    skipped: bool
+    error: str
+    duration_s: float
+    postprocess_status: str
+    scenario_dir: str
 
 
 def _load_adapter(plan: CasePlan) -> WandaAdapter:
@@ -53,7 +69,7 @@ def _load_adapter(plan: CasePlan) -> WandaAdapter:
     return cast(WandaAdapter, adapter_class())
 
 
-def run_one_case(plan: CasePlan) -> dict[str, Any]:
+def run_one_case(plan: CasePlan) -> CaseResult:
     """Execute a single case according to its CasePlan.
 
     This is the atomic unit of work dispatched by the runner — either
@@ -98,7 +114,172 @@ def run_one_case(plan: CasePlan) -> dict[str, Any]:
         journal.release()
 
 
-def _execute_case(plan: CasePlan, journal: CaseJournal) -> dict[str, Any]:
+def _apply_parameters(
+    adapter: WandaAdapter,
+    model: Any,
+    plan: CasePlan,
+    journal: CaseJournal,
+) -> None:
+    """Apply global overrides and scenario-specific parameter changes."""
+    logger.info(
+        "Case %s: Applying %d global overrides",
+        plan.case_id,
+        len(plan.model_spec.global_overrides),
+    )
+    for change in plan.model_spec.global_overrides:
+        adapter.apply(model, change)
+
+    logger.info(
+        "Case %s: Applying %d scenario parameters",
+        plan.case_id,
+        len(plan.scenario.parameters),
+    )
+    for change in plan.scenario.parameters:
+        adapter.apply(model, change)
+
+    journal.event(
+        "params_applied",
+        global_count=len(plan.model_spec.global_overrides),
+        scenario_count=len(plan.scenario.parameters),
+    )
+
+
+def _run_simulations(
+    adapter: WandaAdapter,
+    model: Any,
+    plan: CasePlan,
+    journal: CaseJournal,
+) -> None:
+    """Run steady and/or unsteady simulations as configured by the model spec."""
+    if plan.model_spec.run_steady:
+        logger.info("Case %s: Starting steady-state simulation...", plan.case_id)
+        adapter.run_steady(model)
+        logger.info("Case %s: Steady-state simulation completed", plan.case_id)
+        journal.event("steady_done")
+
+    if plan.model_spec.run_unsteady:
+        logger.info("Case %s: Checking simulation time", plan.case_id)
+        sim_time = adapter.simulation_time(model)
+        logger.info("Case %s: Simulation time = %s", plan.case_id, sim_time)
+        if sim_time > 0:
+            logger.info("Case %s: Starting unsteady simulation...", plan.case_id)
+            adapter.run_unsteady(model)
+            logger.info("Case %s: Unsteady simulation completed", plan.case_id)
+            journal.event("unsteady_done")
+
+
+def _run_custom_extractors(
+    model: Any,
+    adapter: WandaAdapter,
+    plan: CasePlan,
+    cache: ParquetCache,
+) -> dict[str, Any]:
+    """Run all configured custom extractors while the model is open."""
+    custom_extracted: dict[str, Any] = {}
+    logger.info(
+        "Case %s: Running %d custom extractors",
+        plan.case_id,
+        len(plan.extractors),
+    )
+    for extractor_spec in plan.extractors:
+        extractor_name = extractor_spec.get("name")
+        extractor_params = extractor_spec.get("params", {})
+        if not extractor_name:
+            logger.warning("Skipping extractor spec with no name: %s", extractor_spec)
+            continue
+
+        try:
+            extractor = resolve_extractor(extractor_name, extractor_params)
+            extraction_ctx = ExtractionContext(
+                model=model,
+                adapter=adapter,
+                scenario=plan.scenario,
+                case_id=plan.case_id,
+                case_dir=plan.case_dir,
+                cache=cache,
+            )
+            result = extractor.extract(extraction_ctx)
+            if result:
+                custom_extracted[extractor_name] = result
+                logger.info(
+                    "Extractor '%s' completed for case '%s'.",
+                    extractor_name,
+                    plan.case_id,
+                )
+            else:
+                logger.debug(
+                    "Extractor '%s' returned no data for case '%s'.",
+                    extractor_name,
+                    plan.case_id,
+                )
+        except Exception as e:
+            logger.error(
+                "Extractor '%s' failed for case '%s': %s",
+                extractor_name,
+                plan.case_id,
+                e,
+                exc_info=True,
+            )
+
+    return custom_extracted
+
+
+def _finalize_success(
+    plan: CasePlan,
+    journal: CaseJournal,
+    start_time: float,
+    artefacts: dict[str, Any],
+    postprocessing_status: str,
+) -> CaseResult:
+    """Transition the journal to SUCCEEDED and build the success result."""
+    duration = time.perf_counter() - start_time
+    with journal:
+        journal.transition(
+            "SUCCEEDED",
+            finished_at=_now_iso(),
+            duration_s=round(duration, 2),
+            postprocess_status=postprocessing_status,
+            artefacts=artefacts,
+        )
+
+    logger.info("Case %s succeeded in %.1fs", plan.case_id, duration)
+    return {
+        "case_id": plan.case_id,
+        "success": True,
+        "duration_s": round(duration, 2),
+        "scenario_dir": str(plan.case_dir),
+    }
+
+
+def _finalize_failure(
+    plan: CasePlan,
+    journal: CaseJournal,
+    start_time: float,
+    exc: Exception,
+) -> CaseResult:
+    """Transition the journal to FAILED and build the failure result."""
+    duration = time.perf_counter() - start_time
+    error_msg = f"{type(exc).__name__}: {exc}"
+    with journal:
+        journal.transition(
+            "FAILED",
+            finished_at=_now_iso(),
+            duration_s=round(duration, 2),
+            postprocess_status="FAILED",
+            error=error_msg,
+        )
+    logger.error("Case %s failed: %s", plan.case_id, error_msg, exc_info=True)
+    return {
+        "case_id": plan.case_id,
+        "success": False,
+        "postprocess_status": "FAILED",
+        "error": error_msg,
+        "duration_s": round(duration, 2),
+        "scenario_dir": str(plan.case_dir),
+    }
+
+
+def _execute_case(plan: CasePlan, journal: CaseJournal) -> CaseResult:
     """Execute the case body. The caller must hold the case lock."""
     # --- Check idempotency using shared resume policy ---
     decision = resume_decision(
@@ -154,53 +335,14 @@ def _execute_case(plan: CasePlan, journal: CaseJournal) -> dict[str, Any]:
         )
         with adapter.session(plan.model_spec, scenario_model_path) as model:
             logger.info("Case %s: WANDA session opened successfully", plan.case_id)
-            # Apply global overrides
-            logger.info(
-                "Case %s: Applying %d global overrides",
-                plan.case_id,
-                len(plan.model_spec.global_overrides),
-            )
-            for change in plan.model_spec.global_overrides:
-                adapter.apply(model, change)
 
-            # Apply scenario-specific parameter changes
-            logger.info(
-                "Case %s: Applying %d scenario parameters",
-                plan.case_id,
-                len(plan.scenario.parameters),
-            )
-            for change in plan.scenario.parameters:
-                adapter.apply(model, change)
-
-            journal.event(
-                "params_applied",
-                global_count=len(plan.model_spec.global_overrides),
-                scenario_count=len(plan.scenario.parameters),
-            )
+            _apply_parameters(adapter, model, plan, journal)
 
             # Save and run
             logger.info("Case %s: Saving model input", plan.case_id)
             adapter.save_input(model)
 
-            if plan.model_spec.run_steady:
-                logger.info(
-                    "Case %s: Starting steady-state simulation...", plan.case_id
-                )
-                adapter.run_steady(model)
-                logger.info("Case %s: Steady-state simulation completed", plan.case_id)
-                journal.event("steady_done")
-
-            if plan.model_spec.run_unsteady:
-                logger.info("Case %s: Checking simulation time", plan.case_id)
-                sim_time = adapter.simulation_time(model)
-                logger.info("Case %s: Simulation time = %s", plan.case_id, sim_time)
-                if sim_time > 0:
-                    logger.info(
-                        "Case %s: Starting unsteady simulation...", plan.case_id
-                    )
-                    adapter.run_unsteady(model)
-                    logger.info("Case %s: Unsteady simulation completed", plan.case_id)
-                    journal.event("unsteady_done")
+            _run_simulations(adapter, model, plan, journal)
 
             # --- Extract results while model is open (single pass) ---
             logger.info("Case %s: Extracting results...", plan.case_id)
@@ -213,54 +355,8 @@ def _execute_case(plan: CasePlan, journal: CaseJournal) -> dict[str, Any]:
             )
 
             # --- Run custom extractors while model is open ---
-            custom_extracted: dict[str, Any] = {}
             cache = ParquetCache(plan.case_dir)
-            logger.info(
-                "Case %s: Running %d custom extractors",
-                plan.case_id,
-                len(plan.extractors),
-            )
-            for extractor_spec in plan.extractors:
-                extractor_name = extractor_spec.get("name")
-                extractor_params = extractor_spec.get("params", {})
-                if not extractor_name:
-                    logger.warning(
-                        "Skipping extractor spec with no name: %s", extractor_spec
-                    )
-                    continue
-
-                try:
-                    extractor = resolve_extractor(extractor_name, extractor_params)
-                    extraction_ctx = ExtractionContext(
-                        model=model,
-                        adapter=adapter,
-                        scenario=plan.scenario,
-                        case_id=plan.case_id,
-                        case_dir=plan.case_dir,
-                        cache=cache,
-                    )
-                    result = extractor.extract(extraction_ctx)
-                    if result:
-                        custom_extracted[extractor_name] = result
-                        logger.info(
-                            "Extractor '%s' completed for case '%s'.",
-                            extractor_name,
-                            plan.case_id,
-                        )
-                    else:
-                        logger.debug(
-                            "Extractor '%s' returned no data for case '%s'.",
-                            extractor_name,
-                            plan.case_id,
-                        )
-                except Exception as e:
-                    logger.error(
-                        "Extractor '%s' failed for case '%s': %s",
-                        extractor_name,
-                        plan.case_id,
-                        e,
-                        exc_info=True,
-                    )
+            custom_extracted = _run_custom_extractors(model, adapter, plan, cache)
 
         # --- Cache extracted data (standard + custom) to Parquet ---
         logger.info("Case %s: WANDA session closed, writing cache...", plan.case_id)
@@ -268,9 +364,7 @@ def _execute_case(plan: CasePlan, journal: CaseJournal) -> dict[str, Any]:
         artefacts = cache.write(extracted)
         custom_artefacts = cache.write_custom(custom_extracted)
         artefacts.update(custom_artefacts)
-        logger.info(
-            "Case %s: Cache written with %d artefacts", plan.case_id, len(artefacts)
-        )
+        logger.info("Case %s: Cache written with %d artefacts", plan.case_id, len(artefacts))
         journal.event("cached", artefacts=artefacts)
 
         # --- Post-processing: run workflow-driven steps ---
@@ -307,43 +401,7 @@ def _execute_case(plan: CasePlan, journal: CaseJournal) -> dict[str, Any]:
             steps={name: ok for name, ok in postprocessing_results.items()},
         )
 
-        # --- Transition: SUCCEEDED ---
-        duration = time.perf_counter() - start_time
-        with journal:
-            journal.transition(
-                "SUCCEEDED",
-                finished_at=_now_iso(),
-                duration_s=round(duration, 2),
-                postprocess_status=postprocessing_status,
-                artefacts=artefacts,
-            )
-
-        logger.info("Case %s succeeded in %.1fs", plan.case_id, duration)
-        return {
-            "case_id": plan.case_id,
-            "success": True,
-            "duration_s": round(duration, 2),
-            "scenario_dir": str(plan.case_dir),
-        }
+        return _finalize_success(plan, journal, start_time, artefacts, postprocessing_status)
 
     except Exception as e:
-        # --- Transition: FAILED ---
-        duration = time.perf_counter() - start_time
-        error_msg = f"{type(e).__name__}: {e}"
-        with journal:
-            journal.transition(
-                "FAILED",
-                finished_at=_now_iso(),
-                duration_s=round(duration, 2),
-                postprocess_status="FAILED",
-                error=error_msg,
-            )
-        logger.error("Case %s failed: %s", plan.case_id, error_msg)
-        return {
-            "case_id": plan.case_id,
-            "success": False,
-            "postprocess_status": "FAILED",
-            "error": error_msg,
-            "duration_s": round(duration, 2),
-            "scenario_dir": str(plan.case_dir),
-        }
+        return _finalize_failure(plan, journal, start_time, e)

@@ -13,11 +13,12 @@ from multiprocessing import get_context
 from pathlib import Path
 from typing import Any
 
+from ..app_logging import setup_logging
 from ..config.models import ModelSpecification, RunContext
 from ..execution.artifacts import create_run_directories, write_run_log
 from ..execution.case_plan import CasePlan, build_case_plans
 from ..execution.journal import CaseJournal, resume_decision
-from ..execution.worker import run_one_case
+from ..execution.worker import CaseResult, run_one_case
 from ..postprocessing.core.context import PostProcessingRunContext
 from ..postprocessing.workflows import bootstrap as bootstrap_workflows
 from ..postprocessing.workflows.base import resolve_workflow
@@ -46,7 +47,7 @@ class RunResult:
     n_success: int
     n_failed: int
     n_skipped: int = 0
-    results: list[dict[str, Any]] = field(default_factory=list)
+    results: list[CaseResult] = field(default_factory=list)
 
 
 def run(
@@ -90,7 +91,7 @@ def run(
 
     # Configure logging level based on verbose mode
     if verbose:
-        logging.getLogger("pywandahydra").setLevel(logging.DEBUG)
+        setup_logging(logging.DEBUG)
         logger.debug("Verbose logging enabled for execution")
 
     bootstrap_workflows()
@@ -188,7 +189,7 @@ def _run_multiprocess(
     *,
     plans: list[CasePlan],
     n_workers: int,
-) -> list[dict[str, Any]]:
+) -> list[CaseResult]:
     """Run case plans in parallel using multiprocessing (spawn context).
 
     Args:

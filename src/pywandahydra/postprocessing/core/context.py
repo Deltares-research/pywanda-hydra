@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -66,4 +67,4 @@ class PostProcessingRunContext:
 
     run_root: Path
     run_id: str
-    case_results: tuple[dict[str, Any], ...]
+    case_results: tuple[Mapping[str, Any], ...]

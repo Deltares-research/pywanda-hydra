@@ -16,9 +16,9 @@ from pydantic import BaseModel, ConfigDict, computed_field, field_validator
 @lru_cache(maxsize=1)
 def _default_logo() -> Any:
     """Load the default Deltares logo as a numpy array."""
-    logo_path = resources.files(
-        "pywandahydra.postprocessing.plotting.image_data"
-    ).joinpath("Deltares_logo.png")
+    logo_path = resources.files("pywandahydra.postprocessing.plotting.image_data").joinpath(
+        "Deltares_logo.png"
+    )
     return plt.imread(str(logo_path))
 
 
@@ -85,9 +85,9 @@ class PageMetadata(BaseModel):
         return str(v)
 
 
-def _calculate_layout_coordinates() -> (
-    tuple[tuple[float, float, float, float], tuple[float, float, float, float]]
-):
+def _calculate_layout_coordinates() -> tuple[
+    tuple[float, float, float, float], tuple[float, float, float, float]
+]:
     """Calculate vertical and horizontal layout coordinates.
 
     Returns
@@ -124,8 +124,9 @@ def draw_layout(fig: Figure, meta: PageMetadata) -> None:
     # Calculate layout coordinates
     (v0, v1, v2, v3), (h0, h1, h2, h3) = _calculate_layout_coordinates()
 
-    # Draw layout lines (boxes and dividers)
-    ax = plt.axes([0, 0, 1, 1], facecolor=(1, 1, 1, 0))  # type: ignore
+    # Draw layout lines (boxes and dividers). matplotlib stubs require a
+    # tuple for the rect, but a list is accepted at runtime.
+    ax = plt.axes([0, 0, 1, 1], facecolor=(1, 1, 1, 0))  # type: ignore[arg-type]
     ax.get_xaxis().set_visible(False)
     ax.get_yaxis().set_visible(False)
 
@@ -136,9 +137,7 @@ def draw_layout(fig: Figure, meta: PageMetadata) -> None:
     ax.axvline(x=v2, ymin=h2, ymax=h3, linewidth=1.5, color="k")
     ax.axhline(y=h2, xmin=v1, xmax=v3, linewidth=1.5, color="k")
 
-    rect = Rectangle(
-        (_XO, _YO), 1 - (2 * _XO), 1 - (2 * _YO), fill=False, linewidth=1.5
-    )
+    rect = Rectangle((_XO, _YO), 1 - (2 * _XO), 1 - (2 * _YO), fill=False, linewidth=1.5)
     ax.add_patch(rect)
 
     # Text blocks

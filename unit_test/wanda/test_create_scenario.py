@@ -11,9 +11,21 @@ class TestModelIO(unittest.TestCase):
 
     def test_prepare_scenario_model(self):
         """Test preparing a scenario-specific model."""
-        base_model_path = Path(__file__).parents[2] / "test_data" / "wanda" / "base_model.wdi"
+        # Arrange
+        base_model_path = (
+            Path(__file__).parents[2] / "test_data" / "wanda" / "base_model.wdi"
+        )
         scenario_dir = Path(__file__).parents[2] / "test_data" / "wanda" / "scenarios"
         scenario_name = "test_scenario"
+
+        # Clean up any existing scenario files from previous test runs
+        expected_wdi = scenario_dir / f"base_model_{scenario_name}.wdi"
+        expected_wdx = scenario_dir / f"base_model_{scenario_name}.wdx"
+
+        if expected_wdi.exists():
+            expected_wdi.unlink()
+        if expected_wdx.exists():
+            expected_wdx.unlink()
 
         # Prepare scenario model
         scenario_model_path = prepare_scenario_model(

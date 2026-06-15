@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 from pathlib import Path
 from typing import Any
 
@@ -12,6 +13,7 @@ from ..scenarios.schema import ScenarioSpecification
 
 def create_run_directories(
     context_object: RunContext,
+    config_path: Path | None = None,
 ) -> None:
     """Create necessary directories for the run.
 
@@ -19,6 +21,9 @@ def create_run_directories(
     ----------
     context_object : RunContext
         The run context containing directory paths.
+    config_path : Path | None
+        Path to the run configuration file that was used to start the run.
+        If given, it is copied into the run directory for traceability.
     """
     # Extract root directory from context
     root = Path(context_object.root_dir)
@@ -32,6 +37,9 @@ def create_run_directories(
     for dir_name in directories_to_create:
         dir_path = root / dir_name
         dir_path.mkdir(parents=True, exist_ok=True)
+
+    if config_path is not None:
+        shutil.copy2(config_path, root / config_path.name)
 
 
 def write_run_log(

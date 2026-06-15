@@ -109,3 +109,15 @@ class FakeWandaAdapter:
     def get_pipe_profile_table(self, handle: ModelHandle, pipe_name: str) -> np.ndarray:
         del handle, pipe_name
         return np.zeros((3, 1), dtype=np.float64)
+
+
+class FailingWandaAdapter(FakeWandaAdapter):
+    """Fake adapter whose steady-state run always raises.
+
+    Used to exercise the worker's failure path (journal transition to
+    FAILED and the resulting CaseResult) without a real WANDA session.
+    """
+
+    def run_steady(self, handle: ModelHandle) -> None:
+        del handle
+        raise RuntimeError("simulated steady-state failure")

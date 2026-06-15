@@ -41,3 +41,24 @@ class TestWandaSession(unittest.TestCase):
         # Assert closing the session
         with self.assertRaises(Exception):
             model.get_model_name()
+
+    def test_wanda_session_with_upgrade_enabled(self):
+        """Test the wanda_session context manager with upgrade=True."""
+        # Arrange
+        spec = self.model_spec.model_copy(update={"upgrade": True})
+
+        # Act
+        with wanda_session(spec=spec) as model:
+            # Assert
+            self.assertIsNotNone(model)
+            self.assertEqual(len(model.get_all_pipes()), 3)
+
+    def test_wanda_session_raises_for_invalid_wanda_bin(self):
+        """Test that an invalid wanda_bin directory raises an exception."""
+        # Arrange
+        spec = self.model_spec.model_copy(update={"wanda_bin": Path(r"C:\does\not\exist")})
+
+        # Act & Assert
+        with self.assertRaises(Exception):
+            with wanda_session(spec=spec):
+                pass

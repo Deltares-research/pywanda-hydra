@@ -38,15 +38,15 @@ def wanda_session(
     if not wanda_bin.endswith("\\"):
         wanda_bin += "\\"
 
-    logger.debug(f"Creating WANDA model from: {path}")
-    logger.debug(f"WANDA binary path: {wanda_bin}")
+    logger.debug("Creating WANDA model from: %s", path)
+    logger.debug("WANDA binary path: %s", wanda_bin)
 
     try:
         logger.debug("Instantiating pywanda.WandaModel...")
         model = pywanda.WandaModel(str(path), wanda_bin)
         logger.debug("WandaModel created successfully")
-    except Exception as e:
-        logger.error(f"Failed to create WandaModel: {e}", exc_info=True)
+    except Exception:
+        logger.error("Failed to create WandaModel", exc_info=True)
         raise
 
     # Upgrade only when explicitly requested: upgrade_model() rewrites the
@@ -57,14 +57,12 @@ def wanda_session(
             logger.debug("Upgrading model if necessary...")
             model.upgrade_model()
             logger.debug("Model upgrade check completed")
-        except Exception as e:
-            logger.error(f"Failed to upgrade model: {e}", exc_info=True)
+        except Exception:
+            logger.error("Failed to upgrade model", exc_info=True)
             try:
                 model.close()
-            except Exception as close_err:
-                logger.warning(
-                    f"Error closing model after upgrade failure: {close_err}"
-                )
+            except Exception:
+                logger.warning("Error closing model after upgrade failure", exc_info=True)
             raise
 
     try:
@@ -75,5 +73,5 @@ def wanda_session(
         try:
             model.close()
             logger.debug("Model closed successfully")
-        except Exception as e:
-            logger.warning(f"Error closing WANDA model: {e}")
+        except Exception:
+            logger.warning("Error closing WANDA model", exc_info=True)
