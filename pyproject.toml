@@ -97,12 +97,27 @@ requires = [
 module-name = "pywandahydra"
 
 [tool.pytest.ini_options]
-addopts = "-q --cov=pywandahydra --cov-report html --cov-report term-missing --cov-fail-under 50"
+addopts = "-q --cov=src/pywandahydra --cov-report html --cov-report term-missing --cov-fail-under 50"
 testpaths = ["unit_test"]
 norecursedirs = [".git", ".venv", "venv", "build", "dist", "notebooks/output"]
 
 [tool.coverage.run]
-source = ["src"]
+source = ["src/pywandahydra"]
+omit = [
+    "*/unit_test/*",
+    "*/.venv/*",
+    "*/venv/*",
+    "*/build/*",
+    "*/dist/*",
+    "*/notebooks/*",
+]
+
+[tool.coverage.report]
+omit = [
+    "*/unit_test/*",
+    "*/.venv/*",
+    "*/venv/*",
+]
 
 [tool.ruff]
 line-length = 100
