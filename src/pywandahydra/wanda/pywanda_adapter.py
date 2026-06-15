@@ -191,7 +191,7 @@ class PywandaAdapter:
             raise ValueError(f"Component '{component}' not found in model")
         item = get_item(handle, item_refs[0])
         prop = item.get_property(property_name)
-        return float(prop.get_scalar_float())
+        return float(prop.get_scalar_float() * prop.get_unit_factor())
 
     def resolve_route_components(
         self, handle: pywanda.WandaModel, route_id: str
