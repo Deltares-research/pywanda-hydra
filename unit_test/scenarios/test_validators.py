@@ -103,9 +103,7 @@ class TestNormalizeOptionalFloat(unittest.TestCase):
         self.assertIsNone(normalize_optional_float(None, field_name="location"))
 
     def test_nan_float_returns_none(self) -> None:
-        self.assertIsNone(
-            normalize_optional_float(float("nan"), field_name="location")
-        )
+        self.assertIsNone(normalize_optional_float(float("nan"), field_name="location"))
 
     def test_float_passthrough(self) -> None:
         self.assertEqual(normalize_optional_float(1.5, field_name="location"), 1.5)
@@ -135,7 +133,7 @@ class TestNormalizeOptionalFloat(unittest.TestCase):
 
     def test_result_is_finite(self) -> None:
         result = normalize_optional_float("1.0", field_name="location")
-        self.assertTrue(math.isfinite(result))
+        self.assertTrue(math.isfinite(result))  # type: ignore[arg-type]
 
 
 if __name__ == "__main__":
