@@ -107,9 +107,7 @@ def extract_internal_import_edges(
 
     for file_path, source_module in modules_by_file.items():
         try:
-            tree = ast.parse(
-                file_path.read_text(encoding="utf-8"), filename=str(file_path)
-            )
+            tree = ast.parse(file_path.read_text(encoding="utf-8"), filename=str(file_path))
         except Exception as e:
             print(f"Error parsing imports from {file_path}: {e}")
             continue
@@ -124,9 +122,7 @@ def extract_internal_import_edges(
                 if node.level == 0:
                     base = node.module or ""
                 else:
-                    base = resolve_relative_module(
-                        source_module, node.level, node.module
-                    )
+                    base = resolve_relative_module(source_module, node.level, node.module)
 
                 target = best_known_module(base, known_modules) if base else None
                 if target and target != source_module:
@@ -137,9 +133,7 @@ def extract_internal_import_edges(
                         submodule_candidate = f"{base}.{alias.name}"
                     else:
                         submodule_candidate = alias.name
-                    submodule_target = best_known_module(
-                        submodule_candidate, known_modules
-                    )
+                    submodule_target = best_known_module(submodule_candidate, known_modules)
                     if submodule_target and submodule_target != source_module:
                         edges.add((source_module, submodule_target))
 
@@ -148,9 +142,7 @@ def extract_internal_import_edges(
     return modules, sorted_edges
 
 
-def generate_csv(
-    output_csv: str = "code_structure.csv", package_path: str = "."
-) -> None:
+def generate_csv(output_csv: str = "code_structure.csv", package_path: str = ".") -> None:
     """Generate a CSV file with the structure of Python files in package_path."""
     all_data = []
     for file_path in iter_python_files(package_path):
@@ -397,6 +389,4 @@ if __name__ == "__main__":
     args = parse_args()
     generate_csv(output_csv=args.output_csv, package_path=args.package_path)
     if args.output_html:
-        generate_dependency_html(
-            output_html=args.output_html, package_path=args.package_path
-        )
+        generate_dependency_html(output_html=args.output_html, package_path=args.package_path)

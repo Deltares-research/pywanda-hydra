@@ -8,7 +8,6 @@ from pathlib import Path
 from unittest.mock import patch
 
 from pywandahydra.config.models import ModelSpecification
-from pywandahydra.wanda.locate import find_wanda_bin
 from pywandahydra.scenarios.models.plot_route import RoutePlotSpecification
 from pywandahydra.scenarios.models.plot_time import TimePlotSpecification
 from pywandahydra.scenarios.models.tables import ExportTableSpecification
@@ -20,6 +19,7 @@ from pywandahydra.scenarios.schema import (
     ScenarioSpecification,
 )
 from pywandahydra.wanda.api import WandaItemRef
+from pywandahydra.wanda.locate import find_wanda_bin
 from pywandahydra.wanda.validation import PreflightValidationError, assert_preflight_valid
 
 

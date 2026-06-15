@@ -10,7 +10,6 @@ import numpy as np
 
 from pywandahydra.config.models import ModelSpecification
 from pywandahydra.scenarios.schema import ParameterChange
-from pywandahydra.wanda.create_scenario import prepare_scenario_model
 from pywandahydra.wanda.locate import find_wanda_bin
 from pywandahydra.wanda.pywanda_adapter import PywandaAdapter
 

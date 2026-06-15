@@ -30,12 +30,9 @@ def _print_startup_banner() -> None:
     print(f"cwd: {os.getcwd()}")
     print(f"sys.path[0]: {sys.path[0] if sys.path else ''}")
     print(
-        "pywandahydra.location: "
-        f"{pywandahydra_spec.origin if pywandahydra_spec else 'NOT FOUND'}"
+        f"pywandahydra.location: {pywandahydra_spec.origin if pywandahydra_spec else 'NOT FOUND'}"
     )
-    print(
-        "pywanda.location: " f"{pywanda_spec.origin if pywanda_spec else 'NOT FOUND'}"
-    )
+    print(f"pywanda.location: {pywanda_spec.origin if pywanda_spec else 'NOT FOUND'}")
     print("===================================")
 
 
@@ -90,8 +87,7 @@ def main() -> None:
     )
 
     print(
-        f"Done: {result.n_success} succeeded, {result.n_failed} failed, "
-        f"{result.n_skipped} skipped"
+        f"Done: {result.n_success} succeeded, {result.n_failed} failed, {result.n_skipped} skipped"
     )
 
 

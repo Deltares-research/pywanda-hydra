@@ -73,9 +73,7 @@ class TestWriteRunLog(unittest.TestCase):
                 base_model_name="base_model",
             )
             scenario = ScenarioSpecification(
-                meta=ScenarioMeta.model_validate(
-                    {"Number": 1, "Include": True, "Name": "case_001"}
-                )
+                meta=ScenarioMeta.model_validate({"Number": 1, "Include": True, "Name": "case_001"})
             )
 
             write_run_log(
@@ -91,9 +89,7 @@ class TestWriteRunLog(unittest.TestCase):
                 data = json.load(f)
 
             self.assertEqual(data["run_context"]["run_id"], "run_001")
-            self.assertEqual(
-                data["model_specification"]["base_model_name"], "base_model"
-            )
+            self.assertEqual(data["model_specification"]["base_model_name"], "base_model")
             self.assertEqual(len(data["scenarios"]), 1)
             self.assertEqual(data["scenarios"][0]["meta"]["name"], "case_001")
 
