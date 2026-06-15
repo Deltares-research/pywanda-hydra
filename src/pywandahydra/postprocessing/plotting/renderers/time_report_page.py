@@ -90,8 +90,18 @@ def _warn_duplicate_axis_definitions(specs: list[TimePlotSpecification]) -> None
         ("Xlabel", lambda s: s.x_axis.label),
         ("Ylabel", lambda s: s.y_axis.label),
     ):
-        defined = [s for s in specs if get_value(s)]
-        if len(defined) > 1:
+        defined = [s for s in specs if get_value(s) and get_value(s).strip()]
+        if (
+            len(defined) > 1
+            and len(
+                {
+                    get_value(s).strip()
+                    for s in defined
+                    if get_value(s) not in (None, "", "None")
+                }
+            )
+            > 1
+        ):
             logger.warning(
                 "Multiple %s definitions for one subplot (%s); using the first "
                 "(%s) and ignoring the rest.",
