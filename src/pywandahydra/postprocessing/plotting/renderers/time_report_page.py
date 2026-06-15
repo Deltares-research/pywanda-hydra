@@ -114,7 +114,7 @@ def _select_columns(
     """Pick the cached columns matching a spec, honoring its ``location``.
 
     Returns ``(column, label)`` pairs. For pipes with multiple s-locations and
-    no requested location, every location is plotted with an ``@ s=…`` label;
+    no requested location, every location is plotted with an ``s=…`` label;
     a requested location selects the single nearest column.
     """
     if not isinstance(components.columns, pd.MultiIndex):
@@ -135,7 +135,7 @@ def _select_columns(
         if located:
             target = float(spec.location)
             col = min(located, key=lambda c: abs(s_of(c) - target))
-            return [(col, f"{spec.component} @ s={s_of(col):.1f} m")]
+            return [(col, f"{spec.component} s={s_of(col):.1f} m")]
         logger.warning(
             "Time plot for '%s' requested location %.1f m but cached data has "
             "no s-locations; using available series.",
@@ -148,7 +148,7 @@ def _select_columns(
     for col in matching:
         s = s_of(col)
         if multiple and not np.isnan(s):
-            out.append((col, f"{spec.component} @ s={s:.1f} m"))
+            out.append((col, f"{spec.component} s={s:.1f} m"))
         else:
             out.append((col, spec.component))
     return out

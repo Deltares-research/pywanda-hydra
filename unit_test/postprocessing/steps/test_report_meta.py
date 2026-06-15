@@ -13,7 +13,9 @@ from pywandahydra.postprocessing.steps.report_meta import _format_date, build_re
 from pywandahydra.scenarios.schema import AnalysisMeta, ScenarioMeta, ScenarioSpecification
 
 
-def _make_ctx(tmp_path: Path, meta_overrides: dict, analysis_overrides: dict | None = None) -> CaseContext:
+def _make_ctx(
+    tmp_path: Path, meta_overrides: dict, analysis_overrides: dict | None = None
+) -> CaseContext:
     meta_dict = {"Number": 7, "Include": True, "Name": "case_007"}
     meta_dict.update(meta_overrides)
     scenario = ScenarioSpecification(
@@ -30,14 +32,14 @@ class TestFormatDate(unittest.TestCase):
         self.assertEqual(result, date.today().strftime("%d-%m-%Y"))
 
     def test_datetime_formatted(self) -> None:
-        result = _format_date(datetime(2024, 3, 5, 12, 30))
+        result = _format_date(datetime(2026, 3, 5, 12, 30))
 
-        self.assertEqual(result, "05-03-2024")
+        self.assertEqual(result, "05-03-2026")
 
     def test_date_formatted(self) -> None:
-        result = _format_date(date(2024, 3, 5))
+        result = _format_date(date(2026, 3, 5))
 
-        self.assertEqual(result, "05-03-2024")
+        self.assertEqual(result, "05-03-2026")
 
     def test_empty_string_returns_today(self) -> None:
         result = _format_date("   ")
@@ -45,14 +47,14 @@ class TestFormatDate(unittest.TestCase):
         self.assertEqual(result, date.today().strftime("%d-%m-%Y"))
 
     def test_iso_string_parsed(self) -> None:
-        result = _format_date("2024-03-05")
+        result = _format_date("2026-03-05")
 
-        self.assertEqual(result, "05-03-2024")
+        self.assertEqual(result, "05-03-2026")
 
     def test_slash_string_parsed(self) -> None:
-        result = _format_date("05/03/2024")
+        result = _format_date("05/03/2026")
 
-        self.assertEqual(result, "05-03-2024")
+        self.assertEqual(result, "05-03-2026")
 
     def test_unparseable_string_returned_as_is(self) -> None:
         result = _format_date("not-a-date")
@@ -70,7 +72,7 @@ class TestBuildReportMeta(unittest.TestCase):
                     "Number": 3,
                     "Chapter": 2,
                     "Description": "Scenario desc",
-                    "Date": "2024-01-15",
+                    "Date": "2026-01-15",
                 },
                 {
                     "analysis_description": "Analysis desc",
@@ -87,7 +89,7 @@ class TestBuildReportMeta(unittest.TestCase):
             self.assertEqual(meta.scenario_description, "Scenario desc")
             self.assertEqual(meta.project_number, "123")
             self.assertEqual(meta.wanda_version, "WANDA 4.6")
-            self.assertEqual(meta.report_date, "15-01-2024")
+            self.assertEqual(meta.report_date, "15-01-2026")
             self.assertEqual(meta.case_name, "case_007")
 
     def test_without_appendix_uses_case_dir_name(self) -> None:

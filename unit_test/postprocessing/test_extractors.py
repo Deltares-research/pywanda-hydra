@@ -43,7 +43,7 @@ class _ExtractorADuplicate:
 class TestRegisterExtractor(unittest.TestCase):
     def setUp(self) -> None:
         extractors._EXTRACTOR_CLASSES.pop("extractor_a", None)
-        self.addCleanup(extractors._EXTRACTOR_CLASSES.pop, "extractor_a", None)
+        self.addCleanup(extractors._EXTRACTOR_CLASSES.pop, "extractor_a", None)  # type: ignore[call-arg]
 
     def test_register_returns_existing_on_duplicate(self) -> None:
         first = extractors.register_extractor(_ExtractorA)
@@ -64,18 +64,18 @@ class TestResolveExtractor(unittest.TestCase):
     def setUp(self) -> None:
         extractors._EXTRACTOR_CLASSES.pop("extractor_a", None)
         extractors.register_extractor(_ExtractorA)
-        self.addCleanup(extractors._EXTRACTOR_CLASSES.pop, "extractor_a", None)
+        self.addCleanup(extractors._EXTRACTOR_CLASSES.pop, "extractor_a", None)  # type: ignore[call-arg]
 
     def test_resolve_with_default_params(self) -> None:
         instance = extractors.resolve_extractor("extractor_a")
 
         self.assertIsInstance(instance, _ExtractorA)
-        self.assertEqual(instance._p.threshold, 1.0)
+        self.assertEqual(instance._p.threshold, 1.0)  # type: ignore[attr-defined]
 
     def test_resolve_with_custom_params(self) -> None:
         instance = extractors.resolve_extractor("extractor_a", {"threshold": 5.0})
 
-        self.assertEqual(instance._p.threshold, 5.0)
+        self.assertEqual(instance._p.threshold, 5.0)  # type: ignore[attr-defined]
 
     def test_resolve_unknown_extractor_raises_key_error(self) -> None:
         with self.assertRaises(KeyError):
@@ -85,7 +85,7 @@ class TestResolveExtractor(unittest.TestCase):
 class TestBootstrap(unittest.TestCase):
     def test_bootstrap_registers_entry_points(self) -> None:
         extractors._EXTRACTOR_CLASSES.pop("extractor_a", None)
-        self.addCleanup(extractors._EXTRACTOR_CLASSES.pop, "extractor_a", None)
+        self.addCleanup(extractors._EXTRACTOR_CLASSES.pop, "extractor_a", None)  # type: ignore[call-arg]
 
         fake_ep = mock.Mock()
         fake_ep.name = "extractor_a"
@@ -115,7 +115,7 @@ class TestBootstrap(unittest.TestCase):
 
     def test_bootstrap_python39_get_fallback(self) -> None:
         extractors._EXTRACTOR_CLASSES.pop("extractor_a", None)
-        self.addCleanup(extractors._EXTRACTOR_CLASSES.pop, "extractor_a", None)
+        self.addCleanup(extractors._EXTRACTOR_CLASSES.pop, "extractor_a", None)  # type: ignore[call-arg]
 
         fake_ep = mock.Mock()
         fake_ep.name = "extractor_a"

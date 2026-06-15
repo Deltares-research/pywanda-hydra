@@ -13,9 +13,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 from pywandahydra.postprocessing.plotting.models import AxisSpec
-from pywandahydra.postprocessing.plotting.renderers.time_series import (
-    render_time_series_plot,
-)
+from pywandahydra.postprocessing.plotting.renderers.time_series import render_time_series_plot
 
 
 class TestRenderTimeSeriesPlot(unittest.TestCase):
@@ -63,10 +61,10 @@ class TestRenderTimeSeriesPlot(unittest.TestCase):
 
         # Assert
         self.assertIsNotNone(fig)
-        ax = fig.axes[0]
+        ax = fig.axes[0]  # type: ignore[union-attr]
         self.assertEqual(len(ax.get_lines()), 1)
         legend = ax.get_legend()
-        legend_labels = [t.get_text() for t in legend.get_texts()]
+        legend_labels = [t.get_text() for t in legend.get_texts()]  # type: ignore[union-attr]
         self.assertEqual(legend_labels, ["Pipe1"])
         self.assertEqual(ax.get_xlabel(), "Time [s]")
         self.assertEqual(ax.get_title(), "Discharge")
@@ -86,10 +84,10 @@ class TestRenderTimeSeriesPlot(unittest.TestCase):
         fig = render_time_series_plot(["Pipe1"], "Discharge", cache)
 
         # Assert
-        ax = fig.axes[0]
+        ax = fig.axes[0]  # type: ignore[union-attr]
         legend = ax.get_legend()
-        legend_labels = [t.get_text() for t in legend.get_texts()]
-        self.assertEqual(legend_labels, ["Pipe1 @ s=12.5 m"])
+        legend_labels = [t.get_text() for t in legend.get_texts()]  # type: ignore[union-attr]
+        self.assertEqual(legend_labels, ["Pipe1 s=12.5 m"])
 
         plt.close(fig)
 
@@ -102,10 +100,10 @@ class TestRenderTimeSeriesPlot(unittest.TestCase):
         fig = render_time_series_plot(["Pipe1"], "Discharge", cache)
 
         # Assert
-        ax = fig.axes[0]
+        ax = fig.axes[0]  # type: ignore[union-attr]
         self.assertEqual(len(ax.get_lines()), 1)
         legend = ax.get_legend()
-        legend_labels = [t.get_text() for t in legend.get_texts()]
+        legend_labels = [t.get_text() for t in legend.get_texts()]  # type: ignore[union-attr]
         self.assertEqual(legend_labels, ["Pipe1"])
 
         plt.close(fig)
@@ -128,7 +126,7 @@ class TestRenderTimeSeriesPlot(unittest.TestCase):
         )
 
         # Assert
-        ax = fig.axes[0]
+        ax = fig.axes[0]  # type: ignore[union-attr]
         self.assertEqual(ax.get_xlabel(), "Time [h]")
         self.assertEqual(ax.get_ylabel(), "Discharge [m3/s]")
         self.assertEqual(ax.get_title(), "Custom title")
@@ -157,7 +155,7 @@ class TestRenderTimeSeriesPlot(unittest.TestCase):
             self.assertTrue((Path(tmp_dir) / "my_plot.pdf").exists())
 
         # fig was closed by savefig
-        self.assertFalse(plt.fignum_exists(fig.number))
+        self.assertFalse(plt.fignum_exists(fig.number))  # type: ignore[union-attr]
 
 
 if __name__ == "__main__":

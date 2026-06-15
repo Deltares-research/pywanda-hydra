@@ -52,7 +52,7 @@ def render_time_series_plot(
             matching = [c for c in df.columns if c[0] == comp and c[1] == property_name]
             for col in matching:
                 if len(col) >= 3 and isinstance(col[2], float) and not math.isnan(col[2]):
-                    label = f"{col[0]} @ s={col[2]:.1f} m"
+                    label = f"{col[0]} s={col[2]:.1f} m"
                 else:
                     label = col[0]
                 ax.plot(df.index, df[col], label=label)

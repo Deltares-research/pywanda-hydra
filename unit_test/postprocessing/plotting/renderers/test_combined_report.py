@@ -14,8 +14,8 @@ import matplotlib.pyplot as plt  # noqa: E402
 import pandas as pd  # noqa: E402
 
 from pywandahydra.postprocessing.io.cache import ParquetCache  # noqa: E402
-from pywandahydra.postprocessing.plotting.renderers.combined_report import (  # noqa: E402
-    render_combined_report_pages,
+from pywandahydra.postprocessing.plotting.renderers.combined_report import (
+    render_combined_report_pages,  # noqa: E402
 )
 from pywandahydra.postprocessing.plotting.renderers.report_page import ReportMeta  # noqa: E402
 from pywandahydra.postprocessing.plotting.renderers.theme import PlotTheme  # noqa: E402
@@ -83,9 +83,7 @@ class TestRenderCombinedReportPages(unittest.TestCase):
 
     def test_single_route_spec_produces_one_figure_with_one_axes(self) -> None:
         _write_route_cache(self.cache, "Route A_Pressure")
-        spec = RoutePlotSpecification(
-            route_id="Route A", property="Pressure", fig="1", plot=1
-        )
+        spec = RoutePlotSpecification(route_id="Route A", property="Pressure", fig="1", plot=1)
 
         figures = render_combined_report_pages(
             [spec], self.cache, report_meta_base=BASE_META, theme=self.theme
@@ -96,9 +94,7 @@ class TestRenderCombinedReportPages(unittest.TestCase):
         fig = figures[0]
         # One content axes plus the layout axes (background frame) and
         # the watermark image axes added by draw_layout.
-        content_axes = [
-            ax for ax in fig.axes if ax.get_title()
-        ]
+        content_axes = [ax for ax in fig.axes if ax.get_title()]
         self.assertEqual(len(content_axes), 1)
         self.assertEqual(content_axes[0].get_title(), "Route A_Pressure")
 
@@ -121,16 +117,15 @@ class TestRenderCombinedReportPages(unittest.TestCase):
         _write_route_cache(self.cache, "Route A_Pressure")
         _write_route_cache(self.cache, "Route B_Pressure")
         specs = [
-            RoutePlotSpecification(
-                route_id="Route A", property="Pressure", fig="1", plot=1
-            ),
-            RoutePlotSpecification(
-                route_id="Route B", property="Pressure", fig="1", plot=2
-            ),
+            RoutePlotSpecification(route_id="Route A", property="Pressure", fig="1", plot=1),
+            RoutePlotSpecification(route_id="Route B", property="Pressure", fig="1", plot=2),
         ]
 
         figures = render_combined_report_pages(
-            specs, self.cache, report_meta_base=BASE_META, theme=self.theme
+            specs,  # type: ignore[arg-type]  # mypy doesn't know about the list of specs being valid for multiple plots
+            self.cache,
+            report_meta_base=BASE_META,
+            theme=self.theme,
         )
         self._figures.extend(figures)
 
@@ -144,16 +139,15 @@ class TestRenderCombinedReportPages(unittest.TestCase):
         _write_route_cache(self.cache, "Route A_Pressure")
         _write_route_cache(self.cache, "Route B_Pressure")
         specs = [
-            RoutePlotSpecification(
-                route_id="Route A", property="Pressure", fig="1", plot=1
-            ),
-            RoutePlotSpecification(
-                route_id="Route B", property="Pressure", fig="2", plot=1
-            ),
+            RoutePlotSpecification(route_id="Route A", property="Pressure", fig="1", plot=1),
+            RoutePlotSpecification(route_id="Route B", property="Pressure", fig="2", plot=1),
         ]
 
         figures = render_combined_report_pages(
-            specs, self.cache, report_meta_base=BASE_META, theme=self.theme
+            specs,  # type: ignore[arg-type]  # mypy doesn't know about the list of specs being valid for multiple plots
+            self.cache,
+            report_meta_base=BASE_META,
+            theme=self.theme,
         )
         self._figures.extend(figures)
 
@@ -161,9 +155,7 @@ class TestRenderCombinedReportPages(unittest.TestCase):
 
     def test_missing_envelope_skips_panel_and_returns_no_figure(self) -> None:
         # No cache written - envelope lookup returns empty dict.
-        spec = RoutePlotSpecification(
-            route_id="Route A", property="Pressure", fig="1", plot=1
-        )
+        spec = RoutePlotSpecification(route_id="Route A", property="Pressure", fig="1", plot=1)
 
         figures = render_combined_report_pages(
             [spec], self.cache, report_meta_base=BASE_META, theme=self.theme
@@ -191,39 +183,37 @@ class TestRenderCombinedReportPages(unittest.TestCase):
         _write_route_cache(self.cache, "Route A_Pressure")
         _write_components_cache(self.cache)
         specs = [
-            RoutePlotSpecification(
-                route_id="Route A", property="Pressure", fig="1", plot=1
-            ),
+            RoutePlotSpecification(route_id="Route A", property="Pressure", fig="1", plot=1),
             TimePlotSpecification(component="PUMP P1", property="Head", fig="1", plot=1),
         ]
 
         with self.assertRaises(ValueError):
             render_combined_report_pages(
-                specs, self.cache, report_meta_base=BASE_META, theme=self.theme
+                specs,  # type: ignore[arg-type]  # mypy doesn't know about the list of specs being valid for multiple plots
+                self.cache,
+                report_meta_base=BASE_META,
+                theme=self.theme,
             )
 
     def test_too_many_route_specs_in_one_panel_raises_value_error(self) -> None:
         _write_route_cache(self.cache, "Route A_Pressure")
         _write_route_cache(self.cache, "Route B_Pressure")
         specs = [
-            RoutePlotSpecification(
-                route_id="Route A", property="Pressure", fig="1", plot=1
-            ),
-            RoutePlotSpecification(
-                route_id="Route B", property="Pressure", fig="1", plot=1
-            ),
+            RoutePlotSpecification(route_id="Route A", property="Pressure", fig="1", plot=1),
+            RoutePlotSpecification(route_id="Route B", property="Pressure", fig="1", plot=1),
         ]
 
         with self.assertRaises(ValueError):
             render_combined_report_pages(
-                specs, self.cache, report_meta_base=BASE_META, theme=self.theme
+                specs,  # type: ignore[arg-type]  # mypy doesn't know about the list of specs being valid for multiple plots
+                self.cache,
+                report_meta_base=BASE_META,
+                theme=self.theme,
             )
 
     def test_figure_id_includes_fig_key_suffix(self) -> None:
         _write_route_cache(self.cache, "Route A_Pressure")
-        spec = RoutePlotSpecification(
-            route_id="Route A", property="Pressure", fig="3", plot=1
-        )
+        spec = RoutePlotSpecification(route_id="Route A", property="Pressure", fig="3", plot=1)
 
         figures = render_combined_report_pages(
             [spec], self.cache, report_meta_base=BASE_META, theme=self.theme

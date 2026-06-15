@@ -78,7 +78,7 @@ class TestPageMetadata(unittest.TestCase):
 
         # Assert
         self.assertIsInstance(effective_date, datetime)
-        self.assertEqual(effective_date.date(), datetime.today().date())
+        self.assertEqual(effective_date.date(), datetime.today().date())  # type: ignore[attr-defined]
 
     def test_effective_date_uses_provided_date(self) -> None:
         # Arrange
@@ -198,9 +198,7 @@ class TestDrawLayout(unittest.TestCase):
         watermark_ax = fig.axes[-1]
         images = watermark_ax.get_images()
         self.assertEqual(len(images), 1)
-        np.testing.assert_array_equal(
-            np.asarray(images[0].get_array()), custom_image.squeeze(-1)
-        )
+        np.testing.assert_array_equal(np.asarray(images[0].get_array()), custom_image.squeeze(-1))
 
         plt.close(fig)
 

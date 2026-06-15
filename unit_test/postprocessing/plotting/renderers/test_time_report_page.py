@@ -68,7 +68,7 @@ class TestSelectColumns(unittest.TestCase):
 
         self.assertEqual(len(result), 2)
         labels = sorted(label for _, label in result)
-        self.assertEqual(labels, ["PIPE P1 @ s=0.0 m", "PIPE P1 @ s=10.0 m"])
+        self.assertEqual(labels, ["PIPE P1 s=0.0 m", "PIPE P1 s=10.0 m"])
 
     def test_requested_location_selects_nearest_column(self) -> None:
         components = _make_components()
@@ -79,7 +79,7 @@ class TestSelectColumns(unittest.TestCase):
         self.assertEqual(len(result), 1)
         col, label = result[0]
         self.assertEqual(col[2], 0.0)
-        self.assertEqual(label, "PIPE P1 @ s=0.0 m")
+        self.assertEqual(label, "PIPE P1 s=0.0 m")
 
 
 class TestWarnDuplicateAxisDefinitions(unittest.TestCase):
@@ -148,8 +148,8 @@ class TestPlotTimeSeriesGroup(unittest.TestCase):
 
         self.assertTrue(result)
         self.assertEqual(len(self.ax.get_lines()), 2)
-        legend_labels = sorted(line.get_label() for line in self.ax.get_lines())
-        self.assertEqual(legend_labels, ["PIPE P1 @ s=0.0 m", "PIPE P1 @ s=10.0 m"])
+        legend_labels = sorted(line.get_label() for line in self.ax.get_lines())  # type: ignore[type-var]
+        self.assertEqual(legend_labels, ["PIPE P1 s=0.0 m", "PIPE P1 s=10.0 m"])
 
     def test_multiple_specs_combine_onto_one_axes(self) -> None:
         components = _make_components()
@@ -166,9 +166,7 @@ class TestPlotTimeSeriesGroup(unittest.TestCase):
 
     def test_custom_legend_label_used_when_provided(self) -> None:
         components = _make_components()
-        specs = [
-            TimePlotSpecification(component="PUMP P1", property="Head", legend="My Pump")
-        ]
+        specs = [TimePlotSpecification(component="PUMP P1", property="Head", legend="My Pump")]
 
         _plot_time_series_group(self.ax, specs, components, self.theme)
 

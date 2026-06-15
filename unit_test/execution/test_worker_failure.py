@@ -57,9 +57,19 @@ class TestWorkerFailurePath(unittest.TestCase):
 
             journal = CaseJournal(plan.case_dir)
             state = journal.read_state()
-            self.assertEqual(state.status, "FAILED")
-            self.assertEqual(state.postprocess_status, "FAILED")
-            self.assertIn("simulated steady-state failure", state.error)
+
+            self.assertEqual(
+                state.status,  # type: ignore[union-attr]  # mypy doesn't know state can be None but in this test it won't be
+                "FAILED",
+            )
+            self.assertEqual(
+                state.postprocess_status,  # type: ignore[union-attr]  # mypy doesn't know state can be None but in this test it won't be
+                "FAILED",
+            )
+            self.assertIn(
+                "simulated steady-state failure",
+                state.error,  # type: ignore[arg-type, union-attr]  # mypy doesn't know state can be None but in this test it won't be
+            )
 
     def test_run_one_case_returns_failure_when_case_dir_locked(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:

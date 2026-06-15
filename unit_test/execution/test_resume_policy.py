@@ -116,12 +116,8 @@ class TestResumePolicy(unittest.TestCase):
     def test_config_hash_is_invariant_to_case_rename(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp_path = Path(tmp_dir)
-            plan_a = self._build_plan(
-                root_dir=tmp_path, readonly=True, case_name="case_a"
-            )
-            plan_b = self._build_plan(
-                root_dir=tmp_path, readonly=True, case_name="case_b"
-            )
+            plan_a = self._build_plan(root_dir=tmp_path, readonly=True, case_name="case_a")
+            plan_b = self._build_plan(root_dir=tmp_path, readonly=True, case_name="case_b")
 
             self.assertEqual(plan_a.config_hash, plan_b.config_hash)
 

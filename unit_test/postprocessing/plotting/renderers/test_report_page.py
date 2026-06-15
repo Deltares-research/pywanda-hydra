@@ -15,6 +15,7 @@ import pandas as pd  # noqa: E402
 
 from pywandahydra.postprocessing.plotting.renderers.report_page import (  # noqa: E402
     ReportMeta,
+    _annotate_pipe_boundaries,
     _create_content_axes,
     _extract_profile_series,
     _extract_time_zero_series,
@@ -160,6 +161,63 @@ class TestPlotRouteSeries(unittest.TestCase):
         self.assertIsNotNone(legend)
 
 
+class TestAnnotatePipeBoundaries(unittest.TestCase):
+    def setUp(self) -> None:
+        self.theme = PlotTheme()
+        self.fig, self.ax = plt.subplots()
+
+    def tearDown(self) -> None:
+        plt.close(self.fig)
+
+    def test_draws_dashed_line_at_interior_boundary_only(self) -> None:
+        columns = _make_timeseries_columns(
+            [("PIPE P1", 0.0), ("PIPE P1", 10.0), ("PIPE P2", 10.0), ("PIPE P2", 20.0)]
+        )
+        timeseries = pd.DataFrame([[1.0, 2.0, 3.0, 4.0]], columns=columns, index=[0.0])
+        route_data = {"timeseries": timeseries}
+        self.ax.set_xlim(0.0, 20.0)
+
+        _annotate_pipe_boundaries(self.ax, route_data, self.theme)
+
+        lines = [
+            line
+            for line in self.ax.lines
+            if line.get_linestyle() == "--"
+            and line.get_color() == "black"
+            and line.get_alpha() == 0.5
+        ]
+        x_values = sorted(line.get_xdata()[0] for line in lines)  # type: ignore[type-var, index]
+        # Only the shared boundary between the two pipes is drawn; the
+        # overall route start (0.0) and end (20.0) are skipped.
+        self.assertEqual(x_values, [10.0])
+
+    def test_labels_each_pipe_centered_on_its_range(self) -> None:
+        columns = _make_timeseries_columns(
+            [("PIPE P1", 0.0), ("PIPE P1", 10.0), ("PIPE P2", 10.0), ("PIPE P2", 20.0)]
+        )
+        timeseries = pd.DataFrame([[1.0, 2.0, 3.0, 4.0]], columns=columns, index=[0.0])
+        route_data = {"timeseries": timeseries}
+        self.ax.set_xlim(0.0, 20.0)
+
+        _annotate_pipe_boundaries(self.ax, route_data, self.theme)
+
+        text_positions = {t.get_text(): t.get_position()[0] for t in self.ax.texts}
+        self.assertEqual(text_positions["PIPE P1"], 5.0)
+        self.assertEqual(text_positions["PIPE P2"], 15.0)
+
+    def test_no_lines_when_timeseries_missing(self) -> None:
+        _annotate_pipe_boundaries(self.ax, {}, self.theme)
+
+        self.assertEqual(len(self.ax.lines), 0)
+        self.assertEqual(len(self.ax.texts), 0)
+
+    def test_no_lines_when_timeseries_empty(self) -> None:
+        _annotate_pipe_boundaries(self.ax, {"timeseries": pd.DataFrame()}, self.theme)
+
+        self.assertEqual(len(self.ax.lines), 0)
+        self.assertEqual(len(self.ax.texts), 0)
+
+
 class TestExtractTimeZeroSeries(unittest.TestCase):
     def test_returns_none_when_timeseries_missing(self) -> None:
         self.assertIsNone(_extract_time_zero_series({}))
@@ -194,7 +252,8 @@ class TestExtractProfileSeries(unittest.TestCase):
 
         s, elev = _extract_profile_series({"profile": profile})
 
-        assert s is not None and elev is not None
+        assert s is not None
+        assert elev is not None
         np.testing.assert_array_equal(s, [0.0, 10.0])
         np.testing.assert_array_equal(elev, [100.0, 110.0])
 

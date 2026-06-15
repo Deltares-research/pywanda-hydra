@@ -131,9 +131,7 @@ class TestSaveTable(unittest.TestCase):
     def test_save_table_writes_xlsx_in_subdirectory(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             output_dir = Path(tmp_dir)
-            saved_paths = save_table(
-                self.df, output_dir, "data", export_props={".xlsx": {}}
-            )
+            saved_paths = save_table(self.df, output_dir, "data", export_props={".xlsx": {}})
 
             self.assertEqual(saved_paths, [output_dir / "xlsx-files" / "data.xlsx"])
             self.assertTrue(saved_paths[0].exists())
@@ -141,9 +139,7 @@ class TestSaveTable(unittest.TestCase):
     def test_save_table_writes_parquet_in_subdirectory(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             output_dir = Path(tmp_dir)
-            saved_paths = save_table(
-                self.df, output_dir, "data", export_props={".parquet": {}}
-            )
+            saved_paths = save_table(self.df, output_dir, "data", export_props={".parquet": {}})
 
             self.assertEqual(saved_paths, [output_dir / "parquet-files" / "data.parquet"])
             self.assertTrue(saved_paths[0].exists())
@@ -151,9 +147,7 @@ class TestSaveTable(unittest.TestCase):
     def test_save_table_skips_unsupported_format(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             output_dir = Path(tmp_dir)
-            saved_paths = save_table(
-                self.df, output_dir, "data", export_props={".json": {}}
-            )
+            saved_paths = save_table(self.df, output_dir, "data", export_props={".json": {}})
 
             self.assertEqual(saved_paths, [])
 

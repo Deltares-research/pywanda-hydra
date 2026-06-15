@@ -26,7 +26,7 @@ class TestRenderRoutePlot(unittest.TestCase):
     def _make_spec(self, **overrides) -> RoutePlotSpecification:
         kwargs = dict(route_id="Pipe1", property="Discharge")
         kwargs.update(overrides)
-        return RoutePlotSpecification(**kwargs)
+        return RoutePlotSpecification(**kwargs)  # type: ignore[arg-type]
 
     def test_returns_none_when_no_envelope(self) -> None:
         # Arrange
@@ -64,10 +64,10 @@ class TestRenderRoutePlot(unittest.TestCase):
 
         # Assert
         self.assertIsNotNone(fig)
-        ax = fig.axes[0]
+        ax = fig.axes[0]  # type: ignore[union-attr]
 
         legend = ax.get_legend()
-        legend_labels = [t.get_text() for t in legend.get_texts()]
+        legend_labels = [t.get_text() for t in legend.get_texts()]  # type: ignore[union-attr]
         self.assertIn("min", legend_labels)
         self.assertIn("max", legend_labels)
 
@@ -83,7 +83,7 @@ class TestRenderRoutePlot(unittest.TestCase):
 
         # Lines sorted by s_location
         line = ax.get_lines()[0]
-        self.assertEqual(list(line.get_xdata()), [0.0, 10.0, 20.0])
+        self.assertEqual(list(line.get_xdata()), [0.0, 10.0, 20.0])  # type: ignore[arg-type]
 
         plt.close(fig)
 
@@ -100,9 +100,9 @@ class TestRenderRoutePlot(unittest.TestCase):
         fig = render_route_plot(spec, cache)
 
         # Assert
-        ax = fig.axes[0]
+        ax = fig.axes[0]  # type: ignore[union-attr]
         legend = ax.get_legend()
-        legend_labels = [t.get_text() for t in legend.get_texts()]
+        legend_labels = [t.get_text() for t in legend.get_texts()]  # type: ignore[union-attr]
         self.assertEqual(legend_labels, ["min"])
         # No fill_between when max column missing
         self.assertEqual(len(ax.collections), 0)
@@ -126,7 +126,7 @@ class TestRenderRoutePlot(unittest.TestCase):
         fig = render_route_plot(spec, cache)
 
         # Assert
-        ax = fig.axes[0]
+        ax = fig.axes[0]  # type: ignore[union-attr]
         self.assertEqual(ax.get_title(), "Custom Title")
         self.assertEqual(ax.get_xlabel(), "Distance [m]")
         self.assertEqual(ax.get_ylabel(), "Discharge [m3/s]")
@@ -147,14 +147,12 @@ class TestRenderRoutePlot(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             # Act
-            fig = render_route_plot(
-                spec, cache, output_dir=Path(tmp_dir), filename="route_fig"
-            )
+            fig = render_route_plot(spec, cache, output_dir=Path(tmp_dir), filename="route_fig")
 
             # Assert
             self.assertTrue((Path(tmp_dir) / "route_fig.pdf").exists())
 
-        self.assertFalse(plt.fignum_exists(fig.number))
+        self.assertFalse(plt.fignum_exists(fig.number))  # type: ignore[union-attr]
 
 
 if __name__ == "__main__":

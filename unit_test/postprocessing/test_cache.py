@@ -37,9 +37,7 @@ class TestParquetCacheRouteProfile(unittest.TestCase):
             profile = route["profile"]
             self.assertIn("elevation", profile.columns)
             self.assertListEqual(list(profile.index.astype(float)), [0.0, 5.0, 10.0])
-            self.assertListEqual(
-                list(profile["elevation"].astype(float)), [0.5, 0.25, 0.75]
-            )
+            self.assertListEqual(list(profile["elevation"].astype(float)), [0.5, 0.25, 0.75])
 
 
 class TestParquetCacheComponents(unittest.TestCase):
@@ -51,9 +49,7 @@ class TestParquetCacheComponents(unittest.TestCase):
                 [("PUMP P1", "Head", float("nan")), ("PIPE P1", "Pressure", 10.0)],
                 names=["component", "property", "s_location"],
             )
-            components = pd.DataFrame(
-                [[1.0, 2.0], [3.0, 4.0]], columns=columns, index=[0.0, 1.0]
-            )
+            components = pd.DataFrame([[1.0, 2.0], [3.0, 4.0]], columns=columns, index=[0.0, 1.0])
 
             artefacts = cache.write({"components": components, "routes": {}})
 
@@ -190,7 +186,7 @@ class TestParquetCacheCustomExtractions(unittest.TestCase):
             result = cache.read_custom("nothing")
 
             self.assertIsInstance(result, pd.DataFrame)
-            self.assertTrue(result.empty)
+            self.assertTrue(result.empty)  # type: ignore[union-attr]
 
     def test_list_custom_extractors(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:

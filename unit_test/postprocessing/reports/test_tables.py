@@ -9,10 +9,7 @@ from pathlib import Path
 import pandas as pd
 
 from pywandahydra.postprocessing.io.cache import ParquetCache
-from pywandahydra.postprocessing.reports.tables import (
-    aggregate_case_tables,
-    render_summary_table,
-)
+from pywandahydra.postprocessing.reports.tables import aggregate_case_tables, render_summary_table
 from pywandahydra.scenarios.schema import ExportTableSpecification
 
 

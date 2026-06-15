@@ -89,7 +89,7 @@ class TestExtractComponentOutputs(unittest.TestCase):
     def test_empty_specs_returns_empty_dataframe(self) -> None:
         adapter = _FakeAdapter(time_steps=[0.0, 1.0])
 
-        result = extract_component_outputs(None, [], adapter)
+        result = extract_component_outputs(None, [], adapter)  # type: ignore[arg-type]
 
         self.assertTrue(result.empty)
 
@@ -97,7 +97,7 @@ class TestExtractComponentOutputs(unittest.TestCase):
         adapter = _FakeAdapter(time_steps=[0.0, 1.0], resolve_map={})
         specs = [ExportTableSpecification(component="MISSING", property="Head", mode="MAX")]
 
-        result = extract_component_outputs(None, specs, adapter)
+        result = extract_component_outputs(None, specs, adapter)  # type: ignore[arg-type]
 
         self.assertTrue(result.empty)
 
@@ -110,7 +110,7 @@ class TestExtractComponentOutputs(unittest.TestCase):
         )
         specs = [ExportTableSpecification(component="PUMP P1", property="Head", mode="MAX")]
 
-        result = extract_component_outputs(None, specs, adapter)
+        result = extract_component_outputs(None, specs, adapter)  # type: ignore[arg-type]
 
         self.assertEqual(result.shape, (3, 1))
         col = result.columns[0]
@@ -128,7 +128,7 @@ class TestExtractComponentOutputs(unittest.TestCase):
         )
         specs = [ExportTableSpecification(component="PIPE P1", property="Pressure", mode="MAX")]
 
-        result = extract_component_outputs(None, specs, adapter)
+        result = extract_component_outputs(None, specs, adapter)  # type: ignore[arg-type]
 
         self.assertEqual(result.shape, (2, 2))
         s_locations = sorted(col[2] for col in result.columns)
@@ -142,7 +142,7 @@ class TestExtractComponentOutputs(unittest.TestCase):
         )
         specs = [ExportTableSpecification(component="PUMP P1", property="Head", mode="MAX")]
 
-        result = extract_component_outputs(None, specs, adapter)
+        result = extract_component_outputs(None, specs, adapter)  # type: ignore[arg-type]
 
         self.assertTrue(result.empty)
 
@@ -157,7 +157,7 @@ class TestExtractComponentOutputs(unittest.TestCase):
             TimePlotSpecification(component="PUMP P1", property="Head"),
         ]
 
-        result = extract_component_outputs(None, specs, adapter)
+        result = extract_component_outputs(None, specs, adapter)  # type: ignore[arg-type]
 
         self.assertEqual(result.shape, (2, 1))
 
@@ -166,7 +166,7 @@ class TestExtractRouteOutputs(unittest.TestCase):
     def test_empty_specs_returns_empty_dict(self) -> None:
         adapter = _FakeAdapter(time_steps=[0.0, 1.0])
 
-        result = extract_route_outputs(None, [], adapter)
+        result = extract_route_outputs(None, [], adapter)  # type: ignore[arg-type]
 
         self.assertEqual(result, {})
 
@@ -174,7 +174,7 @@ class TestExtractRouteOutputs(unittest.TestCase):
         adapter = _FakeAdapter(time_steps=[0.0, 1.0])
         specs = [RoutePlotSpecification(route_id="   ", property="Pressure", title="t")]
 
-        result = extract_route_outputs(None, specs, adapter)
+        result = extract_route_outputs(None, specs, adapter)  # type: ignore[arg-type]
 
         self.assertEqual(result, {})
 
@@ -182,7 +182,7 @@ class TestExtractRouteOutputs(unittest.TestCase):
         adapter = _FakeAdapter(time_steps=[0.0, 1.0], route_pipes={})
         specs = [RoutePlotSpecification(route_id="Route A", property="Pressure", title="t")]
 
-        result = extract_route_outputs(None, specs, adapter)
+        result = extract_route_outputs(None, specs, adapter)  # type: ignore[arg-type]
 
         self.assertEqual(result, {})
 
@@ -192,9 +192,7 @@ class TestExtractRouteOutputs(unittest.TestCase):
             route_pipes={"Route A": [("PIPE P1", 1)]},
             pipe_series={("PIPE P1", "Pressure"): np.array([[1.0, 2.0], [3.0, 4.0]])},
             pipe_lengths={"PIPE P1": 10.0},
-            pipe_extrema={
-                ("PIPE P1", "Pressure"): (np.array([0.0, 1.0]), np.array([5.0, 6.0]))
-            },
+            pipe_extrema={("PIPE P1", "Pressure"): (np.array([0.0, 1.0]), np.array([5.0, 6.0]))},
             pipe_profiles={
                 "PIPE P1": np.array(
                     [
@@ -207,7 +205,7 @@ class TestExtractRouteOutputs(unittest.TestCase):
         )
         specs = [RoutePlotSpecification(route_id="Route A", property="Pressure", title="Route A")]
 
-        result = extract_route_outputs(None, specs, adapter)
+        result = extract_route_outputs(None, specs, adapter)  # type: ignore[arg-type]
 
         self.assertIn("Route A", result)
         route_result = result["Route A"]
@@ -233,9 +231,7 @@ class TestExtractRouteOutputs(unittest.TestCase):
             route_pipes={"Route B": [("PIPE P1", -1)]},
             pipe_series={("PIPE P1", "Pressure"): np.array([[1.0, 2.0], [3.0, 4.0]])},
             pipe_lengths={"PIPE P1": 10.0},
-            pipe_extrema={
-                ("PIPE P1", "Pressure"): (np.array([0.0, 1.0]), np.array([5.0, 6.0]))
-            },
+            pipe_extrema={("PIPE P1", "Pressure"): (np.array([0.0, 1.0]), np.array([5.0, 6.0]))},
             pipe_profiles={
                 "PIPE P1": np.array(
                     [
@@ -248,7 +244,7 @@ class TestExtractRouteOutputs(unittest.TestCase):
         )
         specs = [RoutePlotSpecification(route_id="Route B", property="Pressure", title="Route B")]
 
-        result = extract_route_outputs(None, specs, adapter)
+        result = extract_route_outputs(None, specs, adapter)  # type: ignore[arg-type]
 
         ts = result["Route B"]["timeseries"]
         s_locations = sorted(col[2] for col in ts.columns)
@@ -267,9 +263,7 @@ class TestExtractRouteOutputs(unittest.TestCase):
             route_pipes={"Route A": [("PIPE P1", 1)], "Route B": [("PIPE P1", 1)]},
             pipe_series={("PIPE P1", "Pressure"): np.array([[1.0, 2.0], [3.0, 4.0]])},
             pipe_lengths={"PIPE P1": 10.0},
-            pipe_extrema={
-                ("PIPE P1", "Pressure"): (np.array([0.0, 1.0]), np.array([5.0, 6.0]))
-            },
+            pipe_extrema={("PIPE P1", "Pressure"): (np.array([0.0, 1.0]), np.array([5.0, 6.0]))},
             pipe_profiles={"PIPE P1": np.array([[0.0, 0.0], [100.0, 110.0], [0.0, 10.0]])},
         )
         specs = [
@@ -277,7 +271,7 @@ class TestExtractRouteOutputs(unittest.TestCase):
             RoutePlotSpecification(route_id="Route B", property="Pressure", title="Same"),
         ]
 
-        result = extract_route_outputs(None, specs, adapter)
+        result = extract_route_outputs(None, specs, adapter)  # type: ignore[arg-type]
 
         self.assertEqual(set(result.keys()), {"Same", "Same_2"})
 
@@ -291,20 +285,20 @@ class TestExtractAll(unittest.TestCase):
             route_pipes={"Route A": [("PIPE P1", 1)]},
             pipe_series={("PIPE P1", "Pressure"): np.array([[1.0, 2.0], [3.0, 4.0]])},
             pipe_lengths={"PIPE P1": 10.0},
-            pipe_extrema={
-                ("PIPE P1", "Pressure"): (np.array([0.0, 1.0]), np.array([5.0, 6.0]))
-            },
+            pipe_extrema={("PIPE P1", "Pressure"): (np.array([0.0, 1.0]), np.array([5.0, 6.0]))},
             pipe_profiles={"PIPE P1": np.array([[0.0, 0.0], [100.0, 110.0], [0.0, 10.0]])},
         )
         scenario = ScenarioSpecification(
             meta=ScenarioMeta.model_validate({"Number": 1, "Include": True, "Name": "case_001"}),
             post_processing=PostProcessingConfig(
                 tables=[ExportTableSpecification(component="PUMP P1", property="Head", mode="MAX")],
-                routes=[RoutePlotSpecification(route_id="Route A", property="Pressure", title="Route A")],
+                routes=[
+                    RoutePlotSpecification(route_id="Route A", property="Pressure", title="Route A")
+                ],
             ),
         )
 
-        result = extract_all(None, scenario, adapter)
+        result = extract_all(None, scenario, adapter)  # type: ignore[arg-type]
 
         self.assertIn("components", result)
         self.assertIn("routes", result)

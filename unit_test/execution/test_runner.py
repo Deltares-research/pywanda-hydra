@@ -34,9 +34,7 @@ class TestRunner(unittest.TestCase):
 
     def _build_scenario(self, name: str) -> ScenarioSpecification:
         return ScenarioSpecification(
-            meta=ScenarioMeta.model_validate(
-                {"Number": 1, "Include": True, "Name": name}
-            )
+            meta=ScenarioMeta.model_validate({"Number": 1, "Include": True, "Name": name})
         )
 
     def test_run_with_no_scenarios_returns_empty_result(self) -> None:
@@ -66,12 +64,15 @@ class TestRunner(unittest.TestCase):
             model_spec = self._build_model_spec(root_dir, readonly=False)
             scenario = self._build_scenario("case_001")
 
-            with patch(
-                "pywandahydra.execution.worker.bootstrap_workflows",
-                return_value=None,
-            ), patch(
-                "pywandahydra.execution.worker.run_postprocessing",
-                return_value={"summary_table": True},
+            with (
+                patch(
+                    "pywandahydra.execution.worker.bootstrap_workflows",
+                    return_value=None,
+                ),
+                patch(
+                    "pywandahydra.execution.worker.run_postprocessing",
+                    return_value={"summary_table": True},
+                ),
             ):
                 result = runner.run(
                     model=model_spec,
@@ -101,12 +102,15 @@ class TestRunner(unittest.TestCase):
             scenario = self._build_scenario("case_001")
 
             case_dir = ctx.root_dir / "scenarios" / "case_001"
-            with patch(
-                "pywandahydra.execution.worker.bootstrap_workflows",
-                return_value=None,
-            ), patch(
-                "pywandahydra.execution.worker.run_postprocessing",
-                return_value={"summary_table": True},
+            with (
+                patch(
+                    "pywandahydra.execution.worker.bootstrap_workflows",
+                    return_value=None,
+                ),
+                patch(
+                    "pywandahydra.execution.worker.run_postprocessing",
+                    return_value={"summary_table": True},
+                ),
             ):
                 first = runner.run(
                     model=model_spec,
@@ -119,14 +123,21 @@ class TestRunner(unittest.TestCase):
 
             journal = CaseJournal(case_dir)
             state = journal.read_state()
-            self.assertEqual(state.status, "SUCCEEDED")
+            assert state is not None
+            self.assertEqual(
+                state.status,
+                "SUCCEEDED",
+            )
 
-            with patch(
-                "pywandahydra.execution.worker.bootstrap_workflows",
-                return_value=None,
-            ), patch(
-                "pywandahydra.execution.worker.run_postprocessing",
-                return_value={"summary_table": True},
+            with (
+                patch(
+                    "pywandahydra.execution.worker.bootstrap_workflows",
+                    return_value=None,
+                ),
+                patch(
+                    "pywandahydra.execution.worker.run_postprocessing",
+                    return_value={"summary_table": True},
+                ),
             ):
                 second = runner.run(
                     model=model_spec,

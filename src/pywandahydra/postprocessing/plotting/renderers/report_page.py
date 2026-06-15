@@ -121,7 +121,7 @@ def _plot_route_series(
     ax.set_title(title, fontsize=theme.axis_title_size, fontfamily=theme.title_font)
     ax.grid(True, linestyle=theme.grid_linestyle, alpha=theme.grid_alpha)
 
-    _annotate_route_endpoints(ax, route_data, theme)
+    _annotate_pipe_boundaries(ax, route_data, theme)
 
     box = ax.get_position()
     shrink = min(0.035, box.height * 0.20)
@@ -169,10 +169,10 @@ def _extract_time_zero_series(route_data: dict[str, pd.DataFrame]) -> pd.Series 
     return ser.groupby(level=0).mean().sort_index()
 
 
-def _annotate_route_endpoints(
+def _annotate_pipe_boundaries(
     ax: Axes, route_data: dict[str, pd.DataFrame], theme: PlotTheme | None = None
 ) -> None:
-    """Annotate start/end component labels from cached timeseries columns."""
+    """Draw a dashed vertical line and label at the start of each pipe along the route."""
     if theme is None:
         theme = PlotTheme()
     ts = route_data.get("timeseries")
@@ -184,7 +184,7 @@ def _annotate_route_endpoints(
     ):
         return
 
-    points: list[tuple[float, str]] = []
+    ranges: dict[str, tuple[float, float]] = {}
     for col in ts.columns:
         try:
             s = float(col[2])
@@ -192,21 +192,40 @@ def _annotate_route_endpoints(
             continue
         if np.isnan(s):
             continue
-        points.append((s, str(col[0])))
+        name = str(col[0])
+        if name not in ranges:
+            ranges[name] = (s, s)
+        else:
+            lo, hi = ranges[name]
+            ranges[name] = (min(lo, s), max(hi, s))
 
-    if not points:
+    if not ranges:
         return
-
-    points.sort(key=lambda x: x[0])
-    start_label = points[0][1]
-    end_label = points[-1][1]
 
     xmin, xmax = ax.get_xlim()
     ymin, ymax = ax.get_ylim()
-    stepx = (xmax - xmin) * 0.05
-    stepy = (ymax - ymin) * 0.05
-    ax.text(xmin + stepx, ymin + stepy, start_label, fontfamily=theme.title_font)
-    ax.text(xmax - 3 * stepx, ymin + stepy, end_label, fontfamily=theme.title_font)
+    y_text = ymax - (ymax - ymin) * 0.02
+
+    # Draw a dashed line at each interior pipe boundary, skipping the overall
+    # route start/end (already annotated by _annotate_route_endpoints).
+    boundary_locations = {s for lo, hi in ranges.values() for s in (lo, hi)}
+    for s in boundary_locations:
+        if xmin < s < xmax:
+            ax.axvline(x=s, color="black", linestyle="--", alpha=0.5, linewidth=1.0, zorder=0)
+
+    # Label each pipe centered on its own s-range, near the top edge.
+    for name, (lo, hi) in ranges.items():
+        mid = (lo + hi) / 2
+        ax.text(
+            mid,
+            y_text,
+            name,
+            va="top",
+            ha="center",
+            clip_on=True,
+            fontsize=theme.legend_fontsize,
+            fontfamily=theme.title_font,
+        )
 
 
 def _extract_profile_series(
