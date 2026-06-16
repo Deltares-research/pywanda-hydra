@@ -256,7 +256,7 @@ class TestPreflightValidationIsolated(unittest.TestCase):
             self.skipTest(f"WANDA not available: {exc}")
 
         self.model_spec = ModelSpecification(
-            model_path=Path(__file__).parents[2] / "test_data" / "wanda" / "base_model.wdi",
+            model_path=Path(__file__).parents[2] / "data" / "wanda" / "base_model.wdi",
             wanda_bin=wanda_bin,
             base_model_name="base_model",
             run_steady=False,

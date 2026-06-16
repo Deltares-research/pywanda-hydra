@@ -20,7 +20,7 @@ class TestPywandaAdapter(unittest.TestCase):
         except FileNotFoundError as exc:
             self.skipTest(f"WANDA not available: {exc}")
 
-        base_dir = Path(__file__).parents[2] / "test_data" / "wanda"
+        base_dir = Path(__file__).parents[2] / "data" / "wanda"
         self.model_spec = ModelSpecification(
             model_path=base_dir / "base_model.wdi",
             wanda_bin=wanda_bin,

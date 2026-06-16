@@ -2,7 +2,7 @@
 
 For production use, prefer the CLI::
 
-    pywandahydra run test_data/run_config.yaml --workers 4 --resume
+    pywandahydra run examples/data/run_config.yaml --workers 4 --resume
 """
 
 from __future__ import annotations
@@ -62,8 +62,8 @@ def main() -> None:
 
     _print_startup_banner()
 
-    repo_root = Path(__file__).parents[1]
-    default_config = repo_root / "test_data" / "run_config.yaml"
+    repo_root = Path(__file__).parent
+    default_config = repo_root / "data" / "run_config.yaml"
 
     parser = argparse.ArgumentParser(
         description="Run PyWandaHydra scenarios from a YAML config file."

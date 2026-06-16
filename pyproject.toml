@@ -98,13 +98,13 @@ module-name = "pywandahydra"
 
 [tool.pytest.ini_options]
 addopts = "-q --cov=src/pywandahydra --cov-report html --cov-report term-missing --cov-fail-under 50"
-testpaths = ["unit_test"]
+testpaths = ["tests/unit_test"]
 norecursedirs = [".git", ".venv", "venv", "build", "dist", "notebooks/output"]
 
 [tool.coverage.run]
 source = ["src/pywandahydra"]
 omit = [
-    "*/unit_test/*",
+    "*/tests/*",
     "*/.venv/*",
     "*/venv/*",
     "*/build/*",
@@ -116,7 +116,7 @@ omit = [
 
 [tool.coverage.report]
 omit = [
-    "*/unit_test/*",
+    "*/tests/*",
     "*/.venv/*",
     "*/venv/*",
     "*/__main__.py",
@@ -126,7 +126,7 @@ omit = [
 [tool.ruff]
 line-length = 100
 target-version = "py311"
-src = ["src", "unit_test"]
+src = ["src", "tests"]
 exclude = [
     ".git",
     ".venv",
@@ -184,7 +184,7 @@ ignore_missing_imports = true
 
 # mypy per-module options:
 [[tool.mypy.overrides]]
-module = ["unit_test.*"]
+module = ["tests.*"]
 disallow_incomplete_defs = false
 disallow_untyped_defs = false
 check_untyped_defs = false

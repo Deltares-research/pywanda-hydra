@@ -13,9 +13,9 @@ class TestModelIO(unittest.TestCase):
         """Test preparing a scenario-specific model."""
         # Arrange
         base_model_path = (
-            Path(__file__).parents[2] / "test_data" / "wanda" / "base_model.wdi"
+            Path(__file__).parents[2] / "data" / "wanda" / "base_model.wdi"
         )
-        scenario_dir = Path(__file__).parents[2] / "test_data" / "wanda" / "scenarios"
+        scenario_dir = Path(__file__).parents[2] / "data" / "wanda" / "scenarios"
         scenario_name = "test_scenario"
 
         # Clean up any existing scenario files from previous test runs

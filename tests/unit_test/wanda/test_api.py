@@ -28,7 +28,7 @@ class TestWandaAPI(unittest.TestCase):
             self.skipTest(f"WANDA not available: {exc}")
         self.model_spec = ModelSpecification(
             model_path=Path(__file__).parents[2]
-            / "test_data"
+            / "data"
             / "wanda"
             / "base_model.wdi",
             wanda_bin=wanda_bin,
@@ -40,7 +40,7 @@ class TestWandaAPI(unittest.TestCase):
 
         self.scenario_model_path = (
             Path(__file__).parents[2]
-            / "test_data"
+            / "data"
             / "wanda"
             / "test_scenario"
             / "base_model_test_scenario.wdi"
@@ -49,7 +49,7 @@ class TestWandaAPI(unittest.TestCase):
         prepare_scenario_model(
             base_model_path=self.model_spec.model_path,
             scenario_dir=Path(__file__).parents[2]
-            / "test_data"
+            / "data"
             / "wanda"
             / "test_scenario",
             scenario_name="test_scenario",

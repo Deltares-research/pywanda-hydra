@@ -37,17 +37,17 @@ def _print_startup_banner() -> None:
 
 
 def main() -> None:
-    """Run scenarios from the test_data directory."""
+    """Run scenarios from the examples data directory."""
     _print_startup_banner()
 
-    run_dir = Path(__file__).parents[1] / "test_data" / "execution"
+    data_dir = Path(__file__).parent / "data"
 
     # Load scenarios from Excel
-    scenarios = load_scenarios(path=run_dir / "parameters" / "cases.xls")
+    scenarios = load_scenarios(path=data_dir / "scenarios" / "cases.xls")
 
     # Model specification
     model_spec = ModelSpecification(
-        model_path=run_dir / "model" / "base_model.wdi",
+        model_path=data_dir / "model" / "base_model.wdi",
         wanda_bin=Path(r"c:\Program Files (x86)\Deltares\Wanda 4.8\Bin64"),
         base_model_name="base_model",
         run_steady=True,
@@ -62,7 +62,7 @@ def main() -> None:
     run_id = "eval_run_001"
     ctx = RunContext(
         run_id=run_id,
-        root_dir=run_dir,
+        root_dir=data_dir,
         timestamp=datetime.now().strftime("%Y%m%d_%H%M%S"),
     )
 

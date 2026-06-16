@@ -242,14 +242,20 @@ requirements*.txt
 *.wdo
 
 # Ignore non-"base_model" test data
-test_data/**/*
+tests/data/**/*
+examples/data/**/*
 
 # Wanda base model files
-!test_data/wanda/base_model.wdi
-!test_data/wanda/base_model.wdx
+!tests/data/wanda/
+!tests/data/wanda/base_model.wdi
+!tests/data/wanda/base_model.wdx
 
-# Execution folder
-!test_data/execution/model/*
+# Examples input data
+!examples/data/model/
+!examples/data/model/*.wdi
+!examples/data/model/*.wdx
+!examples/data/scenarios/
+!examples/data/scenarios/cases.xls
 
 
 *.zip

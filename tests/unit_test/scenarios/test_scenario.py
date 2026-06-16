@@ -16,7 +16,7 @@ class TestScenarioLoading(unittest.TestCase):
         """Define paths for test data."""
         # Data directory
         self.test_dir = Path(__file__).parent
-        self.data_dir = Path(self.test_dir.parent.parent, "test_data", "scenarios")
+        self.data_dir = Path(self.test_dir.parent.parent, "data", "scenarios")
         self.test_xls_path = Path(self.data_dir, "ExampleParameter.xls")
 
     def test_load_scenarios_from_xls(self) -> None:
