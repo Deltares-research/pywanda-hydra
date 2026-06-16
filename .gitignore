@@ -266,3 +266,6 @@ doc/dev_documentation/package_connections_interactive.html
 doc/dev_documentation/refactor_plan.md
 doc/dev_documentation/component_architecture.md
 doc/dev_documentation/test_coverage_punch_list.md
+
+# For now remove documentation
+doc/
