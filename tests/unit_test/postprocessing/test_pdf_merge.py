@@ -6,11 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-import matplotlib
-
-matplotlib.use("Agg")
-
-import matplotlib.pyplot as plt  # noqa: E402
+import matplotlib.pyplot as plt
 from pypdf import PdfReader  # noqa: E402
 
 from pywandahydra.postprocessing.io.pdf_merge import merge_case_figure_pdfs  # noqa: E402

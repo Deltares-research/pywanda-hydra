@@ -2,7 +2,6 @@
 
 import unittest
 
-import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -14,7 +13,6 @@ from pywandahydra.postprocessing.plotting.models import (
 )
 from pywandahydra.postprocessing.plotting.styles.route_plots import PlotRoute
 
-matplotlib.use("Agg")  # headless backend for CI / unit tests
 
 
 class TestPlotRoute(unittest.TestCase):

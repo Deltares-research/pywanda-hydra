@@ -5,9 +5,6 @@ from __future__ import annotations
 import unittest
 from unittest.mock import MagicMock
 
-import matplotlib
-
-matplotlib.use("Agg")  # headless backend for CI / unit tests
 
 import matplotlib.pyplot as plt
 import pandas as pd

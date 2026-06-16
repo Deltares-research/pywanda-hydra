@@ -7,10 +7,6 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-import matplotlib
-
-matplotlib.use("Agg")
-
 import matplotlib.pyplot as plt
 
 from pywandahydra.postprocessing.core.context import CaseContext

@@ -2,132 +2,113 @@
 
 from __future__ import annotations
 
-import tempfile
-import unittest
+import dataclasses
 from datetime import date, datetime
-from pathlib import Path
 
-from pywandahydra.postprocessing.core.context import CaseContext
-from pywandahydra.postprocessing.io.cache import ParquetCache
 from pywandahydra.postprocessing.steps.report_meta import _format_date, build_report_meta
-from pywandahydra.scenarios.schema import AnalysisMeta, ScenarioMeta, ScenarioSpecification
 
 
-def _make_ctx(
-    tmp_path: Path, meta_overrides: dict, analysis_overrides: dict | None = None
-) -> CaseContext:
-    meta_dict = {"Number": 7, "Include": True, "Name": "case_007"}
-    meta_dict.update(meta_overrides)
-    scenario = ScenarioSpecification(
-        meta=ScenarioMeta.model_validate(meta_dict),
-        analysis_meta=AnalysisMeta.model_validate(analysis_overrides or {}),
+def test_format_date_none_returns_today() -> None:
+    result = _format_date(None)
+
+    assert result == date.today().strftime("%d-%m-%Y")
+
+
+def test_format_date_datetime_formatted() -> None:
+    result = _format_date(datetime(2026, 3, 5, 12, 30))
+
+    assert result == "05-03-2026"
+
+
+def test_format_date_date_formatted() -> None:
+    result = _format_date(date(2026, 3, 5))
+
+    assert result == "05-03-2026"
+
+
+def test_format_date_empty_string_returns_today() -> None:
+    result = _format_date("   ")
+
+    assert result == date.today().strftime("%d-%m-%Y")
+
+
+def test_format_date_iso_string_parsed() -> None:
+    result = _format_date("2026-03-05")
+
+    assert result == "05-03-2026"
+
+
+def test_format_date_slash_string_parsed() -> None:
+    result = _format_date("05/03/2026")
+
+    assert result == "05-03-2026"
+
+
+def test_format_date_unparseable_string_returned_as_is() -> None:
+    result = _format_date("not-a-date")
+
+    assert result == "not-a-date"
+
+
+def test_with_appendix_builds_figure_id_from_appendix(make_report_ctx) -> None:
+    ctx = make_report_ctx(
+        {
+            "Appendix": "A",
+            "Number": 3,
+            "Chapter": 2,
+            "Description": "Scenario desc",
+            "Date": "2026-01-15",
+        },
+        {
+            "analysis_description": "Analysis desc",
+            "wanda_version": "WANDA 4.6",
+            "project_number": 123,
+        },
     )
-    return CaseContext(cache=ParquetCache(tmp_path), scenario=scenario, case_dir=tmp_path)
+
+    meta = build_report_meta(ctx)
+
+    assert meta.figure_id == "A.003"
+    assert meta.chapter == "Chapter 2"
+    assert meta.analysis_description == "Analysis desc"
+    assert meta.scenario_description == "Scenario desc"
+    assert meta.project_number == "123"
+    assert meta.wanda_version == "WANDA 4.6"
+    assert meta.report_date == "15-01-2026"
+    assert meta.case_name == "case_007"
 
 
-class TestFormatDate(unittest.TestCase):
-    def test_none_returns_today(self) -> None:
-        result = _format_date(None)
+def test_without_appendix_uses_case_dir_name(make_report_ctx, tmp_path) -> None:
+    case_dir = tmp_path / "case_007"
+    case_dir.mkdir()
+    ctx = dataclasses.replace(make_report_ctx(), case_dir=case_dir)
 
-        self.assertEqual(result, date.today().strftime("%d-%m-%Y"))
+    meta = build_report_meta(ctx)
 
-    def test_datetime_formatted(self) -> None:
-        result = _format_date(datetime(2026, 3, 5, 12, 30))
-
-        self.assertEqual(result, "05-03-2026")
-
-    def test_date_formatted(self) -> None:
-        result = _format_date(date(2026, 3, 5))
-
-        self.assertEqual(result, "05-03-2026")
-
-    def test_empty_string_returns_today(self) -> None:
-        result = _format_date("   ")
-
-        self.assertEqual(result, date.today().strftime("%d-%m-%Y"))
-
-    def test_iso_string_parsed(self) -> None:
-        result = _format_date("2026-03-05")
-
-        self.assertEqual(result, "05-03-2026")
-
-    def test_slash_string_parsed(self) -> None:
-        result = _format_date("05/03/2026")
-
-        self.assertEqual(result, "05-03-2026")
-
-    def test_unparseable_string_returned_as_is(self) -> None:
-        result = _format_date("not-a-date")
-
-        self.assertEqual(result, "not-a-date")
+    assert meta.figure_id == "case_007_"
 
 
-class TestBuildReportMeta(unittest.TestCase):
-    def test_with_appendix_builds_figure_id_from_appendix(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            ctx = _make_ctx(
-                Path(tmp_dir),
-                {
-                    "Appendix": "A",
-                    "Number": 3,
-                    "Chapter": 2,
-                    "Description": "Scenario desc",
-                    "Date": "2026-01-15",
-                },
-                {
-                    "analysis_description": "Analysis desc",
-                    "wanda_version": "WANDA 4.6",
-                    "project_number": 123,
-                },
-            )
+def test_without_chapter_is_empty_string(make_report_ctx) -> None:
+    ctx = make_report_ctx()
 
-            meta = build_report_meta(ctx)
+    meta = build_report_meta(ctx)
 
-            self.assertEqual(meta.figure_id, "A.003")
-            self.assertEqual(meta.chapter, "Chapter 2")
-            self.assertEqual(meta.analysis_description, "Analysis desc")
-            self.assertEqual(meta.scenario_description, "Scenario desc")
-            self.assertEqual(meta.project_number, "123")
-            self.assertEqual(meta.wanda_version, "WANDA 4.6")
-            self.assertEqual(meta.report_date, "15-01-2026")
-            self.assertEqual(meta.case_name, "case_007")
-
-    def test_without_appendix_uses_case_dir_name(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            case_dir = Path(tmp_dir) / "case_007"
-            case_dir.mkdir()
-            ctx = _make_ctx(case_dir, {})
-
-            meta = build_report_meta(ctx)
-
-            self.assertEqual(meta.figure_id, "case_007_")
-
-    def test_without_chapter_is_empty_string(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            ctx = _make_ctx(Path(tmp_dir), {})
-
-            meta = build_report_meta(ctx)
-
-            self.assertEqual(meta.chapter, "")
-
-    def test_scenario_description_falls_back_to_extra(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            ctx = _make_ctx(Path(tmp_dir), {"Extra": "extra text"})
-
-            meta = build_report_meta(ctx)
-
-            self.assertEqual(meta.scenario_description, "extra text")
-
-    def test_missing_analysis_fields_default_to_empty_or_wanda(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            ctx = _make_ctx(Path(tmp_dir), {})
-
-            meta = build_report_meta(ctx)
-
-            self.assertEqual(meta.analysis_description, "")
-            self.assertEqual(meta.project_number, "")
-            self.assertEqual(meta.wanda_version, "WANDA")
+    assert meta.chapter == ""
 
 
-if __name__ == "__main__":
-    unittest.main()
+def test_scenario_description_falls_back_to_extra(make_report_ctx) -> None:
+    ctx = make_report_ctx({"Extra": "extra text"})
+
+    meta = build_report_meta(ctx)
+
+    assert meta.scenario_description == "extra text"
+
+
+def test_missing_analysis_fields_default_to_empty_or_wanda(make_report_ctx) -> None:
+    ctx = make_report_ctx()
+
+    meta = build_report_meta(ctx)
+
+    assert meta.analysis_description == ""
+    assert meta.project_number == ""
+    assert meta.wanda_version == "WANDA"

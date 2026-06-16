@@ -1,217 +1,183 @@
 from __future__ import annotations
 
-import tempfile
-import unittest
-from pathlib import Path
-
 import pandas as pd
+import pytest
 
 from pywandahydra.postprocessing.io.cache import ParquetCache, _sanitize_filename
 
 
-class TestParquetCacheRouteProfile(unittest.TestCase):
-    def test_route_profile_roundtrip(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            cache = ParquetCache(Path(tmp_dir))
-
-            extracted = {
-                "components": pd.DataFrame(),
-                "routes": {
-                    "Route A": {
-                        "envelope": pd.DataFrame(
-                            {"min": [1.0, 2.0], "max": [3.0, 4.0]},
-                            index=pd.Index([0.0, 10.0], name="s_location [m]"),
-                        ),
-                        "profile": pd.DataFrame(
-                            {"elevation": [0.5, 0.25, 0.75]},
-                            index=pd.Index([0.0, 5.0, 10.0], name="s_location [m]"),
-                        ),
-                    }
-                },
+def test_route_profile_roundtrip(parquet_cache: ParquetCache) -> None:
+    extracted = {
+        "components": pd.DataFrame(),
+        "routes": {
+            "Route A": {
+                "envelope": pd.DataFrame(
+                    {"min": [1.0, 2.0], "max": [3.0, 4.0]},
+                    index=pd.Index([0.0, 10.0], name="s_location [m]"),
+                ),
+                "profile": pd.DataFrame(
+                    {"elevation": [0.5, 0.25, 0.75]},
+                    index=pd.Index([0.0, 5.0, 10.0], name="s_location [m]"),
+                ),
             }
+        },
+    }
 
-            cache.write(extracted)
-            route = cache.read_route("Route A")
+    parquet_cache.write(extracted)
+    route = parquet_cache.read_route("Route A")
 
-            self.assertIn("profile", route)
-            profile = route["profile"]
-            self.assertIn("elevation", profile.columns)
-            self.assertListEqual(list(profile.index.astype(float)), [0.0, 5.0, 10.0])
-            self.assertListEqual(list(profile["elevation"].astype(float)), [0.5, 0.25, 0.75])
-
-
-class TestParquetCacheComponents(unittest.TestCase):
-    def test_components_roundtrip_with_multiindex_columns(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            cache = ParquetCache(Path(tmp_dir))
-
-            columns = pd.MultiIndex.from_tuples(
-                [("PUMP P1", "Head", float("nan")), ("PIPE P1", "Pressure", 10.0)],
-                names=["component", "property", "s_location"],
-            )
-            components = pd.DataFrame([[1.0, 2.0], [3.0, 4.0]], columns=columns, index=[0.0, 1.0])
-
-            artefacts = cache.write({"components": components, "routes": {}})
-
-            self.assertIn("components", artefacts)
-            self.assertTrue((Path(tmp_dir) / "components.parquet").exists())
-
-            restored = cache.read_components()
-
-            self.assertEqual(restored.columns.nlevels, 3)
-            self.assertEqual(restored.columns[0][:2], ("PUMP P1", "Head"))
-            self.assertTrue(pd.isna(restored.columns[0][2]))
-            self.assertEqual(restored.columns[1], ("PIPE P1", "Pressure", 10.0))
-
-    def test_read_components_without_cache_returns_empty(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            cache = ParquetCache(Path(tmp_dir))
-
-            result = cache.read_components()
-
-            self.assertTrue(result.empty)
+    assert "profile" in route
+    profile = route["profile"]
+    assert "elevation" in profile.columns
+    assert list(profile.index.astype(float)) == [0.0, 5.0, 10.0]
+    assert list(profile["elevation"].astype(float)) == [0.5, 0.25, 0.75]
 
 
-class TestParquetCacheExistsAndListRoutes(unittest.TestCase):
-    def test_exists_false_when_no_data_written(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            cache = ParquetCache(Path(tmp_dir))
+def test_components_roundtrip_with_multiindex_columns(parquet_cache: ParquetCache) -> None:
+    columns = pd.MultiIndex.from_tuples(
+        [("PUMP P1", "Head", float("nan")), ("PIPE P1", "Pressure", 10.0)],
+        names=["component", "property", "s_location"],
+    )
+    components = pd.DataFrame([[1.0, 2.0], [3.0, 4.0]], columns=columns, index=[0.0, 1.0])
 
-            self.assertFalse(cache.exists())
+    artefacts = parquet_cache.write({"components": components, "routes": {}})
 
-    def test_exists_true_after_write(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            cache = ParquetCache(Path(tmp_dir))
-            components = pd.DataFrame({"a": [1.0]})
+    assert "components" in artefacts
+    assert (parquet_cache.data_dir / "components.parquet").exists()
 
-            cache.write({"components": components, "routes": {}})
+    restored = parquet_cache.read_components()
 
-            self.assertTrue(cache.exists())
-
-    def test_list_routes_returns_sorted_titles(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            cache = ParquetCache(Path(tmp_dir))
-            envelope = pd.DataFrame(
-                {"min": [1.0], "max": [2.0]},
-                index=pd.Index([0.0], name="s_location [m]"),
-            )
-
-            cache.write(
-                {
-                    "components": pd.DataFrame(),
-                    "routes": {
-                        "Route B": {"envelope": envelope},
-                        "Route A": {"envelope": envelope},
-                    },
-                }
-            )
-
-            self.assertEqual(cache.list_routes(), ["Route_A", "Route_B"])
-
-    def test_read_route_for_missing_title_returns_empty_dict(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            cache = ParquetCache(Path(tmp_dir))
-
-            result = cache.read_route("does not exist")
-
-            self.assertEqual(result, {})
-
-    def test_write_skips_non_dict_route_payload(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            cache = ParquetCache(Path(tmp_dir))
-
-            artefacts = cache.write(
-                {"components": pd.DataFrame(), "routes": {"Bad Route": "not-a-dict"}}
-            )
-
-            self.assertEqual(artefacts, {})
-            self.assertEqual(cache.list_routes(), [])
+    assert restored.columns.nlevels == 3
+    assert restored.columns[0][:2] == ("PUMP P1", "Head")
+    assert pd.isna(restored.columns[0][2])
+    assert restored.columns[1] == ("PIPE P1", "Pressure", 10.0)
 
 
-class TestParquetCacheCustomExtractions(unittest.TestCase):
-    def test_write_and_read_simple_custom_dataframe(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            cache = ParquetCache(Path(tmp_dir))
-            df = pd.DataFrame({"value": [1, 2, 3]})
+def test_read_components_without_cache_returns_empty(parquet_cache: ParquetCache) -> None:
+    result = parquet_cache.read_components()
 
-            artefacts = cache.write_custom({"my_extractor": df})
-
-            self.assertIn("custom_my_extractor", artefacts)
-            result = cache.read_custom("my_extractor")
-            self.assertListEqual(list(result["value"]), [1, 2, 3])
-
-    def test_write_and_read_nested_custom_extraction(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            cache = ParquetCache(Path(tmp_dir))
-            nested = {
-                "timeseries": pd.DataFrame({"value": [1.0, 2.0]}),
-                "profile": pd.DataFrame({"elevation": [0.0, 1.0]}),
-            }
-
-            artefacts = cache.write_custom({"my_extractor": nested})
-
-            self.assertIn("custom_my_extractor_timeseries", artefacts)
-            self.assertIn("custom_my_extractor_profile", artefacts)
-
-            result = cache.read_custom("my_extractor")
-            self.assertIsInstance(result, dict)
-            self.assertListEqual(list(result["timeseries"]["value"]), [1.0, 2.0])
-
-    def test_write_custom_skips_empty_dataframe(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            cache = ParquetCache(Path(tmp_dir))
-
-            artefacts = cache.write_custom({"empty": pd.DataFrame()})
-
-            self.assertEqual(artefacts, {})
-
-    def test_write_custom_skips_unsupported_type(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            cache = ParquetCache(Path(tmp_dir))
-
-            artefacts = cache.write_custom({"bad": object()})
-
-            self.assertEqual(artefacts, {})
-
-    def test_write_custom_with_empty_dict_returns_empty(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            cache = ParquetCache(Path(tmp_dir))
-
-            self.assertEqual(cache.write_custom({}), {})
-
-    def test_read_custom_without_cache_returns_empty_dataframe(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            cache = ParquetCache(Path(tmp_dir))
-
-            result = cache.read_custom("nothing")
-
-            self.assertIsInstance(result, pd.DataFrame)
-            self.assertTrue(result.empty)  # type: ignore[union-attr]
-
-    def test_list_custom_extractors(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            cache = ParquetCache(Path(tmp_dir))
-            cache.write_custom(
-                {
-                    "simple": pd.DataFrame({"a": [1]}),
-                    "nested": {"part": pd.DataFrame({"b": [2]})},
-                }
-            )
-
-            self.assertEqual(cache.list_custom_extractors(), ["nested", "simple"])
+    assert result.empty
 
 
-class TestSanitizeFilename(unittest.TestCase):
-    def test_replaces_path_separators_and_spaces(self) -> None:
-        self.assertEqual(_sanitize_filename("a/b\\c d"), "a_b_c_d")
+def test_exists_false_when_no_data_written(parquet_cache: ParquetCache) -> None:
+    assert not parquet_cache.exists()
 
-    def test_strips_unsupported_characters(self) -> None:
-        self.assertEqual(_sanitize_filename("Route #1 (main)!"), "Route_1_main")
 
-    def test_empty_string_returns_unnamed(self) -> None:
-        self.assertEqual(_sanitize_filename(""), "unnamed")
+def test_exists_true_after_write(parquet_cache: ParquetCache) -> None:
+    components = pd.DataFrame({"a": [1.0]})
 
-    def test_truncates_to_200_characters(self) -> None:
-        long_name = "a" * 300
+    parquet_cache.write({"components": components, "routes": {}})
 
-        self.assertEqual(len(_sanitize_filename(long_name)), 200)
+    assert parquet_cache.exists()
+
+
+def test_list_routes_returns_sorted_titles(parquet_cache: ParquetCache) -> None:
+    envelope = pd.DataFrame(
+        {"min": [1.0], "max": [2.0]},
+        index=pd.Index([0.0], name="s_location [m]"),
+    )
+
+    parquet_cache.write(
+        {
+            "components": pd.DataFrame(),
+            "routes": {
+                "Route B": {"envelope": envelope},
+                "Route A": {"envelope": envelope},
+            },
+        }
+    )
+
+    assert parquet_cache.list_routes() == ["Route_A", "Route_B"]
+
+
+def test_read_route_for_missing_title_returns_empty_dict(parquet_cache: ParquetCache) -> None:
+    result = parquet_cache.read_route("does not exist")
+
+    assert result == {}
+
+
+def test_write_skips_non_dict_route_payload(parquet_cache: ParquetCache) -> None:
+    artefacts = parquet_cache.write(
+        {"components": pd.DataFrame(), "routes": {"Bad Route": "not-a-dict"}}
+    )
+
+    assert artefacts == {}
+    assert parquet_cache.list_routes() == []
+
+
+def test_write_and_read_simple_custom_dataframe(parquet_cache: ParquetCache) -> None:
+    df = pd.DataFrame({"value": [1, 2, 3]})
+
+    artefacts = parquet_cache.write_custom({"my_extractor": df})
+
+    assert "custom_my_extractor" in artefacts
+    result = parquet_cache.read_custom("my_extractor")
+    assert list(result["value"]) == [1, 2, 3]
+
+
+def test_write_and_read_nested_custom_extraction(parquet_cache: ParquetCache) -> None:
+    nested = {
+        "timeseries": pd.DataFrame({"value": [1.0, 2.0]}),
+        "profile": pd.DataFrame({"elevation": [0.0, 1.0]}),
+    }
+
+    artefacts = parquet_cache.write_custom({"my_extractor": nested})
+
+    assert "custom_my_extractor_timeseries" in artefacts
+    assert "custom_my_extractor_profile" in artefacts
+
+    result = parquet_cache.read_custom("my_extractor")
+    assert isinstance(result, dict)
+    assert list(result["timeseries"]["value"]) == [1.0, 2.0]
+
+
+def test_write_custom_skips_empty_dataframe(parquet_cache: ParquetCache) -> None:
+    artefacts = parquet_cache.write_custom({"empty": pd.DataFrame()})
+
+    assert artefacts == {}
+
+
+def test_write_custom_skips_unsupported_type(parquet_cache: ParquetCache) -> None:
+    artefacts = parquet_cache.write_custom({"bad": object()})
+
+    assert artefacts == {}
+
+
+def test_write_custom_with_empty_dict_returns_empty(parquet_cache: ParquetCache) -> None:
+    assert parquet_cache.write_custom({}) == {}
+
+
+def test_read_custom_without_cache_returns_empty_dataframe(parquet_cache: ParquetCache) -> None:
+    result = parquet_cache.read_custom("nothing")
+
+    assert isinstance(result, pd.DataFrame)
+    assert result.empty  # type: ignore[union-attr]
+
+
+def test_list_custom_extractors(parquet_cache: ParquetCache) -> None:
+    parquet_cache.write_custom(
+        {
+            "simple": pd.DataFrame({"a": [1]}),
+            "nested": {"part": pd.DataFrame({"b": [2]})},
+        }
+    )
+
+    assert parquet_cache.list_custom_extractors() == ["nested", "simple"]
+
+
+def test_sanitize_filename_replaces_path_separators_and_spaces() -> None:
+    assert _sanitize_filename("a/b\\c d") == "a_b_c_d"
+
+
+def test_sanitize_filename_strips_unsupported_characters() -> None:
+    assert _sanitize_filename("Route #1 (main)!") == "Route_1_main"
+
+
+def test_sanitize_filename_empty_string_returns_unnamed() -> None:
+    assert _sanitize_filename("") == "unnamed"
+
+
+def test_sanitize_filename_truncates_to_200_characters() -> None:
+    long_name = "a" * 300
+
+    assert len(_sanitize_filename(long_name)) == 200

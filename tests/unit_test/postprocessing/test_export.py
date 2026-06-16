@@ -6,14 +6,10 @@ import tempfile
 import unittest
 from pathlib import Path
 
-import matplotlib
 import matplotlib.pyplot as plt
+import pandas as pd
 
-matplotlib.use("Agg")
-
-import pandas as pd  # noqa: E402
-
-from pywandahydra.postprocessing.io.export import (  # noqa: E402
+from pywandahydra.postprocessing.io.export import (
     DEFAULT_FIGURE_EXPORT_PROPS,
     DEFAULT_TABLE_EXPORT_PROPS,
     OPTIONAL_FIGURE_EXPORT_PROPS,
