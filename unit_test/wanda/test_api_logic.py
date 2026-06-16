@@ -42,7 +42,7 @@ class _FakeProp:
         self.scalar = value
 
     def get_scalar_float(self) -> float:
-        return self.scalar
+        return self.scalar  # type: ignore[return-value]
 
 
 class _FakeNode:
@@ -196,9 +196,7 @@ class TestResolveItems(unittest.TestCase):
 
         result = resolve_items(model, "CALL")
 
-        self.assertEqual(
-            {ref.name for ref in result}, {"PIPE P1", "PUMP P1"}
-        )
+        self.assertEqual({ref.name for ref in result}, {"PIPE P1", "PUMP P1"})
 
     def test_exact_component_match(self) -> None:
         model = _FakeModel()
@@ -231,9 +229,7 @@ class TestResolveItems(unittest.TestCase):
 
         result = resolve_items(model, "PUMP")
 
-        self.assertEqual(
-            sorted(ref.name for ref in result), ["PUMP P1", "PUMP P2"]
-        )
+        self.assertEqual(sorted(ref.name for ref in result), ["PUMP P1", "PUMP P2"])
 
 
 class TestApplyParameterChange(unittest.TestCase):
@@ -394,9 +390,7 @@ class TestGetConnectedComponents(unittest.TestCase):
         node = _FakeNode("N-mid")
         _link(node, other, excluded)
 
-        result = _get_connected_components(
-            component, {1: node}, allowed={component, other}
-        )
+        result = _get_connected_components(component, {1: node}, allowed={component, other})
 
         self.assertEqual(set(result), {other})
 
@@ -405,7 +399,7 @@ class TestFindRoute(unittest.TestCase):
     def test_returns_none_when_no_route_exists(self) -> None:
         comp_a = _FakeComponent("A")
         comp_b = _FakeComponent("B")
-        graph = {comp_a: {}, comp_b: {}}
+        graph = {comp_a: {}, comp_b: {}}  # type: ignore[var-annotated]
 
         result = _find_route(graph, comp_a, comp_b)
 
@@ -425,7 +419,7 @@ class TestConnectionNodeId(unittest.TestCase):
     def test_skips_nodes_whose_get_connected_components_fails(self) -> None:
         comp_a = _FakeComponent("A", is_pipe=True)
         comp_b = _FakeComponent("B", is_pipe=True)
-        comp_a.nodes[1] = _ExplodingNode()
+        comp_a.nodes[1] = _ExplodingNode()  # type: ignore[assignment]
         good_node = _FakeNode("N2")
         _link(good_node, comp_a, comp_b)
         comp_a.nodes[2] = good_node
@@ -496,9 +490,11 @@ class TestOrderComponentsByConnection(unittest.TestCase):
         comp_b = _FakeComponent("B", is_pipe=True)
         # Both have no connected nodes -> both treated as endpoints with 0 neighbours.
 
-        result = _order_components_by_connection([comp_a, comp_b])
+        with self.assertLogs("pywandahydra.wanda.api", level="WARNING") as cm:
+            result = _order_components_by_connection([comp_a, comp_b])
 
         self.assertEqual(result, [comp_a, comp_b])
+        self.assertTrue(any("No connected path" in msg for msg in cm.output))
 
     def test_route_shorter_than_components_appends_missing(self) -> None:
         comp_a = _FakeComponent("A", is_pipe=True)
@@ -519,8 +515,6 @@ class TestOrderComponentsByConnection(unittest.TestCase):
 class TestNormalizePipeRouteOrientation(unittest.TestCase):
     def test_empty_input_returns_empty(self) -> None:
         self.assertEqual(_normalize_pipe_route_orientation([]), [])
-
-
 
 
 class TestPipeName(unittest.TestCase):

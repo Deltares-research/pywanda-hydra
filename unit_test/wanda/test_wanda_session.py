@@ -18,10 +18,7 @@ class TestWandaSession(unittest.TestCase):
         except FileNotFoundError as exc:
             self.skipTest(f"WANDA not available: {exc}")
         self.model_spec = ModelSpecification(
-            model_path=Path(__file__).parents[2]
-            / "test_data"
-            / "wanda"
-            / "base_model.wdi",
+            model_path=Path(__file__).parents[2] / "test_data" / "wanda" / "base_model.wdi",
             wanda_bin=wanda_bin,
             base_model_name="base_model",
             run_steady=False,
@@ -39,7 +36,7 @@ class TestWandaSession(unittest.TestCase):
             self.assertEqual(len(model.get_all_pipes()), 3)
 
         # Assert closing the session
-        with self.assertRaises(Exception):
+        with self.assertRaises(Exception):  # noqa: B017
             model.get_model_name()
 
     def test_wanda_session_with_upgrade_enabled(self):
@@ -59,6 +56,6 @@ class TestWandaSession(unittest.TestCase):
         spec = self.model_spec.model_copy(update={"wanda_bin": Path(r"C:\does\not\exist")})
 
         # Act & Assert
-        with self.assertRaises(Exception):
+        with self.assertRaises(Exception):  # noqa: B017
             with wanda_session(spec=spec):
                 pass

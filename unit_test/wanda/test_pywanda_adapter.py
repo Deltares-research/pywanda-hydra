@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 import unittest
 from pathlib import Path
 
@@ -149,20 +148,12 @@ class TestPywandaAdapter(unittest.TestCase):
 
             self.assertEqual(item.get_complete_name_spec(), "PUMP P1")
 
-    def test_open_close_save_and_apply_delegation(self) -> None:
+    def test_save_model_input_delegation(self) -> None:
         with self.get_session() as model:
-            self.adapter.run_steady(model)
-
-            # open()/close() delegate to pywanda.WandaModel directly.
-            opened_model = self.adapter.open(
-                str(self.scenario_model_path), str(self.model_spec.wanda_bin) + os.sep
-            )
-            self.adapter.close(opened_model)
-
-            # save_model_input() delegates to handle.save_model_input().
             self.adapter.save_model_input(model)
 
-            # apply_parameter_change() delegates to the api module function.
+    def test_apply_parameter_change_delegation(self) -> None:
+        with self.get_session() as model:
             change = ParameterChange(component="general", property="Time step", value=10.0)
             self.adapter.apply_parameter_change(model, change)
 

@@ -353,6 +353,9 @@ def _order_components_by_connection(components: list[Any]) -> list[Any]:
 
     route = _find_route(component_graph, start, end)
     if not route:
+        logger.warning(
+            "No connected path found between route components – returning in original order."
+        )
         return components
 
     if len(route) == len(components):
@@ -427,7 +430,7 @@ def resolve_route_pipes(
             normalized = _normalize_pipe_route_orientation(ordered_pipes)
             return [(_pipe_name(pipe), direction) for pipe, direction in normalized]
     except Exception:
-        logger.debug(
+        logger.warning(
             "get_route failed for '%s', falling back to item resolution",
             route_id,
             exc_info=True,
@@ -444,12 +447,18 @@ def resolve_route_pipes(
         items.append(item)
 
     if not items:
+        logger.debug("Route '%s' resolved to no items – returning empty.", route_id)
         return []
 
     if len(items) == 1:
         item = items[0]
         if hasattr(item, "is_pipe") and item.is_pipe():
             return [(_pipe_name(item), 1)]
+        logger.debug(
+            "Route '%s' resolved to a single non-pipe item '%s' – returning empty.",
+            route_id,
+            _pipe_name(item),
+        )
         return []
 
     route = _order_components_by_connection(items)

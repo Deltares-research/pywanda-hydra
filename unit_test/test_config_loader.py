@@ -221,9 +221,7 @@ class TestValidateRunPaths(unittest.TestCase):
 class TestApplyPostProcessingOverrides(unittest.TestCase):
     def _scenario(self) -> ScenarioSpecification:
         return ScenarioSpecification(
-            meta=ScenarioMeta.model_validate(
-                {"Number": 1, "Include": True, "Name": "case_001"}
-            )
+            meta=ScenarioMeta.model_validate({"Number": 1, "Include": True, "Name": "case_001"})
         )
 
     def test_no_theme_configured_is_noop(self) -> None:

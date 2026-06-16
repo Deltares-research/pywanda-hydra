@@ -87,19 +87,13 @@ class TestPreflightValidation(unittest.TestCase):
         return ScenarioSpecification(
             meta=meta,
             analysis_meta=AnalysisMeta(),
-            parameters=[
-                ParameterChange(
-                    component=component, property=property_name, value=value
-                )
-            ],
+            parameters=[ParameterChange(component=component, property=property_name, value=value)],
             post_processing=PostProcessingConfig(),
             source={},
         )
 
     def test_preflight_fails_on_missing_component(self) -> None:
-        scenarios = [
-            self._scenario(component="MISSING", property_name="Head", value=1.0)
-        ]
+        scenarios = [self._scenario(component="MISSING", property_name="Head", value=1.0)]
 
         with (
             patch("pywandahydra.wanda.validation.wanda_session", _fake_wanda_session),
@@ -115,9 +109,7 @@ class TestPreflightValidation(unittest.TestCase):
             )
 
     def test_preflight_accepts_valid_scenario(self) -> None:
-        scenarios = [
-            self._scenario(component="PIPE P1", property_name="Head", value=1.0)
-        ]
+        scenarios = [self._scenario(component="PIPE P1", property_name="Head", value=1.0)]
 
         with (
             patch("pywandahydra.wanda.validation.wanda_session", _fake_wanda_session),
@@ -133,17 +125,13 @@ class TestPreflightValidation(unittest.TestCase):
             )
 
     def test_preflight_fails_on_missing_table_property(self) -> None:
-        meta = ScenarioMeta.model_validate(
-            {"Number": 1, "Include": True, "Name": "case_001"}
-        )
+        meta = ScenarioMeta.model_validate({"Number": 1, "Include": True, "Name": "case_001"})
         scenario = ScenarioSpecification(
             meta=meta,
             analysis_meta=AnalysisMeta(),
             post_processing=PostProcessingConfig(
                 tables=[
-                    ExportTableSpecification(
-                        component="PIPE P1", property="Missing", mode="MAX"
-                    )
+                    ExportTableSpecification(component="PIPE P1", property="Missing", mode="MAX")
                 ]
             ),
             source={},
@@ -167,9 +155,7 @@ class TestPreflightValidation(unittest.TestCase):
         self.assertIn("PIPE P1.Missing", str(ctx.exception))
 
     def test_preflight_fails_on_missing_route(self) -> None:
-        meta = ScenarioMeta.model_validate(
-            {"Number": 1, "Include": True, "Name": "case_001"}
-        )
+        meta = ScenarioMeta.model_validate({"Number": 1, "Include": True, "Name": "case_001"})
         scenario = ScenarioSpecification(
             meta=meta,
             analysis_meta=AnalysisMeta(),
@@ -193,16 +179,12 @@ class TestPreflightValidation(unittest.TestCase):
         self.assertIn("post_processing.routes", str(ctx.exception))
 
     def test_preflight_fails_on_missing_time_plot_property(self) -> None:
-        meta = ScenarioMeta.model_validate(
-            {"Number": 1, "Include": True, "Name": "case_001"}
-        )
+        meta = ScenarioMeta.model_validate({"Number": 1, "Include": True, "Name": "case_001"})
         scenario = ScenarioSpecification(
             meta=meta,
             analysis_meta=AnalysisMeta(),
             post_processing=PostProcessingConfig(
-                time_plots=[
-                    TimePlotSpecification(component="PIPE P1", property="Missing")
-                ]
+                time_plots=[TimePlotSpecification(component="PIPE P1", property="Missing")]
             ),
             source={},
         )
@@ -248,9 +230,7 @@ class TestPreflightValidation(unittest.TestCase):
         self.assertIn("global_overrides", str(ctx.exception))
 
     def test_preflight_accepts_legacy_disuse_zero(self) -> None:
-        scenarios = [
-            self._scenario(component="PIPE P1", property_name="disuse", value=0)
-        ]
+        scenarios = [self._scenario(component="PIPE P1", property_name="disuse", value=0)]
 
         with (
             patch("pywandahydra.wanda.validation.wanda_session", _fake_wanda_session),
@@ -284,7 +264,9 @@ class TestPreflightValidationIsolated(unittest.TestCase):
             readonly=True,
         )
 
-    def _scenario(self, *, component: str, property_name: str, value: object) -> ScenarioSpecification:
+    def _scenario(
+        self, *, component: str, property_name: str, value: object
+    ) -> ScenarioSpecification:
         meta = ScenarioMeta.model_validate({"Number": 1, "Include": True, "Name": "case_001"})
         return ScenarioSpecification(
             meta=meta,

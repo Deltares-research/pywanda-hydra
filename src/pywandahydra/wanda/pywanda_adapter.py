@@ -12,13 +12,7 @@ import pywanda
 
 from ..config.models import ModelSpecification
 from ..scenarios.schema import ParameterChange
-from .api import (
-    apply_parameter_change,
-    get_item,
-    resolve_items,
-    resolve_route_pipes,
-    to_si_units,
-)
+from .api import apply_parameter_change, get_item, resolve_items, resolve_route_pipes, to_si_units
 from .create_scenario import prepare_scenario_model
 from .session import wanda_session
 
@@ -78,26 +72,6 @@ class PywandaAdapter:
             if ref.name == item_name:
                 return get_item(handle, ref)
         return get_item(handle, item_refs[0])
-
-    def open(self, model_path: str, wanda_bin: str) -> pywanda.WandaModel:
-        """Open a WANDA model via pywanda.
-
-        Args:
-            model_path: Path to the .wdi model file.
-            wanda_bin: Path to the WANDA binaries directory.
-
-        Returns:
-            A pywanda.WandaModel instance.
-        """
-        return pywanda.WandaModel(model_path, wanda_bin)
-
-    def close(self, handle: pywanda.WandaModel) -> None:
-        """Close the WANDA model.
-
-        Args:
-            handle: The WandaModel instance.
-        """
-        handle.close()
 
     def save_model_input(self, handle: pywanda.WandaModel) -> None:
         """Save model input before running.
