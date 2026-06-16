@@ -1,11 +1,13 @@
 """Example: Cross-scenario route comparison RunStep.
 
 Reads Head and Pressure envelopes for a single route from the standard
-Parquet cache and saves a 2-row comparison figure (one scenario per colour).
+Parquet cache and saves a 2-row comparison figure (one scenario per colour)
+wrapped in the standard A4 Deltares report frame.
 
-For the Head subplot the pipe elevation profile is overlaid as a filled
-terrain shape.  Head and elevation share the same y-axis (both in metres),
-which is standard for hydraulic grade line (HGL) plots.
+For the Head subplot the pipe elevation profile is overlaid as a single
+themed line (same rendering as the per-case report pages).  Head and
+elevation share the same y-axis (both in metres), which is standard for
+hydraulic grade line (HGL) plots.
 
 --- Plugin registration (pyproject.toml) ---
 
@@ -40,7 +42,13 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from pywandahydra.postprocessing.core.context import PostProcessingRunContext
 from pywandahydra.postprocessing.io.cache import ParquetCache
+from pywandahydra.postprocessing.plotting.renderers.report_page import (
+    ReportMeta,
+    _create_content_axes,
+    _to_page_metadata,
+)
 from pywandahydra.postprocessing.plotting.renderers.theme import PlotTheme
+from pywandahydra.postprocessing.plotting.styles.layout import draw_layout
 
 logger = logging.getLogger(__name__)
 
@@ -99,10 +107,21 @@ class RouteComparisonStep:
             logger.warning("No route data found for any case – figure skipped.")
             return
 
+        meta = ReportMeta(
+            case_name="Cross-scenario route comparison",
+            analysis_description=", ".join(self._p.case_ids),
+            scenario_description="Head and Pressure route envelopes",
+            chapter="",
+            project_number="",
+            figure_id=self._p.output_filename,
+            wanda_version="WANDA",
+            report_date="",
+        )
+
         with plt.ioff():
-            fig, (ax_head, ax_press) = plt.subplots(
-                2, 1, figsize=(12, 8), sharex=True, constrained_layout=True
-            )
+            fig = plt.figure(figsize=_THEME.figure_size)
+            draw_layout(fig, _to_page_metadata(meta, _THEME))
+            ax_head, ax_press = _create_content_axes(fig, 2, _THEME)
 
             _plot_envelope_row(
                 ax_head,

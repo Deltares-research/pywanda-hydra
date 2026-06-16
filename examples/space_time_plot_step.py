@@ -58,20 +58,122 @@ Two optional parameters let you narrow or override this:
 
 from __future__ import annotations
 
+import dataclasses
 import json
 import logging
 from pathlib import Path
 from typing import ClassVar
 
+import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
+import numpy as np
 from matplotlib.backends.backend_pdf import PdfPages
 from pydantic import BaseModel, ConfigDict, Field
 
 from pywandahydra.postprocessing.core.context import CaseContext
 from pywandahydra.postprocessing.io.cache import ParquetCache
+from pywandahydra.postprocessing.plotting.renderers.report_page import (
+    _create_content_axes,
+    _to_page_metadata,
+)
+from pywandahydra.postprocessing.plotting.renderers.theme import PlotTheme
+from pywandahydra.postprocessing.plotting.styles.layout import draw_layout
+from pywandahydra.postprocessing.steps.report_meta import build_report_meta
 from pywandahydra.scenarios.schema import ScenarioMeta, ScenarioSpecification
 
 logger = logging.getLogger(__name__)
+
+_THEME = PlotTheme()
+
+
+def _shift_cmap(
+    cmap_name: str,
+    vmin: float,
+    vmax: float,
+    vcenter: float | None,
+) -> mcolors.Colormap:
+    """Return a resampled colormap whose midpoint colour sits at vcenter.
+
+    With a plain linear norm the diverging centre would land at 0.5 in
+    colormap space only when the data range is symmetric.  This function
+    remaps the lookup table so the midpoint of the source colormap aligns
+    with ``(vcenter - vmin) / (vmax - vmin)``, keeping tick spacing linear.
+    When vcenter is None the original colormap is returned unchanged.
+    """
+    base = plt.get_cmap(cmap_name)
+    if vcenter is None:
+        return base
+
+    pivot = float(np.clip((vcenter - vmin) / (vmax - vmin), 1e-6, 1 - 1e-6))
+    n = 512
+    xs = np.linspace(0.0, 1.0, n)
+    # Map linear positions to colormap fractions: compress/expand each half.
+    cmap_fracs = np.where(xs <= pivot, xs / pivot * 0.5, 0.5 + (xs - pivot) / (1.0 - pivot) * 0.5)
+    colors = base(cmap_fracs)
+    return mcolors.LinearSegmentedColormap.from_list(f"{cmap_name}_shifted", colors, N=n)
+
+
+def _annotate_pipe_boundaries_mesh(
+    ax: plt.Axes,
+    route_data: dict,
+    theme: PlotTheme,
+) -> None:
+    """Draw pipe boundary lines and labels on a pcolormesh axes.
+
+    Same logic as report_page._annotate_pipe_boundaries but with zorder=3 so
+    the dashed lines render above the pcolormesh collection (zorder ~1).
+    """
+    import pandas as pd
+
+    ts = route_data.get("timeseries")
+    if (
+        ts is None
+        or ts.empty
+        or not isinstance(ts.columns, pd.MultiIndex)
+        or ts.columns.nlevels < 3
+    ):
+        return
+
+    ranges: dict[str, tuple[float, float]] = {}
+    for col in ts.columns:
+        try:
+            s = float(col[2])
+        except Exception:
+            continue
+        if np.isnan(s):
+            continue
+        name = str(col[0])
+        if name not in ranges:
+            ranges[name] = (s, s)
+        else:
+            lo, hi = ranges[name]
+            ranges[name] = (min(lo, s), max(hi, s))
+
+    if not ranges:
+        return
+
+    xmin, xmax = ax.get_xlim()
+    ymin, ymax = ax.get_ylim()
+    y_text = ymax - (ymax - ymin) * 0.02
+
+    boundary_locations = {s for lo, hi in ranges.values() for s in (lo, hi)}
+    for s in boundary_locations:
+        if xmin < s < xmax:
+            ax.axvline(x=s, color="black", linestyle="--", alpha=0.5, linewidth=1.0, zorder=3)
+
+    for name, (lo, hi) in ranges.items():
+        mid = (lo + hi) / 2
+        ax.text(
+            mid,
+            y_text,
+            name,
+            va="top",
+            ha="center",
+            clip_on=True,
+            fontsize=theme.legend_fontsize,
+            fontfamily=theme.title_font,
+            zorder=4,
+        )
 
 
 class SpaceTimePlotStep:
@@ -108,6 +210,19 @@ class SpaceTimePlotStep:
             ),
         )
         colormap: str = "RdBu_r"
+        vmin: float | None = Field(
+            default=None, description="Colormap lower bound. Defaults to data minimum."
+        )
+        vmax: float | None = Field(
+            default=None, description="Colormap upper bound. Defaults to data maximum."
+        )
+        vcenter: float | None = Field(
+            default=None,
+            description=(
+                "When set, centres the colormap on this value using TwoSlopeNorm — "
+                "vmin and vmax need not be symmetric. Set to 0 for pressure plots."
+            ),
+        )
 
     def __init__(self, params: Params | None = None) -> None:
         self._p = params or self.Params()
@@ -162,15 +277,54 @@ class SpaceTimePlotStep:
         # Infer colorbar label from the property level (all columns share one property)
         prop_label = ts.columns.get_level_values("property")[0]
 
+        vmin = self._p.vmin if self._p.vmin is not None else float(np.nanmin(Z))
+        vmax = self._p.vmax if self._p.vmax is not None else float(np.nanmax(Z))
+        if not np.isfinite(vmin) or not np.isfinite(vmax) or vmin >= vmax:
+            vmin = vmin if np.isfinite(vmin) else 0.0
+            vmax = max(vmax if np.isfinite(vmax) else 1.0, vmin + 1.0)
+
+        # Build a linear norm + a colormap shifted so the diverging centre colour
+        # sits at vcenter's actual linear position in [vmin, vmax].  This keeps
+        # tick spacing uniform (no TwoSlopeNorm stretching) while still placing
+        # the neutral colour at the correct data value.
+        norm = mcolors.Normalize(vmin=vmin, vmax=vmax)
+        cmap = _shift_cmap(self._p.colormap, vmin, vmax, self._p.vcenter)
+
         with plt.ioff():
-            fig, ax = plt.subplots(figsize=(12, 5))
-            pcm = ax.pcolormesh(s_locs, times, Z, cmap=self._p.colormap, shading="auto")
-            cbar = fig.colorbar(pcm, ax=ax)
-            cbar.set_label(prop_label)
+            base_meta = build_report_meta(ctx)
+            meta = dataclasses.replace(base_meta, figure_id=f"{base_meta.figure_id}{title}")
+            fig = plt.figure(figsize=_THEME.figure_size)
+            draw_layout(fig, _to_page_metadata(meta, _THEME))
+            (ax,) = _create_content_axes(fig, 1, _THEME)
+
+            pcm = ax.pcolormesh(s_locs, times, Z, cmap=cmap, norm=norm, shading="auto")
+
+            # Place the colorbar in an explicit axes so it matches the content
+            # axes height rather than stretching to the full figure.
+            ax_pos = ax.get_position()
+            cbar_ax = fig.add_axes(
+                (
+                    ax_pos.x1 + 0.015,
+                    ax_pos.y0,
+                    0.022,
+                    ax_pos.height,
+                )
+            )
+            cbar = fig.colorbar(pcm, cax=cbar_ax)
+            cbar.set_label(prop_label, rotation=270, labelpad=14)
+
+            # Ensure vmin, vmax, and vcenter (if set) all appear as ticks.
+            ticks: set[float] = {t for t in cbar.get_ticks().tolist() if vmin <= t <= vmax}
+            ticks.update([vmin, vmax])
+            if self._p.vcenter is not None:
+                ticks.add(float(np.clip(self._p.vcenter, vmin, vmax)))
+            cbar.set_ticks(sorted(ticks))
 
             ax.set_xlabel("s-distance (m)")
             ax.set_ylabel("Time (s)")
-            ax.set_title(f"{title} — {ctx.scenario.meta.name}")
+            ax.set_title(f"{title} — {ctx.scenario.meta.name}", fontsize=_THEME.axis_title_size)
+            ax.autoscale(tight=True, axis="x")
+            _annotate_pipe_boundaries_mesh(ax, route_data, _THEME)
 
             stem = title.replace(" ", "_").replace("/", "_") + "_space_time"
             figures_dir = ctx.case_dir / "figures"
@@ -178,7 +332,7 @@ class SpaceTimePlotStep:
             output_path = figures_dir / f"{stem}.pdf"
 
             with PdfPages(output_path) as pdf:
-                pdf.savefig(fig, bbox_inches="tight")
+                pdf.savefig(fig)
             plt.close(fig)
 
         logger.info("Saved space-time plot to %s", output_path)
@@ -206,24 +360,32 @@ def main() -> None:
 
     # Standalone example: use explicit titles since the minimal CaseContext
     # built by _load_case_context() has no scenario route specs.
-    step = SpaceTimePlotStep(
-        SpaceTimePlotStep.Params(
-            route_titles=[
-                "PS-1 to Plant - Pressure",
-                "PS-2 to Plant - Pressure",
-            ]
+    # For different bounds or other properties, include another step instance
+    # with different Params in the list
+    step = [
+        SpaceTimePlotStep(
+            SpaceTimePlotStep.Params(
+                route_titles=[
+                    "PS-1 to Plant - Pressure",
+                    "PS-2 to Plant - Pressure",
+                ],
+                vmin=-1.0,
+                vmax=+10.0,
+                vcenter=0.0,
+            )
         )
-    )
+    ]
 
     for i, case_dir in enumerate(sorted(scenarios_dir.iterdir()), start=1):
         if not case_dir.is_dir():
             continue
         ctx = _load_case_context(case_dir, case_number=i)
-        if step.applicable(ctx):
-            step.run(ctx)
-            print(f"Space-time plots written for {case_dir.name}")
-        else:
-            print(f"Skipping {case_dir.name}: no cached routes.")
+        for s in step:
+            if s.applicable(ctx):
+                s.run(ctx)
+                print(f"Space-time plots written for {case_dir.name}")
+            else:
+                print(f"Skipping {case_dir.name}: no cached routes.")
 
 
 if __name__ == "__main__":
