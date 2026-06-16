@@ -429,47 +429,13 @@ def resolve_route_pipes(
         if ordered_pipes:
             normalized = _normalize_pipe_route_orientation(ordered_pipes)
             return [(_pipe_name(pipe), direction) for pipe, direction in normalized]
-    except Exception:
-        logger.warning(
-            "get_route failed for '%s', falling back to item resolution",
+    except RuntimeError:
+        logger.error(
+            "Route '%s' could not be resolved via get_route – skipping.",
             route_id,
             exc_info=True,
         )
-
-    item_refs = resolve_items(model, route_id)
-    items: list[Any] = []
-    for ref in item_refs:
-        try:
-            item = get_item(model, ref)
-        except Exception:
-            logger.debug("Could not resolve item %r on route '%s'", ref, route_id, exc_info=True)
-            continue
-        items.append(item)
-
-    if not items:
-        logger.debug("Route '%s' resolved to no items – returning empty.", route_id)
         return []
-
-    if len(items) == 1:
-        item = items[0]
-        if hasattr(item, "is_pipe") and item.is_pipe():
-            return [(_pipe_name(item), 1)]
-        logger.debug(
-            "Route '%s' resolved to a single non-pipe item '%s' – returning empty.",
-            route_id,
-            _pipe_name(item),
-        )
-        return []
-
-    route = _order_components_by_connection(items)
-
-    fallback_pipes: list[tuple[Any, int]] = []
-    for idx, component in enumerate(route):
-        if hasattr(component, "is_pipe") and component.is_pipe():
-            direction = _pipe_direction_from_route_component_index(route, idx)
-            fallback_pipes.append((component, direction))
-    normalized = _normalize_pipe_route_orientation(fallback_pipes)
-    return [(_pipe_name(pipe), direction) for pipe, direction in normalized]
 
 
 def apply_parameter_change(model: pywanda.WandaModel, change: ParameterChange) -> None:
