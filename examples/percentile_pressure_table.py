@@ -33,7 +33,7 @@ Two plugins are defined:
       extractors:
         - name: percentile_pressure
           params:
-            keywords: [MC, PSUC, NORO, PGRP]
+            keywords: [PALL]
 
       workflow:
         name: composed
@@ -41,7 +41,7 @@ Two plugins are defined:
           case_steps:
             - name: percentile_pressure_table
               params:
-                keywords: [MC, PSUC, NORO, PGRP]
+                keywords: [PALL]
                 percentile: 5
                 output_filename: percentile_pressures
 """
@@ -104,7 +104,7 @@ class PercentilePressureExtractor:
         model_config = ConfigDict(extra="forbid")
 
         keywords: list[str] = Field(
-            default_factory=lambda: ["MC", "PSUC", "NORO", "PGRP"],
+            default_factory=lambda: [],
             description="WANDA component keyword tags used to group pipes.",
         )
 
@@ -140,7 +140,10 @@ def _extract_pipe_pressures(model: Any, keyword: str) -> pd.DataFrame:
 
     Rows are sorted in ascending order of ``min_pressure`` (lowest first).
     """
-    pipes = model.get_components_with_keyword(keyword)
+    if keyword.upper() == "PALL":
+        pipes = model.get_all_pipes()
+    else:
+        pipes = model.get_components_with_keyword(keyword)
 
     records: list[dict[str, Any]] = []
     unit_factor: float | None = None
