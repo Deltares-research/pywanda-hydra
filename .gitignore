@@ -269,3 +269,6 @@ doc/dev_documentation/test_coverage_punch_list.md
 
 # For now remove documentation
 doc/
+
+# Remove claude command files
+.claude/
