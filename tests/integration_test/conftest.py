@@ -1,0 +1,45 @@
+"""Shared pytest fixtures for integration tests."""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+import pytest
+
+from pywandahydra.config.models import ModelSpecification
+from pywandahydra.wanda.locate import find_wanda_bin
+
+_WANDA_DATA_DIR = Path(__file__).parents[1] / "data" / "wanda"
+_INTEGRATION_DATA_DIR = Path(__file__).parent / "data"
+
+
+@pytest.fixture(scope="session")
+def wanda_model_spec() -> ModelSpecification:
+    try:
+        wanda_bin = find_wanda_bin()
+    except FileNotFoundError as exc:
+        pytest.skip(f"WANDA not available: {exc}")
+    return ModelSpecification(
+        model_path=_WANDA_DATA_DIR / "base_model.wdi",
+        wanda_bin=wanda_bin,
+        base_model_name="base_model",
+        run_steady=False,
+        run_unsteady=False,
+        readonly=False,
+    )
+
+
+@pytest.fixture(scope="session")
+def network_model_spec() -> ModelSpecification:
+    try:
+        wanda_bin = find_wanda_bin()
+    except FileNotFoundError as exc:
+        pytest.skip(f"WANDA not available: {exc}")
+    return ModelSpecification(
+        model_path=_INTEGRATION_DATA_DIR / "network.wdi",
+        wanda_bin=wanda_bin,
+        base_model_name="network",
+        run_steady=True,
+        run_unsteady=False,
+        readonly=False,
+    )
