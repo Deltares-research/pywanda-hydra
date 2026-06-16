@@ -437,6 +437,8 @@ def resolve_route_pipes(
         )
         return []
 
+    return []
+
 
 def apply_parameter_change(model: pywanda.WandaModel, change: ParameterChange) -> None:
     """Apply a parameter change to a Wanda model.
