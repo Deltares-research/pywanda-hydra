@@ -429,13 +429,29 @@ def resolve_route_pipes(
         if ordered_pipes:
             normalized = _normalize_pipe_route_orientation(ordered_pipes)
             return [(_pipe_name(pipe), direction) for pipe, direction in normalized]
-    except RuntimeError:
+    except (RuntimeError, ValueError):
         logger.error(
-            "Route '%s' could not be resolved via get_route – skipping.",
+            "Route '%s' could not be resolved via get_route – falling back to item resolution.",
             route_id,
             exc_info=True,
         )
-        return []
+        items = resolve_items(model, route_id)
+        pipe_components = []
+        for ref in items:
+            if ref.type != "component":
+                continue
+            try:
+                comp = model.get_component(ref.name)
+            except Exception:
+                continue
+            if hasattr(comp, "is_pipe") and comp.is_pipe():
+                pipe_components.append(comp)
+        if not pipe_components:
+            return []
+        if len(pipe_components) == 1:
+            return [(_pipe_name(pipe_components[0]), 1)]
+        ordered = _order_components_by_connection(pipe_components)
+        return [(_pipe_name(comp), 1) for comp in ordered]
 
     return []
 
