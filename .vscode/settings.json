@@ -26,6 +26,7 @@
   "python.testing.unittestEnabled": false,
   "flake8.enabled": false,
   "python.testing.pytestArgs": [
-    "unit_test"
+    "tests/unit_test",
+    "tests/integration_test"
   ]
 }
