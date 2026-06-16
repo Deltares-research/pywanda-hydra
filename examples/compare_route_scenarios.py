@@ -165,7 +165,8 @@ def _plot_elevation_profile(ax: plt.Axes, profile: pd.DataFrame) -> None:
     s = profile.index.astype(float)
     elev = profile["elevation"].astype(float)
     ax.plot(
-        s, elev,
+        s,
+        elev,
         label="Elevation",
         color=_THEME.elevation_color,
         linewidth=_THEME.elevation_linewidth,
