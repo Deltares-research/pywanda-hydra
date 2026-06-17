@@ -57,7 +57,7 @@ class TestPywandaAdapter(unittest.TestCase):
             self.assertIsNotNone(model)
             self.assertEqual(len(model.get_all_pipes()), 3)
 
-        with self.assertRaises(Exception):
+        with self.assertRaises(Exception):  # noqa: B017
             model.get_model_name()
 
     def test_apply_general_change_and_save_input(self) -> None:

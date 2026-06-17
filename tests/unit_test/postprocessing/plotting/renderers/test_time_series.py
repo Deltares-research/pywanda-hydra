@@ -5,7 +5,6 @@ from __future__ import annotations
 import unittest
 from unittest.mock import MagicMock
 
-
 import matplotlib.pyplot as plt
 import pandas as pd
 

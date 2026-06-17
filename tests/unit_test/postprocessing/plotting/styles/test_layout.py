@@ -5,7 +5,6 @@ from __future__ import annotations
 import unittest
 from datetime import datetime
 
-
 import matplotlib.pyplot as plt
 import numpy as np
 

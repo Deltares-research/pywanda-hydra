@@ -53,15 +53,11 @@ class FakeWandaAdapter:
         del handle
         return [0.0]
 
-    def get_series(
-        self, handle: ModelHandle, component: str, property_name: str
-    ) -> np.ndarray:
+    def get_series(self, handle: ModelHandle, component: str, property_name: str) -> np.ndarray:
         del handle, component, property_name
         return np.array([0.0], dtype=np.float64)
 
-    def get_scalar(
-        self, handle: ModelHandle, component: str, property_name: str
-    ) -> float:
+    def get_scalar(self, handle: ModelHandle, component: str, property_name: str) -> float:
         del handle, component, property_name
         return 0.0
 
@@ -69,9 +65,7 @@ class FakeWandaAdapter:
         del handle, route_id
         return []
 
-    def resolve_route_pipes(
-        self, handle: ModelHandle, route_id: str
-    ) -> list[tuple[str, int]]:
+    def resolve_route_pipes(self, handle: ModelHandle, route_id: str) -> list[tuple[str, int]]:
         del handle, route_id
         return []
 

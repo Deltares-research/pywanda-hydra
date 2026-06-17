@@ -54,6 +54,46 @@ Two optional parameters let you narrow or override this:
                 route_titles:
                   - "PS-1 to Plant - Pressure"
                   - "PS-2 to Plant - Pressure"
+
+Grid resampling
+---------------
+``resample_factor``
+    Multiplier applied to both the time and s-location axes before rendering.
+    Values **< 1** reduce the number of grid points (e.g. ``0.25`` quarters the
+    resolution, keeping PDF file sizes manageable for A3/poster prints).
+    Values **> 1** upsample the grid via the chosen interpolation method,
+    producing smoother colour gradients at the cost of a slightly larger file.
+    ``None`` (default) leaves the simulation grid unchanged.
+
+``resample_method``
+    Scipy interpolation method: ``"linear"`` (default, fast), ``"cubic"``
+    (smooth, good for upsampling), or ``"nearest"`` (preserves exact values,
+    useful for sanity checks).  Ignored when ``resample_factor`` is ``None``.
+
+--- YAML: downsample for A3 print (factor 0.25) ---
+
+    execution:
+      workflow:
+        name: composed
+        params:
+          case_steps:
+            - name: space_time_plot
+              params:
+                properties: [Pressure]
+                resample_factor: 0.25
+
+--- YAML: upsample for smoother contours ---
+
+    execution:
+      workflow:
+        name: composed
+        params:
+          case_steps:
+            - name: space_time_plot
+              params:
+                properties: [Pressure]
+                resample_factor: 3.0
+                resample_method: cubic
 """
 
 from __future__ import annotations
@@ -67,6 +107,7 @@ from typing import ClassVar
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import numpy as np
+import scipy.interpolate as sci
 from matplotlib.backends.backend_pdf import PdfPages
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -84,6 +125,52 @@ from pywandahydra.scenarios.schema import ScenarioMeta, ScenarioSpecification
 logger = logging.getLogger(__name__)
 
 _THEME = PlotTheme()
+
+
+def _resample_grid(
+    times: np.ndarray,
+    s_locs: np.ndarray,
+    Z: np.ndarray,
+    factor: float,
+    method: str,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Resample the space-time grid by *factor* using scipy interpolation.
+
+    factor < 1 reduces resolution (smaller PDF, faster render).
+    factor > 1 upsamples for smoother colour gradients.
+    """
+    # Sort times and s_locs, reorder Z accordingly.
+    t_sort_idx = np.argsort(times)
+    times = times[t_sort_idx]
+    Z = Z[t_sort_idx, :]
+
+    s_sort_idx = np.argsort(s_locs)
+    s_locs = s_locs[s_sort_idx]
+    Z = Z[:, s_sort_idx]
+
+    # Remove duplicate coordinate values.
+    _, t_unique_idx = np.unique(times, return_index=True)
+    t_unique_idx = np.sort(t_unique_idx)  # Restore original order
+    times = times[t_unique_idx]
+    Z = Z[t_unique_idx, :]
+
+    _, s_unique_idx = np.unique(s_locs, return_index=True)
+    s_unique_idx = np.sort(s_unique_idx)  # Restore original order
+    s_locs = s_locs[s_unique_idx]
+    Z = Z[:, s_unique_idx]
+
+    n_t = max(2, round(len(times) * factor))
+    n_s = max(2, round(len(s_locs) * factor))
+    t_new = np.linspace(times[0], times[-1], n_t)
+    s_new = np.linspace(s_locs[0], s_locs[-1], n_s)
+    interp = sci.RegularGridInterpolator(
+        (times, s_locs), Z, method=method, bounds_error=False, fill_value=None
+    )
+    tt, ss = np.meshgrid(t_new, s_new, indexing="ij")
+    # Flatten meshgrid to a list of (t, s) points, evaluate, then reshape
+    points = np.stack([tt.ravel(), ss.ravel()], axis=1)
+    Z_interp = interp(points).reshape(tt.shape)
+    return t_new, s_new, Z_interp
 
 
 def _shift_cmap(
@@ -223,6 +310,23 @@ class SpaceTimePlotStep:
                 "vmin and vmax need not be symmetric. Set to 0 for pressure plots."
             ),
         )
+        resample_factor: float | None = Field(
+            default=None,
+            description=(
+                "Grid resampling factor applied before rendering. "
+                "< 1 reduces the number of grid points (e.g. 0.25 for print-size PDFs); "
+                "> 1 upsamples for smoother colour gradients. "
+                "None leaves the simulation grid unchanged."
+            ),
+        )
+        resample_method: str = Field(
+            default="linear",
+            description=(
+                "Scipy interpolation method used when resample_factor is set: "
+                "'linear' (default), 'cubic' (smooth, good for upsampling), "
+                "or 'nearest' (preserves exact values)."
+            ),
+        )
 
     def __init__(self, params: Params | None = None) -> None:
         self._p = params or self.Params()
@@ -274,6 +378,11 @@ class SpaceTimePlotStep:
         times = ts.index.astype(float)
         Z = ts.values  # shape: (n_times, n_s)
 
+        if self._p.resample_factor is not None:
+            times, s_locs, Z = _resample_grid(
+                times, s_locs, Z, self._p.resample_factor, self._p.resample_method
+            )
+
         # Infer colorbar label from the property level (all columns share one property)
         prop_label = ts.columns.get_level_values("property")[0]
 
@@ -297,7 +406,9 @@ class SpaceTimePlotStep:
             draw_layout(fig, _to_page_metadata(meta, _THEME))
             (ax,) = _create_content_axes(fig, 1, _THEME)
 
-            pcm = ax.pcolormesh(s_locs, times, Z, cmap=cmap, norm=norm, shading="auto")
+            pcm = ax.pcolormesh(
+                s_locs, times, Z, cmap=cmap, norm=norm, shading="auto", rasterized=True
+            )
 
             # Place the colorbar in an explicit axes so it matches the content
             # axes height rather than stretching to the full figure.
@@ -372,6 +483,8 @@ def main() -> None:
                 vmin=-1.0,
                 vmax=+10.0,
                 vcenter=0.0,
+                resample_factor=2.0,  # < 1 for smaller PDF, > 1 for smoother gradients
+                resample_method="cubic",  # ignored when resample_factor is None
             )
         )
     ]

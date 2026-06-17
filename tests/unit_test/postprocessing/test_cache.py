@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import pandas as pd
-import pytest
 
 from pywandahydra.postprocessing.io.cache import ParquetCache, _sanitize_filename
 

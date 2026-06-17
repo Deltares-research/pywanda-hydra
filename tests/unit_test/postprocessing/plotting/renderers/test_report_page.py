@@ -5,7 +5,6 @@ from __future__ import annotations
 import unittest
 from datetime import datetime
 
-
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402

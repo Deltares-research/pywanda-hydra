@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import unittest
 
-
 import matplotlib.pyplot as plt  # noqa: E402
 import pandas as pd  # noqa: E402
 

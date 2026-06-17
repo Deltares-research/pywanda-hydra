@@ -14,7 +14,6 @@ from pywandahydra.postprocessing.plotting.models import (
 from pywandahydra.postprocessing.plotting.styles.route_plots import PlotRoute
 
 
-
 class TestPlotRoute(unittest.TestCase):
     def test_plot_route_renders_lines_and_labels(self):
         # Arrange
