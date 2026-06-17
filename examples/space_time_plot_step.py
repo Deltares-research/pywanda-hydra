@@ -112,6 +112,7 @@ from matplotlib.backends.backend_pdf import PdfPages
 from pydantic import BaseModel, ConfigDict, Field
 
 from pywandahydra.postprocessing.core.context import CaseContext
+from pywandahydra.postprocessing.core.protocols import CaseStep
 from pywandahydra.postprocessing.io.cache import ParquetCache
 from pywandahydra.postprocessing.plotting.renderers.report_page import (
     _create_content_axes,
@@ -263,7 +264,7 @@ def _annotate_pipe_boundaries_mesh(
         )
 
 
-class SpaceTimePlotStep:
+class SpaceTimePlotStep(CaseStep):
     """CaseStep: render space-time pcolormesh figures from cached route timeseries.
 
     The timeseries DataFrame has time steps as its index and a MultiIndex

@@ -67,7 +67,8 @@ from pywandahydra.postprocessing.core.context import (
     ExtractionContext,
     PostProcessingRunContext,
 )
-from pywandahydra.postprocessing.extraction.extractors import register_extractor
+from pywandahydra.postprocessing.core.protocols import CaseStep, RunStep
+from pywandahydra.postprocessing.extraction.extractors import Extractor, register_extractor
 from pywandahydra.postprocessing.io.cache import ParquetCache
 from pywandahydra.scenarios.mapper import load_scenarios
 from pywandahydra.scenarios.schema import ScenarioMeta, ScenarioSpecification
@@ -82,7 +83,7 @@ _EXTRACTOR_NAME = "percentile_pressure"
 # ---------------------------------------------------------------------------
 
 
-class PercentilePressureExtractor:
+class PercentilePressureExtractor(Extractor):
     """Extractor: collect per-pipe minimum pressures grouped by keyword.
 
     Runs while the WANDA model session is open and caches the results so
@@ -185,7 +186,7 @@ def _extract_pipe_pressures(model: Any, keyword: str) -> pd.DataFrame:
 # ---------------------------------------------------------------------------
 
 
-class PercentilePressureTableStep:
+class PercentilePressureTableStep(CaseStep):
     """CaseStep: write a percentile pressure table from cached extractor data.
 
     Reads the per-keyword DataFrames written by
@@ -301,7 +302,7 @@ class PercentilePressureTableStep:
 # ---------------------------------------------------------------------------
 
 
-class PercentilePressureAggregateStep:
+class PercentilePressureAggregateStep(RunStep):
     """RunStep: aggregate per-case percentile summaries into a run-level table.
 
     After :class:`PercentilePressureTableStep` has written one Excel workbook

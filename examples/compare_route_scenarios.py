@@ -41,6 +41,7 @@ from matplotlib.backends.backend_pdf import PdfPages
 from pydantic import BaseModel, ConfigDict, Field
 
 from pywandahydra.postprocessing.core.context import PostProcessingRunContext
+from pywandahydra.postprocessing.core.protocols import RunStep
 from pywandahydra.postprocessing.io.cache import ParquetCache
 from pywandahydra.postprocessing.plotting.renderers.report_page import (
     ReportMeta,
@@ -55,7 +56,7 @@ logger = logging.getLogger(__name__)
 _COLORS = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728"]
 
 
-class RouteComparisonStep:
+class RouteComparisonStep(RunStep):
     """RunStep: compare route Head and Pressure envelopes across scenario cases.
 
     Produces a single 2-row PDF figure saved to the run figures directory.
