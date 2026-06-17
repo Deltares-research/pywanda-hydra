@@ -4,8 +4,12 @@ import unittest
 from pathlib import Path
 
 from pywandahydra.config.models import ModelSpecification
-from pywandahydra.wanda.locate import find_wanda_bin
 from pywandahydra.wanda.session import wanda_session
+
+# Import shared helper from root conftest
+import sys
+sys.path.insert(0, str(Path(__file__).parents[2]))
+from conftest import find_wanda_bin
 
 
 class TestWandaSession(unittest.TestCase):

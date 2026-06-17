@@ -13,8 +13,12 @@ from pywandahydra.wanda.api import (
     resolve_items,
 )
 from pywandahydra.wanda.create_scenario import prepare_scenario_model
-from pywandahydra.wanda.locate import find_wanda_bin
 from pywandahydra.wanda.session import wanda_session
+
+# Import shared helper from root conftest
+import sys
+sys.path.insert(0, str(Path(__file__).parents[2]))
+from conftest import find_wanda_bin
 
 
 class TestWandaAPI(unittest.TestCase):

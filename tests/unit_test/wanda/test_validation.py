@@ -19,8 +19,12 @@ from pywandahydra.scenarios.schema import (
     ScenarioSpecification,
 )
 from pywandahydra.wanda.api import WandaItemRef
-from pywandahydra.wanda.locate import find_wanda_bin
 from pywandahydra.wanda.validation import PreflightValidationError, assert_preflight_valid
+
+# Import shared helper from root conftest
+import sys
+sys.path.insert(0, str(Path(__file__).parents[2]))
+from conftest import find_wanda_bin
 
 
 class _FakeProp:
