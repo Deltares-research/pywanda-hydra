@@ -14,7 +14,7 @@ from pywandahydra.scenarios.schema import ScenarioMeta, ScenarioSpecification
 
 class TestResumePolicy(unittest.TestCase):
     def _build_plan(
-        self, *, root_dir: Path, readonly: bool, case_name: str = "case_001"
+        self, *, root_dir: Path, reuse_existing_data: bool, case_name: str = "case_001"
     ) -> CasePlan:
         model_path = root_dir / "base_model.wdi"
         if not model_path.exists():
@@ -24,7 +24,7 @@ class TestResumePolicy(unittest.TestCase):
             model_path=model_path,
             wanda_bin=Path(r"c:\wanda\bin"),
             base_model_name="base_model",
-            readonly=readonly,
+            reuse_existing_data=reuse_existing_data,
             run_steady=False,
             run_unsteady=False,
         )
@@ -47,14 +47,14 @@ class TestResumePolicy(unittest.TestCase):
     def test_resume_decision_matrix(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp_path = Path(tmp_dir)
-            plan = self._build_plan(root_dir=tmp_path, readonly=True)
+            plan = self._build_plan(root_dir=tmp_path, reuse_existing_data=True)
             journal = CaseJournal(plan.case_dir)
 
             self.assertEqual(
                 resume_decision(
                     journal=journal,
                     config_hash=plan.config_hash,
-                    readonly=True,
+                    reuse_existing_data=True,
                 ),
                 "run",
             )
@@ -69,7 +69,7 @@ class TestResumePolicy(unittest.TestCase):
                 resume_decision(
                     journal=journal,
                     config_hash=plan.config_hash,
-                    readonly=True,
+                    reuse_existing_data=True,
                 ),
                 "skip",
             )
@@ -77,7 +77,7 @@ class TestResumePolicy(unittest.TestCase):
                 resume_decision(
                     journal=journal,
                     config_hash=plan.config_hash,
-                    readonly=False,
+                    reuse_existing_data=False,
                 ),
                 "rerun",
             )
@@ -85,7 +85,7 @@ class TestResumePolicy(unittest.TestCase):
                 resume_decision(
                     journal=journal,
                     config_hash="sha256:different",
-                    readonly=True,
+                    reuse_existing_data=True,
                 ),
                 "run",
             )
@@ -93,7 +93,7 @@ class TestResumePolicy(unittest.TestCase):
     def test_worker_uses_shared_skip_policy(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp_path = Path(tmp_dir)
-            plan = self._build_plan(root_dir=tmp_path, readonly=True)
+            plan = self._build_plan(root_dir=tmp_path, reuse_existing_data=True)
             journal = CaseJournal(plan.case_dir)
 
             with journal:
@@ -116,8 +116,8 @@ class TestResumePolicy(unittest.TestCase):
     def test_config_hash_is_invariant_to_case_rename(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp_path = Path(tmp_dir)
-            plan_a = self._build_plan(root_dir=tmp_path, readonly=True, case_name="case_a")
-            plan_b = self._build_plan(root_dir=tmp_path, readonly=True, case_name="case_b")
+            plan_a = self._build_plan(root_dir=tmp_path, reuse_existing_data=True, case_name="case_a")
+            plan_b = self._build_plan(root_dir=tmp_path, reuse_existing_data=True, case_name="case_b")
 
             self.assertEqual(plan_a.config_hash, plan_b.config_hash)
 
@@ -127,8 +127,8 @@ class TestResumePolicy(unittest.TestCase):
             model_path = tmp_path / "base_model.wdi"
             model_path.write_bytes(b"model_v1")
 
-            plan_before = self._build_plan(root_dir=tmp_path, readonly=True)
+            plan_before = self._build_plan(root_dir=tmp_path, reuse_existing_data=True)
             model_path.write_bytes(b"model_v2")
-            plan_after = self._build_plan(root_dir=tmp_path, readonly=True)
+            plan_after = self._build_plan(root_dir=tmp_path, reuse_existing_data=True)
 
             self.assertNotEqual(plan_before.config_hash, plan_after.config_hash)

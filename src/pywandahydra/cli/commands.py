@@ -197,7 +197,7 @@ def validate(
 ) -> None:
     """Validate a configuration file without running anything."""
     from ..config.loader import load_run_config, validate_run_paths
-    from ..scenarios.mapper import load_scenarios
+    from ..scenarios.mapper import assert_scenario_file_valid, load_scenarios
 
     try:
         cfg = load_run_config(config)
@@ -214,6 +214,12 @@ def validate(
 
     try:
         # validate_run_paths already resolved scenario_file against the config dir.
+        assert_scenario_file_valid(cfg.scenario_file)
+    except (ValueError, FileNotFoundError) as e:
+        typer.echo(f"Scenario file INVALID: {e}", err=True)
+        raise typer.Exit(code=1) from None
+
+    try:
         scenarios = load_scenarios(cfg.scenario_file)
         n_included = sum(1 for s in scenarios if s.meta.include)
         typer.echo(f"Scenarios OK: {len(scenarios)} total, {n_included} included")

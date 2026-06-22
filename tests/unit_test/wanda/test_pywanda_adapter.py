@@ -31,7 +31,7 @@ class TestPywandaAdapter(unittest.TestCase):
             base_model_name="base_model",
             run_steady=False,
             run_unsteady=False,
-            readonly=False,
+            reuse_existing_data=False,
         )
 
         self.scenario_dir = base_dir / "test_scenario_adapter"
@@ -40,7 +40,7 @@ class TestPywandaAdapter(unittest.TestCase):
             self.model_spec.model_path,
             self.scenario_dir,
             "test_scenario_adapter",
-            readonly=False,
+            reuse_existing_data=False,
         )
 
     def tearDown(self) -> None:

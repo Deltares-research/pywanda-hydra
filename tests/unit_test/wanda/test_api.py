@@ -39,7 +39,7 @@ class TestWandaAPI(unittest.TestCase):
             base_model_name="base_model",
             run_steady=False,
             run_unsteady=False,
-            readonly=False,
+            reuse_existing_data=False,
         )
 
         self.scenario_model_path = (
@@ -57,7 +57,7 @@ class TestWandaAPI(unittest.TestCase):
             / "wanda"
             / "test_scenario",
             scenario_name="test_scenario",
-            readonly=self.model_spec.readonly,
+            reuse_existing_data=self.model_spec.reuse_existing_data,
         )
 
     def get_wanda_session(self):

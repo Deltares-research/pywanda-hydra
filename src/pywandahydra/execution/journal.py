@@ -213,14 +213,14 @@ def resume_decision(
     *,
     journal: CaseJournal,
     config_hash: str,
-    readonly: bool,
+    reuse_existing_data: bool,
 ) -> Literal["skip", "rerun", "run"]:
     """Determine resume behavior for a case.
 
     Args:
         journal: Case journal used to inspect completion state.
         config_hash: Expected config hash for idempotency checks.
-        readonly: Whether model execution is read-only.
+        reuse_existing_data: Whether a completed run should be reused (skipped) rather than re-run.
 
     Returns:
         "skip" if case should be skipped in resume mode,
@@ -228,8 +228,8 @@ def resume_decision(
         "run" if case has not completed for this config.
     """
     completed = journal.is_completed(config_hash)
-    if completed and readonly:
+    if completed and reuse_existing_data:
         return "skip"
-    if completed and not readonly:
+    if completed and not reuse_existing_data:
         return "rerun"
     return "run"

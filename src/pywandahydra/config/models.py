@@ -23,8 +23,9 @@ class ModelSpecification(BaseModel):
     base_model_name : str
         Name of the wanda base model (without .wdi extension).
 
-    readonly : bool, optional
-        If model output exists, the model is treated as read-only (default is True).
+    reuse_existing_data : bool, optional
+        If a completed run or scenario model already exists, reuse it
+        instead of re-running/re-copying (default is True).
     upgrade : bool, optional
         Upgrade the model to the installed WANDA version on open (default is False).
 
@@ -41,9 +42,9 @@ class ModelSpecification(BaseModel):
     base_model_name: str
 
     # Run settings
-    readonly: bool = Field(
+    reuse_existing_data: bool = Field(
         default=True,
-        description="If model output exists, the model is treated as read-only.",
+        description="If a completed run or scenario model already exists, reuse it.",
     )
     upgrade: bool = Field(
         default=False,

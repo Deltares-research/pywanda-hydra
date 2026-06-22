@@ -2,10 +2,19 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol, runtime_checkable
 
 from ..schema import ScenarioSpecification
+
+
+@dataclass(frozen=True)
+class SourceValidationIssue:
+    """A single structural problem found while preflight-checking a source file."""
+
+    sheet: str
+    message: str
 
 
 @runtime_checkable
@@ -15,6 +24,10 @@ class ScenarioSource(Protocol):
     Implementations must provide:
     - ``extensions``: set of file extensions this source handles (e.g. {".xls", ".xlsx"})
     - ``load``: parse the file and return scenario specifications
+
+    Implementations may optionally provide:
+    - ``check_structure``: report structural issues (missing sheets/columns)
+      without raising, for preflight checks
     """
 
     extensions: set[str]

@@ -27,7 +27,7 @@ class TestWandaSession(unittest.TestCase):
             base_model_name="base_model",
             run_steady=False,
             run_unsteady=False,
-            readonly=False,
+            reuse_existing_data=False,
         )
 
     def test_wanda_session_context_manager(self):

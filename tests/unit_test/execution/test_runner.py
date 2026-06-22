@@ -19,7 +19,9 @@ class TestRunner(unittest.TestCase):
             root_dir=root_dir / "run_001",
         )
 
-    def _build_model_spec(self, root_dir: Path, *, readonly: bool) -> ModelSpecification:
+    def _build_model_spec(
+        self, root_dir: Path, *, reuse_existing_data: bool
+    ) -> ModelSpecification:
         model_path = root_dir / "base_model.wdi"
         if not model_path.exists():
             model_path.write_bytes(b"base_model")
@@ -27,7 +29,7 @@ class TestRunner(unittest.TestCase):
             model_path=model_path,
             wanda_bin=Path(r"c:\wanda\bin"),
             base_model_name="base_model",
-            readonly=readonly,
+            reuse_existing_data=reuse_existing_data,
             run_steady=False,
             run_unsteady=False,
         )
@@ -41,7 +43,7 @@ class TestRunner(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp_dir:
             root_dir = Path(tmp_dir)
             ctx = self._build_ctx(root_dir)
-            model_spec = self._build_model_spec(root_dir, readonly=True)
+            model_spec = self._build_model_spec(root_dir, reuse_existing_data=True)
 
             result = runner.run(
                 model=model_spec,
@@ -61,7 +63,7 @@ class TestRunner(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp_dir:
             root_dir = Path(tmp_dir)
             ctx = self._build_ctx(root_dir)
-            model_spec = self._build_model_spec(root_dir, readonly=False)
+            model_spec = self._build_model_spec(root_dir, reuse_existing_data=False)
             scenario = self._build_scenario("case_001")
 
             with (
@@ -94,11 +96,11 @@ class TestRunner(unittest.TestCase):
             log_files = list((run_root / "logs").glob("*_log_*.json"))
             self.assertEqual(len(log_files), 1)
 
-    def test_run_resume_skips_completed_readonly_case(self) -> None:
+    def test_run_resume_skips_completed_reuse_existing_data_case(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             root_dir = Path(tmp_dir)
             ctx = self._build_ctx(root_dir)
-            model_spec = self._build_model_spec(root_dir, readonly=True)
+            model_spec = self._build_model_spec(root_dir, reuse_existing_data=True)
             scenario = self._build_scenario("case_001")
 
             case_dir = ctx.root_dir / "scenarios" / "case_001"

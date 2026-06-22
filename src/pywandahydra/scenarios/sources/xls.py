@@ -24,7 +24,7 @@ from ..schema import (
     ScenarioSpecification,
     TimePlotSpecification,
 )
-from .base import register_source
+from .base import SourceValidationIssue, register_source
 
 if TYPE_CHECKING:
     from ..mapper import ScenarioLoadOptions
@@ -573,6 +573,118 @@ def read_scenarios_from_excel(
     return scenarios
 
 
+def check_xls_structure(
+    path: str | Path, opts: ScenarioLoadOptions
+) -> list[SourceValidationIssue]:
+    """Check that an Excel workbook has the sheets/columns scenario loading needs.
+
+    Unlike ``strict_validation`` (which raises on the first problem found
+    while parsing), this collects every structural problem in one pass so a
+    user can fix a malformed workbook without repeated fix-run-fail cycles.
+
+    Parameters
+    ----------
+    path : str | Path
+        The path to the Excel file.
+    opts : ScenarioLoadOptions
+        Scenario load options (provides sheet names).
+
+    Returns
+    -------
+    list[SourceValidationIssue]
+        All structural issues found. Empty if the workbook is well-formed.
+    """
+    issues: list[SourceValidationIssue] = []
+
+    try:
+        book_ctx = pd.ExcelFile(path)
+    except Exception as exc:
+        return [SourceValidationIssue(sheet="<workbook>", message=f"Could not open workbook: {exc}")]
+
+    with book_ctx as book:
+        sheet_names = set(book.sheet_names)
+
+        if opts.cases_sheet not in sheet_names:
+            issues.append(
+                SourceValidationIssue(
+                    sheet=opts.cases_sheet,
+                    message=(
+                        f"Required sheet '{opts.cases_sheet}' not found. "
+                        f"Available sheets: {sorted(sheet_names)}"
+                    ),
+                )
+            )
+        else:
+            header = pd.read_excel(book, opts.cases_sheet, header=None, nrows=1).values[0]
+            header_set = {str(h).strip() for h in header}
+            missing = {"Number", "Include", "Name"} - header_set
+            if missing:
+                issues.append(
+                    SourceValidationIssue(
+                        sheet=opts.cases_sheet,
+                        message=f"Missing required column(s): {sorted(missing)}",
+                    )
+                )
+
+        plot_sheets: tuple[tuple[str | None, str], ...] = (
+            (opts.rplots_sheet, "RPlots"),
+            (opts.tplots_sheet, "TPlots"),
+        )
+        for sheet_name, kind in plot_sheets:
+            if sheet_name is None:
+                continue
+            if sheet_name not in sheet_names:
+                issues.append(
+                    SourceValidationIssue(
+                        sheet=sheet_name,
+                        message=(
+                            f"Sheet '{sheet_name}' not found (required because "
+                            f"{kind.lower()}_sheet is configured). "
+                            f"Available sheets: {sorted(sheet_names)}"
+                        ),
+                    )
+                )
+                continue
+            columns_ci = {
+                str(c).strip().lower() for c in pd.read_excel(book, sheet_name, nrows=0).columns
+            }
+            missing = {"title", "name", "property"} - columns_ci
+            if missing:
+                issues.append(
+                    SourceValidationIssue(
+                        sheet=sheet_name,
+                        message=f"Missing required column(s): {sorted(missing)}",
+                    )
+                )
+
+        if opts.output_sheet is not None:
+            if opts.output_sheet not in sheet_names:
+                issues.append(
+                    SourceValidationIssue(
+                        sheet=opts.output_sheet,
+                        message=(
+                            f"Sheet '{opts.output_sheet}' not found (required because "
+                            f"output_sheet is configured). "
+                            f"Available sheets: {sorted(sheet_names)}"
+                        ),
+                    )
+                )
+            else:
+                n_cols = pd.read_excel(book, opts.output_sheet, header=None, nrows=1).shape[1]
+                if n_cols < 3:
+                    issues.append(
+                        SourceValidationIssue(
+                            sheet=opts.output_sheet,
+                            message=(
+                                "Sheet must have at least 3 columns (component, "
+                                f"property, mode); found {n_cols}."
+                            ),
+                        )
+                    )
+
+    return issues
+
+
 @register_source
 class XlsScenarioSource:
     """Scenario source for Excel files (.xls, .xlsx, .xlsm)."""
@@ -587,3 +699,7 @@ class XlsScenarioSource:
     def load(self, path: Path) -> list[ScenarioSpecification]:
         """Load scenarios from an Excel workbook."""
         return read_scenarios_from_excel(path, self.options)
+
+    def check_structure(self, path: Path) -> list[SourceValidationIssue]:
+        """Run structural preflight checks on an Excel workbook."""
+        return check_xls_structure(path, self.options)

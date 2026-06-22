@@ -24,11 +24,11 @@ class FakeWandaAdapter:
         scenario_dir: Path,
         scenario_name: str,
         *,
-        readonly: bool,
+        reuse_existing_data: bool,
     ) -> Path:
         scenario_dir.mkdir(parents=True, exist_ok=True)
         target = scenario_dir / f"{base_model_path.stem}_{scenario_name}.wdi"
-        if readonly and target.exists():
+        if reuse_existing_data and target.exists():
             return target
         target.write_bytes(base_model_path.read_bytes())
         return target

@@ -70,7 +70,7 @@ class TestPreflightValidation(unittest.TestCase):
             base_model_name="base_model",
             run_steady=True,
             run_unsteady=False,
-            readonly=True,
+            reuse_existing_data=True,
         )
 
     def _scenario(
@@ -265,7 +265,7 @@ class TestPreflightValidationIsolated(unittest.TestCase):
             base_model_name="base_model",
             run_steady=False,
             run_unsteady=False,
-            readonly=True,
+            reuse_existing_data=True,
         )
 
     def _scenario(

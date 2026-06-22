@@ -22,7 +22,7 @@ class TestWorkerWithFakeAdapter(unittest.TestCase):
                 model_path=model_path,
                 wanda_bin=Path(r"c:\wanda\bin"),
                 base_model_name="base_model",
-                readonly=False,
+                reuse_existing_data=False,
                 run_steady=True,
                 run_unsteady=True,
             )

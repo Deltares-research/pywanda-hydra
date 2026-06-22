@@ -39,14 +39,14 @@ class PywandaAdapter:
         scenario_dir: Path,
         scenario_name: str,
         *,
-        readonly: bool,
+        reuse_existing_data: bool,
     ) -> Path:
         """Prepare scenario-specific model files and return model path."""
         return prepare_scenario_model(
             base_model_path,
             scenario_dir,
             scenario_name,
-            readonly=readonly,
+            reuse_existing_data=reuse_existing_data,
         )
 
     def apply(self, handle: pywanda.WandaModel, change: ParameterChange) -> None:

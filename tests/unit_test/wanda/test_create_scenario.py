@@ -32,7 +32,7 @@ class TestModelIO(unittest.TestCase):
             base_model_path=base_model_path,
             scenario_dir=scenario_dir,
             scenario_name=scenario_name,
-            readonly=False,
+            reuse_existing_data=False,
         )
 
         expected_wdi = scenario_dir / f"base_model_{scenario_name}.wdi"

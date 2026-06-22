@@ -5,10 +5,11 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from pathlib import Path
+from typing import cast
 
 from . import sources as _sources  # noqa: F401
 from .schema import ScenarioSpecification
-from .sources.base import get_source_for_extension
+from .sources.base import SourceValidationIssue, get_source_for_extension
 
 logger = logging.getLogger(__name__)
 
@@ -78,3 +79,65 @@ def load_scenarios(
     scenarios = source.load(path)
     logger.info("Loaded %d scenarios from %s", len(scenarios), path.name)
     return scenarios
+
+
+def check_scenario_file(
+    path: Path | str,
+    *,
+    options: ScenarioLoadOptions | None = None,
+) -> list[SourceValidationIssue]:
+    """Run structural preflight checks on a scenario definition file.
+
+    Reports missing sheets and missing required columns without raising and
+    without fully parsing the file, so all problems surface in one pass.
+
+    Args:
+        path: Path to the scenario file.
+        options: Optional ScenarioLoadOptions (used by the XLS source).
+
+    Returns:
+        All structural issues found. Empty if the file is well-formed, or if
+        the source backend does not implement structural checks.
+
+    Raises:
+        ValueError: If the file extension is unsupported.
+        FileNotFoundError: If the file does not exist.
+    """
+    opts = options or ScenarioLoadOptions()
+    path = Path(path) if isinstance(path, str) else path
+
+    if not path.exists():
+        raise FileNotFoundError(f"Scenario file not found: {path}")
+
+    source_cls = get_source_for_extension(path.suffix)
+    source = source_cls(options=opts)  # type: ignore[call-arg]
+    check_structure = getattr(source, "check_structure", None)
+    if check_structure is None:
+        return []
+    return cast(list[SourceValidationIssue], check_structure(path))
+
+
+def assert_scenario_file_valid(
+    path: Path | str,
+    *,
+    options: ScenarioLoadOptions | None = None,
+) -> None:
+    """Raise a single error with all structural preflight findings, if any.
+
+    Args:
+        path: Path to the scenario file.
+        options: Optional ScenarioLoadOptions (used by the XLS source).
+
+    Raises:
+        ValueError: If the file has any structural issues, or is an
+            unsupported extension.
+        FileNotFoundError: If the file does not exist.
+    """
+    issues = check_scenario_file(path, options=options)
+    if not issues:
+        return
+
+    lines = [f"Scenario file failed preflight checks ({path}):"]
+    for issue in issues:
+        lines.append(f"- [{issue.sheet}] {issue.message}")
+    raise ValueError("\n".join(lines))

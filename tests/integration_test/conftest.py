@@ -29,7 +29,7 @@ def wanda_model_spec() -> ModelSpecification:
         base_model_name="base_model",
         run_steady=False,
         run_unsteady=False,
-        readonly=False,
+        reuse_existing_data=False,
     )
 
 
@@ -45,5 +45,5 @@ def network_model_spec() -> ModelSpecification:
         base_model_name="network",
         run_steady=True,
         run_unsteady=False,
-        readonly=False,
+        reuse_existing_data=False,
     )

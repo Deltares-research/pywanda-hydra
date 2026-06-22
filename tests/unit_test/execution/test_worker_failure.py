@@ -23,7 +23,7 @@ class TestWorkerFailurePath(unittest.TestCase):
                 model_path=model_path,
                 wanda_bin=Path(r"c:\wanda\bin"),
                 base_model_name="base_model",
-                readonly=False,
+                reuse_existing_data=False,
                 run_steady=True,
                 run_unsteady=False,
             )
@@ -81,7 +81,7 @@ class TestWorkerFailurePath(unittest.TestCase):
                 model_path=model_path,
                 wanda_bin=Path(r"c:\wanda\bin"),
                 base_model_name="base_model",
-                readonly=True,
+                reuse_existing_data=True,
                 run_steady=False,
                 run_unsteady=False,
             )

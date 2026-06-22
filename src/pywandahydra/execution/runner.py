@@ -137,14 +137,14 @@ def run(
             decision = resume_decision(
                 journal=journal,
                 config_hash=plan.config_hash,
-                readonly=plan.model_spec.readonly,
+                reuse_existing_data=plan.model_spec.reuse_existing_data,
             )
             if decision == "skip":
                 logger.info("Skipping completed case: %s", plan.case_id)
                 n_skipped += 1
             elif decision == "rerun":
                 logger.warning(
-                    "Case %s will be re-run because of readonly=False.",
+                    "Case %s will be re-run because of reuse_existing_data=False.",
                     plan.case_id,
                 )
                 plans_to_run.append(plan)

@@ -285,7 +285,7 @@ def _execute_case(plan: CasePlan, journal: CaseJournal) -> CaseResult:
     decision = resume_decision(
         journal=journal,
         config_hash=plan.config_hash,
-        readonly=plan.model_spec.readonly,
+        reuse_existing_data=plan.model_spec.reuse_existing_data,
     )
     if decision == "skip":
         logger.info("Case %s already completed — skipping.", plan.case_id)
@@ -322,7 +322,7 @@ def _execute_case(plan: CasePlan, journal: CaseJournal) -> CaseResult:
             plan.model_spec.model_path,
             plan.case_dir,
             plan.scenario.meta.name,
-            readonly=plan.model_spec.readonly,
+            reuse_existing_data=plan.model_spec.reuse_existing_data,
         )
         logger.info("Case %s: Model prepared at %s", plan.case_id, scenario_model_path)
         journal.event("model_prepared", path=scenario_model_path)

@@ -27,5 +27,5 @@ def wanda_model_spec() -> ModelSpecification:
         base_model_name="base_model",
         run_steady=False,
         run_unsteady=False,
-        readonly=False,
+        reuse_existing_data=False,
     )

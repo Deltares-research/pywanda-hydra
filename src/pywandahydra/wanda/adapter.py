@@ -44,7 +44,7 @@ class WandaAdapter(Protocol):
         scenario_dir: Path,
         scenario_name: str,
         *,
-        readonly: bool,
+        reuse_existing_data: bool,
     ) -> Path:
         """Create or reuse a scenario-specific model file.
 
@@ -52,7 +52,7 @@ class WandaAdapter(Protocol):
             base_model_path: Path to the base model .wdi.
             scenario_dir: Case output directory.
             scenario_name: Scenario name.
-            readonly: Whether to reuse existing files.
+            reuse_existing_data: Whether to reuse existing files.
 
         Returns:
             Path to the scenario model .wdi file.
