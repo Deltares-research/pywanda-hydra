@@ -2,10 +2,19 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol, runtime_checkable
 
 from ..schema import ScenarioSpecification
+
+
+@dataclass(frozen=True)
+class SourceValidationIssue:
+    """A single structural problem found while preflight-checking a source file."""
+
+    sheet: str
+    message: str
 
 
 @runtime_checkable
@@ -15,6 +24,10 @@ class ScenarioSource(Protocol):
     Implementations must provide:
     - ``extensions``: set of file extensions this source handles (e.g. {".xls", ".xlsx"})
     - ``load``: parse the file and return scenario specifications
+
+    Implementations may optionally provide:
+    - ``check_structure``: report structural issues (missing sheets/columns)
+      without raising, for preflight checks
     """
 
     extensions: set[str]
@@ -74,8 +87,15 @@ def get_source_for_extension(ext: str) -> type[ScenarioSource]:
     ext = ext.lower()
     if ext not in _REGISTRY:
         supported = sorted(_REGISTRY.keys())
-        raise ValueError(
-            f"Unsupported scenario file extension: '{ext}'. "
-            f"Supported: {supported}"
-        )
+        raise ValueError(f"Unsupported scenario file extension: '{ext}'. Supported: {supported}")
     return _REGISTRY[ext]
+
+
+def list_source_extensions() -> list[str]:
+    """Return all registered source extensions."""
+    return sorted(_REGISTRY.keys())
+
+
+def list_source_classes() -> dict[str, str]:
+    """Return extension -> source class import path mappings."""
+    return {ext: f"{cls.__module__}:{cls.__name__}" for ext, cls in sorted(_REGISTRY.items())}

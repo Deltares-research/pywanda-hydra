@@ -7,7 +7,7 @@ import numpy as np
 from matplotlib.axes._axes import Axes
 from pydantic import BaseModel
 
-from pywandahydra.postprocessing.plotting.specifications import AxisSpec
+from pywandahydra.postprocessing.plotting.models import AxisSpec
 
 
 class PlotObject(ABC):
@@ -86,8 +86,8 @@ class PlotObject(ABC):
         )
 
         # Labels and title
-        ax.set_xlabel(self.x_axis.label)
-        ax.set_ylabel(self.y_axis.label)
+        ax.set_xlabel(self.x_axis.label or "")
+        ax.set_ylabel(self.y_axis.label or "")
         ax.set_title(self.title)
 
         # Grid
@@ -96,7 +96,7 @@ class PlotObject(ABC):
         # Legend below axis
         box = ax.get_position()
         shrink = 0.05
-        ax.set_position([box.x0, box.y0 + shrink, box.width, box.height - shrink])
+        ax.set_position((box.x0, box.y0 + shrink, box.width, box.height - shrink))
         ax.legend(
             loc="upper center",
             bbox_to_anchor=(0.5, -shrink / box.height),

@@ -1,13 +1,13 @@
 [project]
 name = "pywanda-hydra"
-dynamic = ["version"]
+version = "0.0.1"
 authors = [
     { name = "Mike van Meerkerk", email = "Mike.vanMeerkerk@Deltares.nl" },
     { name = "Sam van der Zwan", email = "sam.vanderzwan@deltares.nl" },
 ]
 description = "Scenario runner for the pywanda package"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.11,<3.12"
 classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
@@ -24,32 +24,38 @@ classifiers = [
 
 dependencies = [
     "coloredlogs~=15.0.1",
-    "numpy~=2.1.0",
-    "pandas~=2.2.2",
-    "scipy~=1.14.1",
+    "numpy~=2.4.6",
+    "pandas~=3.0.3",
+    "scipy~=1.17.1",
     "pydantic~=2.12.5",
     "openpyxl~=3.1.5",
     "pyyaml~=6.0.3",
     "xlrd~=2.0.1",
-    "typer~=0.15.0",
-    "filelock~=3.16.0",
-    "pyarrow~=18.0.0",
-    "pywanda~=4.7.0a3",
+    "typer~=0.26.7",
+    "filelock~=3.29.3",
+    "pyarrow~=24.0.0",
+    "pywanda",
     "matplotlib>=3.7",
+    "pypdf>=5.0.0",
 ]
+
+[tool.uv.sources]
+pywanda = { path = "pywanda-4.8.dev2-cp311-cp311-win_amd64.whl" }
 
 [dependency-groups]
 dev = [
-    "black == 24.10.0",
     "ruff ~= 0.11.13",
     "pytest ~= 8.3.4",
     "pytest-cov ~= 6.0.0",
     "mypy ~= 1.13.0",
-    "isort == 6.1.0",
     "sphinx~=8.0.2",
     "snakeviz==2.2.0",
     "types-requests ~= 2.28.11",
+    "pydeps>=3.0.6",
 ]
+
+[tool.uv]
+default-groups = ["dev"]
 
 [project.urls]
 homepage = "https://www.deltares.nl/en/software-and-data/products/wanda-software"
@@ -60,87 +66,126 @@ changelog = "https://github.com/Deltares-research/pywanda-hydra/blob/main/CHANGE
 [project.scripts]
 pywandahydra = "pywandahydra:main"
 
+[project.entry-points."pywandahydra.extractors"]
+
+[project.entry-points."pywandahydra.workflows"]
+default = "pywandahydra.postprocessing.workflows.default:DefaultWorkflow"
+composed = "pywandahydra.postprocessing.workflows.composed:ConfigDrivenWorkflow"
+
+[project.entry-points."pywandahydra.case_steps"]
+summary_table = "pywandahydra.postprocessing.steps.summary_table:SummaryTableStep"
+plot_report = "pywandahydra.postprocessing.steps.plot_report:PlotReportStep"
+
+[project.entry-points."pywandahydra.run_steps"]
+aggregate_tables = "pywandahydra.postprocessing.steps.aggregate_tables:AggregateTablesStep"
+merge_pdfs = "pywandahydra.postprocessing.steps.merge_pdfs:MergePdfsStep"
+
+[project.entry-points."pywandahydra.themes"]
+default = "pywandahydra.postprocessing.plotting.theme_registry:DEFAULT_THEME"
+deltares_light = "pywandahydra.postprocessing.plotting.theme_registry:DELTARES_LIGHT"
+
+[project.entry-points."pywandahydra.scenario_sources"]
+xls = "pywandahydra.scenarios.sources.xls:XlsScenarioSource"
+
 [build-system]
-build-backend = "setuptools.build_meta"
+build-backend = "uv_build"
 requires = [
-    "setuptools ~= 69.0.3",
-    "wheel ~= 0.40.0",
-    "setuptools-git-versioning<2",
+    "uv_build>=0.11.19,<0.12",
 ]
 
-[tool.setuptools-git-versioning]
-enabled = true
-version_file = "VERSION"
-count_commits_from_version_file = true
-dev_template = "{tag}.dev{ccount}"
-dirty_template = "{tag}.dev{ccount}"
-
-[tool.setuptools.package-data]
-"pywandahydra.postprocessing.plotting.image_data" = ["*.png"]
+[tool.uv.build-backend]
+module-name = "pywandahydra"
 
 [tool.pytest.ini_options]
-addopts = "--cov=pywandahydra --cov-report html --cov-report term-missing --cov-fail-under 50"
-testpaths = ["unit_test"]
+addopts = "-q --cov=src/pywandahydra --cov-report html --cov-report term-missing --cov-fail-under 50"
+testpaths = ["tests/unit_test"]
+norecursedirs = [".git", ".venv", "venv", "build", "dist", "notebooks/output"]
 
 [tool.coverage.run]
-source = ["src"]
+source = ["src/pywandahydra"]
+omit = [
+    "*/tests/*",
+    "*/.venv/*",
+    "*/venv/*",
+    "*/build/*",
+    "*/dist/*",
+    "*/notebooks/*",
+    "*/__main__.py",
+    "*/__init__.py",
+]
+
+[tool.coverage.report]
+omit = [
+    "*/tests/*",
+    "*/.venv/*",
+    "*/venv/*",
+    "*/__main__.py",
+    "*/__init__.py",
+]
 
 [tool.ruff]
 line-length = 100
-extend-exclude = [
-    ".venv/*",
-    "venv/*",
-    "doc/*",
+target-version = "py311"
+src = ["src", "tests"]
+exclude = [
+    ".git",
+    ".venv",
+    "venv",
+    "build",
+    "dist",
+    "doc",    
 ]
 
 [tool.ruff.lint]
 select = [
-    "F",  # pyflakes
     "E",  # pycodestyle
+    "F",  # pyflakes
     "W",  # pycodestyle
-    "D",  # pydocstyle
-    "B",  # flake8-bugbear
-    "Q",  # flake8-quotes
+    "I",  # import sorting
     "UP", # pyupgrade
+    "B",  # flake8-bugbear
+    "N",  # pep8-naming
     "PT", # flake8-pytest-style
 ]
-ignore = [
-    "Q000",  # Remove bad quotes
-    "D401",  # Docstring First line should be imperative
-    "E203",  # Space before colon (not PEP-8 compliant, and conflicts with black)
-    "C408",  # Suggestion to use dict() over {}
+extend-ignore = [
+    "E203",  # Keep Black-compatible slice spacing
+    "N803",  # Allow common scientific naming style
+    "N806",  # Allow common scientific naming style
     "PT009", # use a regular assert instead of unittest-style assertion
     "PT027", # pytest.raises() should be used instead of assertRaises()
 ]
 
-[tool.ruff.lint.pydocstyle]
-convention = "numpy"
-
 [tool.ruff.lint.extend-per-file-ignores]
 "__init__.py" = ["F401"]
-"unit_test/*" = ["D100", "D101", "D102", "D103", "D104", "D105", "D106"]
 "src/pywandahydra/cli/commands.py" = ["B008"]
-
-[tool.black]
-line-length = 100
-
-[tool.isort]
-profile = "black"
-line_length = 100
 
 [tool.mypy]
 python_version = "3.11"
+mypy_path = ["src"]
+packages = ["pywandahydra"]
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
 disallow_incomplete_defs = true
-ignore_missing_imports = true
+check_untyped_defs = true
 follow_imports_for_stubs = true
-exclude = ['.venv/*', 'venv/*', 'doc/*', 'ci/*']
+exclude = [
+    "^build/",
+    "^dist/",
+    "^doc/",
+    "^ci/",
+    '^\.venv/',
+    "^venv/",
+    "^tests/",
+]
+
+[[tool.mypy.overrides]]
+module = ["pywanda", "pywanda.*", "scipy", "scipy.*", "matplotlib", "matplotlib.*", "pandas", "pandas.*", "numpy", "numpy.*", "coloredlogs", "coloredlogs.*", "yaml", "yaml.*"]
+ignore_missing_imports = true
 
 # mypy per-module options:
 [[tool.mypy.overrides]]
-module = ["unit_test.*"]
+module = ["tests.*"]
 disallow_incomplete_defs = false
 disallow_untyped_defs = false
 check_untyped_defs = false

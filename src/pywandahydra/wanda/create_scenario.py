@@ -8,12 +8,12 @@ from pathlib import Path
 
 
 def prepare_scenario_model(
-    base_model_path: str,
+    base_model_path: Path,
     scenario_dir: str | Path,
-    readonly: bool = True,
-    *,
     scenario_name: str,
-) -> str:
+    *,
+    reuse_existing_data: bool = True,
+) -> Path:
     """Scenario-specific WANDA model.
 
     Routine copies the base .wdi and .wdx files into a scenario-specific
@@ -21,17 +21,18 @@ def prepare_scenario_model(
 
     Parameters
     ----------
-    base_model_path : str
+    base_model_path : Path
         Path to the base .wdi model file.
     scenario_dir : str | Path
         Directory where the scenario model will be created.
-    readonly : bool, optional
-        If True, the model files are set to read-only (default is True).
+    reuse_existing_data : bool, optional
+        If True and the scenario model file already exists, reuse it
+        instead of re-copying from the base model (default is True).
     scenario_name : str
         Name of the scenario, used to name the model files.
     """
     # Validate and prepare paths
-    base_wdi = Path(base_model_path)
+    base_wdi = base_model_path
     if base_wdi.suffix.lower() != ".wdi":
         raise ValueError(f"Expected .wdi model path, got: {base_wdi}")
 
@@ -46,19 +47,28 @@ def prepare_scenario_model(
     # Source companion files
     src_wdx = base_wdi.with_suffix(".wdx")
 
-    # If readonly, and .wdo exists -> skip copying
-    if readonly and target_wdi.exists():
-        return str(target_wdi)
+    # If reusing existing data, and the scenario .wdi exists -> skip copying
+    if reuse_existing_data and target_wdi.exists():
+        return target_wdi
 
-    # Otherwise, remove existing files if any
-    if target_wdi.exists():
-        target_wdi.unlink()
-    if target_wdx.exists():
-        target_wdx.unlink()
+    # Otherwise, remove existing model files and any stale WANDA engine
+    # artifacts from a previous run (.wdo, ._sm, ._um, .__I, .__R, ...).
+    # Opening a fresh .wdi against a stale .wdo can hang the WANDA engine.
+    # A PermissionError here means another process still has the model open;
+    # failing fast beats hanging inside pywanda.WandaModel.
+    for stale in scenario_dir.glob(f"{target_wdi.stem}.*"):
+        try:
+            stale.unlink()
+        except OSError as e:
+            raise RuntimeError(
+                f"Cannot remove stale model file '{stale}' — it appears to be "
+                "in use by another WANDA session. Close that session (or wait "
+                "for the other run to finish) and retry."
+            ) from e
 
     # Copy required files
     shutil.copyfile(base_wdi, target_wdi)
     if src_wdx.exists():
         shutil.copyfile(src_wdx, target_wdx)
 
-    return str(target_wdi)
+    return target_wdi

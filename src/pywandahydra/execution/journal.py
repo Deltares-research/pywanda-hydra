@@ -10,16 +10,16 @@ import json
 import os
 import socket
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from filelock import FileLock
 
 
 def _now_iso() -> str:
     """Return current UTC time as ISO 8601 string."""
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 # ---------------------------------------------------------------------------
@@ -105,7 +105,7 @@ class CaseJournal:
         """Release the case lock."""
         self._lock.release()
 
-    def __enter__(self) -> "CaseJournal":
+    def __enter__(self) -> CaseJournal:
         self.acquire()
         return self
 
@@ -207,3 +207,29 @@ class CaseJournal:
         if state is None:
             return False
         return state.status == "SUCCEEDED" and state.postprocess_status != "DONE"
+
+
+def resume_decision(
+    *,
+    journal: CaseJournal,
+    config_hash: str,
+    reuse_existing_data: bool,
+) -> Literal["skip", "rerun", "run"]:
+    """Determine resume behavior for a case.
+
+    Args:
+        journal: Case journal used to inspect completion state.
+        config_hash: Expected config hash for idempotency checks.
+        reuse_existing_data: Whether a completed run should be reused (skipped) rather than re-run.
+
+    Returns:
+        "skip" if case should be skipped in resume mode,
+        "rerun" if case completed but must be re-run,
+        "run" if case has not completed for this config.
+    """
+    completed = journal.is_completed(config_hash)
+    if completed and reuse_existing_data:
+        return "skip"
+    if completed and not reuse_existing_data:
+        return "rerun"
+    return "run"

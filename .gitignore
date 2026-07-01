@@ -127,6 +127,9 @@ venv.bak/
 .dmypy.json
 dmypy.json
 
+# Ruff
+.ruff_cache/
+
 # Pyre type checker
 .pyre/
 
@@ -239,13 +242,33 @@ requirements*.txt
 *.wdo
 
 # Ignore non-"base_model" test data
-test_data/**/*
+tests/data/**/*
+examples/data/**/*
 
 # Wanda base model files
-!test_data/wanda/base_model.wdi
-!test_data/wanda/base_model.wdx
+!tests/data/wanda/
+!tests/data/wanda/base_model.wdi
+!tests/data/wanda/base_model.wdx
 
-# Execution folder
-!test_data/execution/model/*
+# Examples input data
+!examples/data/model/
+!examples/data/model/*.wdi
+!examples/data/model/*.wdx
+!examples/data/scenarios/
+!examples/data/scenarios/cases.xls
 
 
+*.zip
+
+.tmp_parameter_wanda
+code_structure.csv
+doc/dev_documentation/package_connections_interactive.html
+doc/dev_documentation/refactor_plan.md
+doc/dev_documentation/component_architecture.md
+doc/dev_documentation/test_coverage_punch_list.md
+
+# For now remove documentation
+doc/
+
+# Remove claude command files
+.claude/

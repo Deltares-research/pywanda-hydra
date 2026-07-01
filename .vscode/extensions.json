@@ -1,10 +1,10 @@
 {
   "recommendations": [
+    "astral-sh.uv",
     "ms-python.python",
-    "ms-python.black-formatter",
+    "ms-python.vscode-pylance",
     "charliermarsh.ruff",
-    "ms-python.isort",
     "matangover.mypy",
-    "lextudio.restructuredtext",
+    "lextudio.restructuredtext"
   ]
 }

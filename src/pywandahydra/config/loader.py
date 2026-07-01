@@ -9,16 +9,18 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import platform
 import socket
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Dict, Literal, Optional
+from typing import Any
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from ..scenarios.schema import ScenarioSpecification
 from .models import ModelSpecification, RunContext
 
 # ---------------------------------------------------------------------------
@@ -26,31 +28,53 @@ from .models import ModelSpecification, RunContext
 # ---------------------------------------------------------------------------
 
 
+class WorkflowSpec(BaseModel):
+    """Config wrapper for workflow name + validated parameter dict."""
+
+    model_config = ConfigDict(extra="forbid")
+    name: str = "default"
+    params: dict[str, Any] = Field(default_factory=dict)
+
+
 class ExecutionConfig(BaseModel):
-    """Execution mode and worker configuration.
+    """Execution worker configuration.
 
     Attributes:
-        mode: Execution strategy.
-        n_workers: Number of parallel workers (only used when mode != sequential).
+        n_workers: Number of parallel workers; 1 runs sequentially, >1 uses
+            multiprocessing.
         resume: Whether to skip already-completed cases.
-        methodology: Post-processing methodology name (default uses standard pipeline).
+        workflow: Post-processing workflow name + params.
+        extractors: List of custom extractors to run during model execution.
+        verbose: Enable detailed logging during execution (default False).
     """
 
     model_config = ConfigDict(extra="forbid")
 
-    mode: Literal["sequential", "multiprocessing"] = "sequential"
     n_workers: int = Field(default=1, ge=1)
     resume: bool = False
-    methodology: str = "default"
+    verbose: bool = False
+    workflow: WorkflowSpec = Field(default_factory=WorkflowSpec)
+    extractors: list[dict[str, Any]] = Field(
+        default_factory=list,
+        description="List of extractor specs: [{name: str, params: dict}]",
+    )
+
+    @model_validator(mode="before")
+    @classmethod
+    def _coerce_workflow_str(cls, data: Any) -> Any:
+        if isinstance(data, dict) and isinstance(data.get("workflow"), str):
+            data = dict(data)
+            data["workflow"] = {"name": data["workflow"]}
+        return data
 
 
 # ---------------------------------------------------------------------------
-# Provenance (auto-captured)
+# Run metadata (auto-captured)
 # ---------------------------------------------------------------------------
 
 
-class Provenance(BaseModel):
-    """Auto-captured environment provenance for reproducibility.
+class RunMetadata(BaseModel):
+    """Auto-captured run metadata for reproducibility.
 
     Attributes:
         timestamp: ISO UTC timestamp of the run.
@@ -63,7 +87,7 @@ class Provenance(BaseModel):
 
     model_config = ConfigDict(extra="allow")
 
-    timestamp: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    timestamp: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
     hostname: str = Field(default_factory=socket.gethostname)
     os: str = Field(default_factory=lambda: f"{platform.system()} {platform.release()}")
     python_version: str = Field(default_factory=lambda: sys.version.split()[0])
@@ -86,6 +110,18 @@ class Provenance(BaseModel):
 # ---------------------------------------------------------------------------
 
 
+class PostProcessingRunConfig(BaseModel):
+    """Run-level post-processing overrides applied to every scenario.
+
+    Currently only ``theme`` is supported; when set, it overrides the per-scenario
+    theme for all scenarios in the run.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    theme: str | None = None
+
+
 class RunConfig(BaseModel):
     """Top-level run configuration combining all settings.
 
@@ -96,6 +132,7 @@ class RunConfig(BaseModel):
         execution: Execution mode and parallelism settings.
         model: WANDA model specification.
         scenario_file: Path to the scenario definition file (XLS).
+        post_processing: Run-level post-processing overrides (e.g. theme).
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -104,21 +141,22 @@ class RunConfig(BaseModel):
         default_factory=lambda: datetime.now().strftime("%Y%m%d_%H%M%S"),
         description="Unique run identifier.",
     )
-    output_root: str | Path = Field(
-        default="./runs",
+    output_root: Path = Field(
+        default=Path("./runs"),
         description="Root directory for run outputs.",
     )
-    description: Optional[str] = None
+    description: str | None = None
 
     execution: ExecutionConfig = Field(default_factory=ExecutionConfig)
     model: ModelSpecification
-    scenario_file: str | Path = Field(..., description="Path to the scenario definition file.")
+    scenario_file: Path = Field(..., description="Path to the scenario definition file.")
+    post_processing: PostProcessingRunConfig = Field(default_factory=PostProcessingRunConfig)
 
-    @field_validator("output_root", "scenario_file")
+    @field_validator("output_root", "scenario_file", mode="before")
     @classmethod
-    def normalize_path(cls, v: str | Path) -> str:
+    def normalize_path(cls, v: str | Path) -> Path:
         """Normalize paths by expanding user home."""
-        return str(Path(v).expanduser()).strip()
+        return Path(str(v).strip()).expanduser()
 
 
 # ---------------------------------------------------------------------------
@@ -159,6 +197,76 @@ def load_run_config(path: Path | str) -> RunConfig:
     return RunConfig.model_validate(raw)
 
 
+def validate_run_paths(config: RunConfig, *, config_dir: Path) -> None:
+    """Validate runtime-critical paths before executing a run.
+
+    Also resolves relative paths to absolute paths based on config_dir.
+
+    Args:
+        config: Validated run configuration.
+        config_dir: Directory that contains the run config file.
+
+    Raises:
+        ValueError: If any path is invalid or not accessible.
+    """
+    model_path = config.model.model_path
+    if not model_path.is_absolute():
+        model_path = config_dir / model_path
+
+    if model_path.suffix.lower() != ".wdi":
+        raise ValueError(f"model.model_path must point to a .wdi file, got: {model_path}")
+    if not model_path.exists():
+        raise ValueError(f"model.model_path does not exist: {model_path}")
+
+    wanda_bin = config.model.wanda_bin
+    if not wanda_bin.is_absolute():
+        wanda_bin = config_dir / wanda_bin
+    if not wanda_bin.exists() or not wanda_bin.is_dir():
+        raise ValueError(f"model.wanda_bin must be an existing directory: {wanda_bin}")
+
+    scenario_file = config.scenario_file
+    if not scenario_file.is_absolute():
+        scenario_file = config_dir / scenario_file
+    if not scenario_file.exists():
+        raise ValueError(f"scenario_file does not exist: {scenario_file}")
+
+    output_root = config.output_root
+    if not output_root.is_absolute():
+        output_root = config_dir / output_root
+    output_root.mkdir(parents=True, exist_ok=True)
+    if not os.access(output_root, os.W_OK):
+        raise ValueError(f"output_root is not writable: {output_root}")
+
+    # Update config object with absolute paths
+    config.model.model_path = model_path
+    config.model.wanda_bin = wanda_bin
+    config.scenario_file = scenario_file
+    config.output_root = output_root
+
+
+def apply_post_processing_overrides(
+    config: RunConfig, scenarios: list[ScenarioSpecification]
+) -> None:
+    """Apply run-level post-processing overrides in place.
+
+    Validates the theme against the registered theme registry and overrides
+    each scenario's per-scenario theme when a top-level theme is configured.
+    """
+    theme_name = config.post_processing.theme
+    if theme_name is None:
+        return
+
+    from ..postprocessing.plotting.theme_registry import list_themes
+
+    known = list_themes()
+    if theme_name not in known:
+        raise ValueError(
+            f"post_processing.theme '{theme_name}' is not registered. Known themes: {known}"
+        )
+    for scenario in scenarios:
+        scenario.post_processing.theme = theme_name
+
+
 def build_run_context(config: RunConfig) -> RunContext:
     """Build a RunContext from a RunConfig.
 
@@ -168,11 +276,11 @@ def build_run_context(config: RunConfig) -> RunContext:
     Returns:
         RunContext with populated fields.
     """
-    run_root = Path(config.output_root) / config.run_id
+    run_root = config.output_root / config.run_id
     return RunContext(
         run_id=config.run_id,
-        timestamp=datetime.now(timezone.utc).isoformat(),
-        root_dir=str(run_root),
+        timestamp=datetime.now(UTC).strftime("%Y-%m-%d_%H-%M"),
+        root_dir=run_root,
         description=config.description,
     )
 

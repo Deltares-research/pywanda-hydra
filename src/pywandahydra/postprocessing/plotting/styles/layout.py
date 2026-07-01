@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import datetime
 from functools import lru_cache
 from importlib import resources
-from typing import Any, Optional
+from typing import Any, cast
 
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
@@ -16,10 +16,15 @@ from pydantic import BaseModel, ConfigDict, computed_field, field_validator
 @lru_cache(maxsize=1)
 def _default_logo() -> Any:
     """Load the default Deltares logo as a numpy array."""
-    with resources.files("pywandahydra.postprocessing.plotting.image_data").joinpath(
+    logo_path = resources.files("pywandahydra.postprocessing.plotting.image_data").joinpath(
         "Deltares_logo.png"
-    ).open("rb") as f:
-        return plt.imread(f)
+    )
+    return plt.imread(str(logo_path))
+
+
+def load_default_logo() -> Any:
+    """Return the default Deltares logo image array."""
+    return _default_logo()
 
 
 # Layout constants
@@ -28,7 +33,7 @@ _YO = 0.03
 _TEXTBOX_HEIGHT = 0.75
 
 
-class PageMeta(BaseModel):
+class PageMetadata(BaseModel):
     """Metadata for a plot page layout."""
 
     model_config = ConfigDict(extra="forbid")
@@ -43,23 +48,22 @@ class PageMeta(BaseModel):
 
     # Default metadata values
     company_name: str = "Deltares"
-    software_version: str = "WANDA 4.7"
-    date: Optional[date] = None
-    company_image: Optional[object] = None  # numpy array or similar
+    software_version: str = "WANDA 4.8"
+    date: datetime | None = None
+    company_image: object | None = None  # numpy array or similar
 
     # Rendering options
     fontsize: int = 8
+    font_family: str = "Arial"  # Deltares house style
+    watermark_alpha: float = 0.30
 
     @computed_field
-    @property
-    def effective_date(self) -> date:
-        return self.date or date.today()
+    def effective_date(self) -> datetime:
+        return self.date if self.date is not None else datetime.today()
 
     @field_validator(
         "title",
         "case_title",
-        "case_description",
-        "section_name",
         "fig_name",
         "company_name",
         "software_version",
@@ -78,12 +82,12 @@ class PageMeta(BaseModel):
         """Coerce project number to str or int."""
         if isinstance(v, float) and v.is_integer():
             return int(v)
-        return v
+        return str(v)
 
 
-def _calculate_layout_coordinates() -> (
-    tuple[tuple[float, float, float, float], tuple[float, float, float, float]]
-):
+def _calculate_layout_coordinates() -> tuple[
+    tuple[float, float, float, float], tuple[float, float, float, float]
+]:
     """Calculate vertical and horizontal layout coordinates.
 
     Returns
@@ -120,8 +124,9 @@ def draw_layout(fig: Figure, meta: PageMetadata) -> None:
     # Calculate layout coordinates
     (v0, v1, v2, v3), (h0, h1, h2, h3) = _calculate_layout_coordinates()
 
-    # Draw layout lines (boxes and dividers)
-    ax = plt.axes([0, 0, 1, 1], facecolor=(1, 1, 1, 0))  # type: ignore
+    # Draw layout lines (boxes and dividers). matplotlib stubs require a
+    # tuple for the rect, but a list is accepted at runtime.
+    ax = plt.axes([0, 0, 1, 1], facecolor=(1, 1, 1, 0))  # type: ignore[arg-type]
     ax.get_xaxis().set_visible(False)
     ax.get_yaxis().set_visible(False)
 
@@ -145,6 +150,7 @@ def draw_layout(fig: Figure, meta: PageMetadata) -> None:
         ha="left",
         color="black",
         fontsize=meta.fontsize,
+        fontfamily=meta.font_family,
     )
 
     fig.text(
@@ -155,6 +161,7 @@ def draw_layout(fig: Figure, meta: PageMetadata) -> None:
         ha="center",
         color="black",
         fontsize=meta.fontsize,
+        fontfamily=meta.font_family,
     )
 
     fig.text(
@@ -165,6 +172,7 @@ def draw_layout(fig: Figure, meta: PageMetadata) -> None:
         ha="center",
         color="black",
         fontsize=meta.fontsize,
+        fontfamily=meta.font_family,
     )
 
     fig.text(
@@ -175,17 +183,19 @@ def draw_layout(fig: Figure, meta: PageMetadata) -> None:
         ha="center",
         color="black",
         fontsize=meta.fontsize,
+        fontfamily=meta.font_family,
     )
 
     # Date, figure name, software version
     fig.text(
         (v2 + (v3 - v2) / 2.0),
         h2 + (h3 - h2) / 2.0,
-        meta.effective_date.strftime("%d-%m-%Y"),
+        cast(datetime, meta.effective_date).strftime("%d-%m-%Y"),
         va="center",
         ha="center",
         color="black",
         fontsize=meta.fontsize,
+        fontfamily=meta.font_family,
     )
 
     fig.text(
@@ -196,6 +206,7 @@ def draw_layout(fig: Figure, meta: PageMetadata) -> None:
         ha="center",
         color="black",
         fontsize=meta.fontsize,
+        fontfamily=meta.font_family,
     )
 
     fig.text(
@@ -206,10 +217,10 @@ def draw_layout(fig: Figure, meta: PageMetadata) -> None:
         ha="center",
         color="black",
         fontsize=meta.fontsize,
+        fontfamily=meta.font_family,
     )
 
     # Watermark image (logo)
-    imgax = fig.add_axes([v1, h0, v3 - v1, h3 - h0], zorder=-10)
-    imgax.imshow(img, alpha=0.3, interpolation="none")
-    imgax.axis("off")
+    imgax = fig.add_axes((v1, h0, v3 - v1, h3 - h0), zorder=-10)
+    imgax.imshow(cast(Any, img), alpha=meta.watermark_alpha, interpolation="none")
     imgax.axis("off")

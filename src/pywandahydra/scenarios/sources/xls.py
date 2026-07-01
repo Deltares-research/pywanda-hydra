@@ -4,28 +4,32 @@ from __future__ import annotations
 
 import logging
 import warnings
-
-logger = logging.getLogger(__name__)
+from collections.abc import Callable
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, List, cast
+from typing import TYPE_CHECKING, Any, TypeVar, cast
 
 import numpy as np
 import pandas as pd
 from pydantic import ValidationError
 
-from pywandahydra.postprocessing.plotting.specifications import AxisSpec
+from pywandahydra.postprocessing.plotting.models import AxisSpec
 
 from ..schema import (
     AnalysisMeta,
     ExportTableSpecification,
     ParameterChange,
+    PostProcessingConfig,
     RoutePlotSpecification,
     ScenarioMeta,
     ScenarioSpecification,
+    TimePlotSpecification,
 )
+from .base import SourceValidationIssue, register_source
 
 if TYPE_CHECKING:
     from ..mapper import ScenarioLoadOptions
+
+logger = logging.getLogger(__name__)
 
 
 # Helper functions
@@ -113,7 +117,12 @@ def _extract_analysis_meta(
         # Find the full column tuple where the first level matches col
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", category=pd.errors.PerformanceWarning)
-            return input_data.loc[:, (col, "")].values[prop_row]
+            value = input_data.loc[:, (col, "")].values[prop_row]
+        # pandas 3.x can hand back a length-1 ndarray here; unwrap it so
+        # downstream pydantic validation receives a plain scalar.
+        if isinstance(value, np.ndarray) and value.size == 1:
+            return value.item()
+        return value
 
     return AnalysisMeta(
         analysis_description=_as_str_or_none(get_cell(opts.global_description_col)),
@@ -125,7 +134,7 @@ def _extract_analysis_meta(
 def _read_output_sheet(
     path: str | Path,
     opts: ScenarioLoadOptions,
-) -> List[ExportTableSpecification]:
+) -> list[ExportTableSpecification]:
     """Read the *Output* sheet and return a list of export-table specifications.
 
     Expected sheet layout (no header row, columns by position)::
@@ -153,20 +162,44 @@ def _read_output_sheet(
         df = cast(pd.DataFrame, pd.read_excel(path, opts.output_sheet, header=None))
     except ValueError:
         # Sheet does not exist
+        if opts.strict_validation:
+            raise ValueError(
+                f"Strict validation: required sheet '{opts.output_sheet}' is missing in {path}"
+            ) from None
         return []
 
     # Skip if there are fewer than 3 columns (component, property, mode)
     if df.shape[1] < 3:
+        if opts.strict_validation:
+            raise ValueError(
+                f"Strict validation: sheet '{opts.output_sheet}' must have at least 3 columns "
+                f"(component, property, mode); got {df.shape[1]}."
+            )
         return []
 
-    specs: List[ExportTableSpecification] = []
-    for _, row in df.iterrows():
+    specs: list[ExportTableSpecification] = []
+    seen: set[tuple[str, str]] = set()
+    for idx, row in df.iterrows():
         comp = _as_str_or_none(row.iloc[0])
         prop = _as_str_or_none(row.iloc[1])
         mode_str = _as_str_or_none(row.iloc[2])
 
         if comp is None or prop is None or mode_str is None:
+            if opts.strict_validation and not (comp is None and prop is None and mode_str is None):
+                raise ValueError(
+                    f"Strict validation: incomplete row {idx} in sheet '{opts.output_sheet}': "
+                    f"component={comp!r}, property={prop!r}, mode={mode_str!r}."
+                )
             continue
+
+        key = (comp, prop)
+        if key in seen:
+            if opts.strict_validation:
+                raise ValueError(
+                    f"Strict validation: duplicate (component, property)=({comp!r}, {prop!r}) "
+                    f"at row {idx} in sheet '{opts.output_sheet}'."
+                )
+        seen.add(key)
 
         mode = cast(Any, mode_str)
         specs.append(ExportTableSpecification(component=comp, property=prop, mode=mode))
@@ -174,10 +207,131 @@ def _read_output_sheet(
     return specs
 
 
+def _float_or_none(val: Any) -> float | None:
+    """Convert a cell value to float, returning None for NaN/empty/unparsable."""
+    if _is_nan(val) or val is None:
+        return None
+    try:
+        return float(val)
+    except (TypeError, ValueError):
+        return None
+
+
+_SpecT = TypeVar("_SpecT")
+
+# Case-insensitive cell getter bound to a single sheet row.
+_RowGetter = Callable[[str], Any]
+
+
+def _parse_plot_sheet(
+    path: str | Path,
+    sheet: str,
+    *,
+    strict: bool,
+    kind: str,
+    build_spec: Callable[[_RowGetter, str, str, str | None, AxisSpec, AxisSpec], _SpecT],
+) -> list[_SpecT]:
+    """Parse a plot sheet (RPlots/TPlots) shared structure into specifications.
+
+    Handles the behavior common to both plot sheets: optional-sheet skipping,
+    case-insensitive column mapping, required-column checks, row filtering,
+    duplicate-title detection, and axis construction. ``build_spec`` receives
+    a case-insensitive cell getter plus the pre-parsed name/property/title and
+    axes, and returns the concrete specification model.
+
+    Parameters
+    ----------
+    path : str | Path
+        The path to the Excel file.
+    sheet : str
+        The sheet name to read.
+    strict : bool
+        Whether strict validation is enabled.
+    kind : str
+        Human-readable plot kind used in error messages (e.g. ``"route"``).
+    build_spec : Callable
+        Factory building one specification from a parsed row.
+
+    Returns
+    -------
+    list
+        Parsed plot specifications.
+    """
+    try:
+        df = cast(pd.DataFrame, pd.read_excel(path, sheet))
+    except ValueError:
+        # Sheet does not exist
+        if strict:
+            raise ValueError(
+                f"Strict validation: required sheet '{sheet}' is missing in {path}"
+            ) from None
+        return []
+
+    # Accept both lower-case and Excel-style capitalization.
+    columns_ci = {str(c).strip().lower(): c for c in df.columns}
+
+    required_cols = {"title", "name", "property"}
+    missing = required_cols - set(columns_ci)
+    if missing:
+        if strict:
+            raise ValueError(
+                f"Strict validation: sheet '{sheet}' missing required column(s) {sorted(missing)}."
+            )
+        return []
+
+    specs: list[_SpecT] = []
+    seen_titles: set[str] = set()
+
+    for idx, row in df.iterrows():
+
+        def get(key: str, row: pd.Series = row) -> Any:
+            actual = columns_ci.get(key.lower())
+            return row.get(actual) if actual is not None else None
+
+        comp = _as_str_or_none(get("name"))
+        prop = _as_str_or_none(get("property"))
+
+        if comp is None or prop is None:
+            if strict and not (comp is None and prop is None):
+                raise ValueError(
+                    f"Strict validation: incomplete row {idx} in sheet '{sheet}': "
+                    f"name={comp!r}, property={prop!r}."
+                )
+            continue
+
+        title = _as_str_or_none(get("title"))
+        if title is not None:
+            if title in seen_titles and strict:
+                raise ValueError(
+                    f"Strict validation: duplicate {kind} title {title!r} at row {idx} "
+                    f"in sheet '{sheet}'."
+                )
+            seen_titles.add(title)
+
+        x_axis = AxisSpec(
+            label=_as_str_or_none(get("xlabel")) or "",
+            min=_float_or_none(get("xmin")),
+            max=_float_or_none(get("xmax")),
+            tick_interval=_float_or_none(get("xtick")),
+            factor=_float_or_none(get("xscale")) or 1.0,
+        )
+        y_axis = AxisSpec(
+            label=_as_str_or_none(get("ylabel")) or "",
+            min=_float_or_none(get("ymin")),
+            max=_float_or_none(get("ymax")),
+            tick_interval=_float_or_none(get("ytick")),
+            factor=_float_or_none(get("yscale")) or 1.0,
+        )
+
+        specs.append(build_spec(get, comp, prop, title, x_axis, y_axis))
+
+    return specs
+
+
 def _read_rplots_sheet(
     path: str | Path,
     opts: ScenarioLoadOptions,
-) -> List[RoutePlotSpecification]:
+) -> list[RoutePlotSpecification]:
     """Read the *RPlots* sheet and return a list of route-plot specifications.
 
     Expected sheet layout (with a header row)::
@@ -199,69 +353,93 @@ def _read_rplots_sheet(
     List[RoutePlotSpecification]
         Parsed route-plot specifications.
     """
-    try:
-        df = cast(pd.DataFrame, pd.read_excel(path, opts.rplots_sheet))
-    except ValueError:
-        # Sheet does not exist
+    if opts.rplots_sheet is None:
         return []
 
-    if "title" not in df.columns:
+    def build_spec(
+        get: _RowGetter,
+        comp: str,
+        prop: str,
+        title: str | None,
+        x_axis: AxisSpec,
+        y_axis: AxisSpec,
+    ) -> RoutePlotSpecification:
+        return RoutePlotSpecification(
+            route_id=comp,
+            property=prop,
+            title=title,
+            legend=_as_str_or_none(get("legend")),
+            fig=_as_str_or_none(get("fig")),
+            plot=get("plot"),
+            x_axis=x_axis,
+            y_axis=y_axis,
+        )
+
+    return _parse_plot_sheet(
+        path,
+        opts.rplots_sheet,
+        strict=opts.strict_validation,
+        kind="route",
+        build_spec=build_spec,
+    )
+
+
+def _read_tplots_sheet(
+    path: str | Path,
+    opts: ScenarioLoadOptions,
+) -> list[TimePlotSpecification]:
+    """Read the *TPlots* sheet and return a list of plot specifications.
+
+    Expected sheet layout (with a header row)::
+
+        fig | plot | name | property | location | color | style | marker
+        title | Legend | Xlabel | Ylabel | Xmin | Xtick | Xmax | Xscale
+        Ymin | Ytick | Ymax | Yscale
+
+    The sheet is silently skipped (returns ``[]``) when it does not exist.
+    """
+    if opts.tplots_sheet is None:
         return []
 
-    def _float_or_none(val: Any) -> float | None:
-        if _is_nan(val) or val is None:
-            return None
-        try:
-            return float(val)
-        except (TypeError, ValueError):
-            return None
-
-    specs: List[RoutePlotSpecification] = []
-    for _, row in df.iterrows():
-        comp = _as_str_or_none(row.get("component"))
-        prop = _as_str_or_none(row.get("property"))
-
-        if comp is None or prop is None:
-            continue
-
-        title = _as_str_or_none(row.get("title"))
-
-        x_axis = AxisSpec(
-            label=_as_str_or_none(row.get("Xlabel")) or "",
-            min=_float_or_none(row.get("Xmin")),
-            max=_float_or_none(row.get("Xmax")),
-            tick_interval=_float_or_none(row.get("Xtick")),
-            factor=_float_or_none(row.get("Xscale")) or 1.0,
-        )
-        y_axis = AxisSpec(
-            label=_as_str_or_none(row.get("Ylabel")) or "",
-            min=_float_or_none(row.get("Ymin")),
-            max=_float_or_none(row.get("Ymax")),
-            tick_interval=_float_or_none(row.get("Ytick")),
-            factor=_float_or_none(row.get("Yscale")) or 1.0,
+    def build_spec(
+        get: _RowGetter,
+        comp: str,
+        prop: str,
+        title: str | None,
+        x_axis: AxisSpec,
+        y_axis: AxisSpec,
+    ) -> TimePlotSpecification:
+        return TimePlotSpecification(
+            component=comp,
+            property=prop,
+            title=title,
+            legend=_as_str_or_none(get("legend")),
+            fig=_as_str_or_none(get("fig")),
+            plot=get("plot"),
+            location=_float_or_none(get("location")),
+            color=_as_str_or_none(get("color")),
+            style=_as_str_or_none(get("style")),
+            marker=_as_str_or_none(get("marker")),
+            x_axis=x_axis,
+            y_axis=y_axis,
         )
 
-        specs.append(
-            RoutePlotSpecification(
-                route_id=comp or "",
-                property=prop or "",
-                title=title,
-                legend=_as_str_or_none(row.get("Legend")),
-                x_axis=x_axis,
-                y_axis=y_axis,
-            )
-        )
-
-    return specs
+    return _parse_plot_sheet(
+        path,
+        opts.tplots_sheet,
+        strict=opts.strict_validation,
+        kind="time-plot",
+        build_spec=build_spec,
+    )
 
 
 def read_scenarios_from_excel(
     path: str | Path, opts: ScenarioLoadOptions
-) -> List[ScenarioSpecification]:
+) -> list[ScenarioSpecification]:
     """Read scenarios from an Excel file.
 
     Reads the *Cases* sheet for scenario parameters, and optionally the
-    *Output* and *RPlots* sheets for post-processing specifications.
+    *Output*, *RPlots*, and *TPlots* sheets for post-processing specifications.
 
     Parameters
     ----------
@@ -285,9 +463,9 @@ def read_scenarios_from_excel(
     param_columns = list(input_data.iloc[0, column_start:])
 
     # - Create a MultiIndex column names for the (Component, Property) pairs
-    comp_prop: List[tuple[str, str]] = []
+    comp_prop: list[tuple[str, str]] = []
 
-    for component, prop_name in zip(input_headers[column_start:], param_columns):
+    for component, prop_name in zip(input_headers[column_start:], param_columns, strict=False):
         component_str = str(component).strip()
         prop_str = str(prop_name).strip()
         comp_prop.append((component_str, prop_str))
@@ -310,9 +488,10 @@ def read_scenarios_from_excel(
     # Load post-processing specifications from optional sheets
     output_specs = _read_output_sheet(path, opts) if opts.output_sheet else []
     rplot_specs = _read_rplots_sheet(path, opts) if opts.rplots_sheet else []
+    tplot_specs = _read_tplots_sheet(path, opts) if opts.tplots_sheet else []
 
     # Construct scenarios
-    scenarios: List[ScenarioSpecification] = []
+    scenarios: list[ScenarioSpecification] = []
     number_col = ("Number", "")
     # Find exact integer position for scalar access (MultiIndex get_loc may return a slice)
     number_col_pos = list(input_data.columns).index(number_col)
@@ -327,7 +506,7 @@ def read_scenarios_from_excel(
         try:
             # For meta fields, extract only the first level of the MultiIndex.
             # Convert NaN → None and numpy scalars → Python natives.
-            meta_df = {}
+            meta_df: dict[str, Any] = {}
             for k, v in row_dict.items():
                 if k[1] != "":
                     continue
@@ -344,7 +523,7 @@ def read_scenarios_from_excel(
             ) from e
 
         # Extract parameter changes
-        parameters: List[ParameterChange] = []
+        parameters: list[ParameterChange] = []
         for col_tuple in input_data.columns:
             prop_name = col_tuple[1]
             if prop_name == "":
@@ -377,8 +556,11 @@ def read_scenarios_from_excel(
             ScenarioSpecification(
                 meta=meta,
                 parameters=parameters,
-                outputs=output_specs,
-                route_plots=rplot_specs,
+                post_processing=PostProcessingConfig(
+                    tables=output_specs,
+                    routes=rplot_specs,
+                    time_plots=tplot_specs,
+                ),
                 analysis_meta=analysis_context,
                 source={
                     "file": path,
@@ -389,3 +571,135 @@ def read_scenarios_from_excel(
         )
 
     return scenarios
+
+
+def check_xls_structure(path: str | Path, opts: ScenarioLoadOptions) -> list[SourceValidationIssue]:
+    """Check that an Excel workbook has the sheets/columns scenario loading needs.
+
+    Unlike ``strict_validation`` (which raises on the first problem found
+    while parsing), this collects every structural problem in one pass so a
+    user can fix a malformed workbook without repeated fix-run-fail cycles.
+
+    Parameters
+    ----------
+    path : str | Path
+        The path to the Excel file.
+    opts : ScenarioLoadOptions
+        Scenario load options (provides sheet names).
+
+    Returns
+    -------
+    list[SourceValidationIssue]
+        All structural issues found. Empty if the workbook is well-formed.
+    """
+    issues: list[SourceValidationIssue] = []
+
+    try:
+        book_ctx = pd.ExcelFile(path)
+    except Exception as exc:
+        return [
+            SourceValidationIssue(sheet="<workbook>", message=f"Could not open workbook: {exc}")
+        ]
+
+    with book_ctx as book:
+        sheet_names = set(book.sheet_names)
+
+        if opts.cases_sheet not in sheet_names:
+            issues.append(
+                SourceValidationIssue(
+                    sheet=opts.cases_sheet,
+                    message=(
+                        f"Required sheet '{opts.cases_sheet}' not found. "
+                        f"Available sheets: {sorted(sheet_names)}"
+                    ),
+                )
+            )
+        else:
+            header = pd.read_excel(book, opts.cases_sheet, header=None, nrows=1).values[0]
+            header_set = {str(h).strip() for h in header}
+            missing = {"Number", "Include", "Name"} - header_set
+            if missing:
+                issues.append(
+                    SourceValidationIssue(
+                        sheet=opts.cases_sheet,
+                        message=f"Missing required column(s): {sorted(missing)}",
+                    )
+                )
+
+        plot_sheets: tuple[tuple[str | None, str], ...] = (
+            (opts.rplots_sheet, "RPlots"),
+            (opts.tplots_sheet, "TPlots"),
+        )
+        for sheet_name, kind in plot_sheets:
+            if sheet_name is None:
+                continue
+            if sheet_name not in sheet_names:
+                issues.append(
+                    SourceValidationIssue(
+                        sheet=sheet_name,
+                        message=(
+                            f"Sheet '{sheet_name}' not found (required because "
+                            f"{kind.lower()}_sheet is configured). "
+                            f"Available sheets: {sorted(sheet_names)}"
+                        ),
+                    )
+                )
+                continue
+            columns_ci = {
+                str(c).strip().lower() for c in pd.read_excel(book, sheet_name, nrows=0).columns
+            }
+            missing = {"title", "name", "property"} - columns_ci
+            if missing:
+                issues.append(
+                    SourceValidationIssue(
+                        sheet=sheet_name,
+                        message=f"Missing required column(s): {sorted(missing)}",
+                    )
+                )
+
+        if opts.output_sheet is not None:
+            if opts.output_sheet not in sheet_names:
+                issues.append(
+                    SourceValidationIssue(
+                        sheet=opts.output_sheet,
+                        message=(
+                            f"Sheet '{opts.output_sheet}' not found (required because "
+                            f"output_sheet is configured). "
+                            f"Available sheets: {sorted(sheet_names)}"
+                        ),
+                    )
+                )
+            else:
+                n_cols = pd.read_excel(book, opts.output_sheet, header=None, nrows=1).shape[1]
+                if n_cols < 3:
+                    issues.append(
+                        SourceValidationIssue(
+                            sheet=opts.output_sheet,
+                            message=(
+                                "Sheet must have at least 3 columns (component, "
+                                f"property, mode); found {n_cols}."
+                            ),
+                        )
+                    )
+
+    return issues
+
+
+@register_source
+class XlsScenarioSource:
+    """Scenario source for Excel files (.xls, .xlsx, .xlsm)."""
+
+    extensions: set[str] = {".xls", ".xlsx", ".xlsm"}
+
+    def __init__(self, options: ScenarioLoadOptions | None = None) -> None:
+        from ..mapper import ScenarioLoadOptions
+
+        self.options = options or ScenarioLoadOptions()
+
+    def load(self, path: Path) -> list[ScenarioSpecification]:
+        """Load scenarios from an Excel workbook."""
+        return read_scenarios_from_excel(path, self.options)
+
+    def check_structure(self, path: Path) -> list[SourceValidationIssue]:
+        """Run structural preflight checks on an Excel workbook."""
+        return check_xls_structure(path, self.options)
