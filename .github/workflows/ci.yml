@@ -1,4 +1,4 @@
-name: Build-Test-Lint-etc (linux)
+name: Build-Test-Lint-etc (Windows)
 
 on: [push]
 
@@ -6,7 +6,7 @@ permissions: write-all
 
 jobs:
   ruff-lint:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     name: Lint
     steps:
       - name: Check out source repository
@@ -23,7 +23,7 @@ jobs:
         run: uv run ruff check ./src/pywandahydra
 
   test:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     strategy:
       matrix:
         python-version: ["3.11"]
@@ -32,9 +32,9 @@ jobs:
       - uses: actions/checkout@v3
       - name: Make script executable
         run: |
-          chmod +x ./ci/linux/create_venv.sh
-          chmod +x ./ci/linux/install_dependencies.sh
-          chmod +x ./ci/linux/test_unit.sh
+          chmod +x ./ci/windows/create_venv.bat
+          chmod +x ./ci/windows/install_dependencies.bat
+          chmod +x ./ci/windows/test_unit.bat
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
         with:
@@ -43,11 +43,11 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v6
       - run: |
-          ./ci/linux/create_venv.sh
-          ./ci/linux/install_dependencies.sh
+          ./ci/windows/create_venv.bat
+          ./ci/windows/install_dependencies.bat
       - name: run unit tests
         run: |
-          ./ci/linux/test_unit.sh
+          ./ci/windows/test_unit.bat
       - name: Surface failing tests
         if: always()
         uses: pmeier/pytest-results-action@main
@@ -72,7 +72,7 @@ jobs:
           fail-on-empty: true
 
   typecheck:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     strategy:
       matrix:
         python-version: ["3.11"]
@@ -81,8 +81,8 @@ jobs:
       - uses: actions/checkout@v3
       - name: Make script executable
         run: |
-          chmod +x ./ci/linux/create_venv.sh
-          chmod +x ./ci/linux/install_dependencies.sh
+          chmod +x ./ci/windows/create_venv.bat
+          chmod +x ./ci/windows/install_dependencies.bat
           chmod +x ./ci/linux/typecheck.sh
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
@@ -104,7 +104,7 @@ jobs:
 
   build:
     name: Build the python package
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     strategy:
       matrix:
         python-version: ["3.11"]
@@ -112,9 +112,9 @@ jobs:
       - uses: actions/checkout@v3
       - name: Make script executable
         run: |
-          chmod +x ./ci/linux/create_venv.sh
-          chmod +x ./ci/linux/install_dependencies.sh
-          chmod +x ./ci/linux/build_python_package.sh
+          chmod +x ./ci/windows/create_venv.bat
+          chmod +x ./ci/windows/install_dependencies.bat
+          chmod +x ./ci/windows/build_python_package.bat
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
         with:
@@ -123,8 +123,8 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v6
       - run: |
-          ./ci/linux/create_venv.sh
-          ./ci/linux/install_dependencies.sh
+          ./ci/windows/create_venv.bat
+          ./ci/windows/install_dependencies.bat
 
       - name: build
         run: |
