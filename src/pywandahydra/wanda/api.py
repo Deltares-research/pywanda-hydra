@@ -366,6 +366,44 @@ def _order_components_by_connection(components: list[Any]) -> list[Any]:
     return route + missing
 
 
+def _components_form_connected_path(components: list[Any]) -> bool:
+    """Return whether *components* form a single connected group (no gaps).
+
+    Used to validate fallback route resolution: a set of pipes that cannot be
+    reached from one another through shared nodes indicates an invalid route
+    (e.g. a large gap between waypoints) that should be skipped rather than
+    plotted. Connectivity is evaluated as an undirected graph so that
+    orientation of individual pipes does not affect the result.
+    """
+    if len(components) <= 1:
+        return True
+
+    component_graph = _build_component_graph(components)
+    if not component_graph:
+        return False
+
+    # Build an undirected adjacency map from the (directed) connection graph.
+    adjacency: dict[Any, set[Any]] = {component: set() for component in components}
+    for component, neighbours in component_graph.items():
+        for neighbour in neighbours:
+            adjacency[component].add(neighbour)
+            adjacency[neighbour].add(component)
+
+    # Breadth-first traversal from an arbitrary component; a connected route
+    # reaches every component.
+    start = components[0]
+    seen = {start}
+    stack = [start]
+    while stack:
+        current = stack.pop()
+        for neighbour in adjacency[current]:
+            if neighbour not in seen:
+                seen.add(neighbour)
+                stack.append(neighbour)
+
+    return len(seen) == len(components)
+
+
 def _normalize_pipe_route_orientation(
     pipes_with_direction: list[tuple[Any, int]],
 ) -> list[tuple[Any, int]]:
@@ -450,6 +488,12 @@ def resolve_route_pipes(
             return []
         if len(pipe_components) == 1:
             return [(_pipe_name(pipe_components[0]), 1)]
+        if not _components_form_connected_path(pipe_components):
+            logger.error(
+                "Route '%s' resolved to disconnected pipes (gap between waypoints) – skipping.",
+                route_id,
+            )
+            return []
         ordered = _order_components_by_connection(pipe_components)
         return [(_pipe_name(comp), 1) for comp in ordered]
 
