@@ -573,9 +573,7 @@ def read_scenarios_from_excel(
     return scenarios
 
 
-def check_xls_structure(
-    path: str | Path, opts: ScenarioLoadOptions
-) -> list[SourceValidationIssue]:
+def check_xls_structure(path: str | Path, opts: ScenarioLoadOptions) -> list[SourceValidationIssue]:
     """Check that an Excel workbook has the sheets/columns scenario loading needs.
 
     Unlike ``strict_validation`` (which raises on the first problem found
@@ -599,7 +597,9 @@ def check_xls_structure(
     try:
         book_ctx = pd.ExcelFile(path)
     except Exception as exc:
-        return [SourceValidationIssue(sheet="<workbook>", message=f"Could not open workbook: {exc}")]
+        return [
+            SourceValidationIssue(sheet="<workbook>", message=f"Could not open workbook: {exc}")
+        ]
 
     with book_ctx as book:
         sheet_names = set(book.sheet_names)
