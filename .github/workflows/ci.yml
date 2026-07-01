@@ -5,7 +5,6 @@ on: [push]
 permissions: write-all
 
 jobs:
-
   ruff-lint:
     runs-on: ubuntu-latest
     name: Lint
@@ -23,100 +22,106 @@ jobs:
       - name: Ruff lint
         run: uv run ruff check ./src/pywandahydra
 
-  test:    
+  test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
         python-version: ["3.11"]
-#        python-version: [3.8, 3.9, 3.10, 3.11]
-    steps:    
-    - uses: actions/checkout@v3
-    - name: Make script executable
-      run: |
-        chmod +x ./ci/linux/create_venv.sh
-        chmod +x ./ci/linux/install_dependencies.sh
-        chmod +x ./ci/linux/test_unit.sh
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ matrix.python-version }}
-        cache: 'pip'
-    - run: |
-        ./ci/linux/create_venv.sh
-        ./ci/linux/install_dependencies.sh
-    - name: run unit tests
-      run: |
-        ./ci/linux/test_unit.sh
-    - name: Surface failing tests
-      if: always()
-      uses: pmeier/pytest-results-action@main
-      with:
-        # A list of JUnit XML files, directories containing the former, and wildcard
-        # patterns to process.
-        # See @actions/glob for supported patterns.
-        path: test-results.xml
+    #        python-version: [3.8, 3.9, 3.10, 3.11]
+    steps:
+      - uses: actions/checkout@v3
+      - name: Make script executable
+        run: |
+          chmod +x ./ci/linux/create_venv.sh
+          chmod +x ./ci/linux/install_dependencies.sh
+          chmod +x ./ci/linux/test_unit.sh
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: "pip"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+      - run: |
+          ./ci/linux/create_venv.sh
+          ./ci/linux/install_dependencies.sh
+      - name: run unit tests
+        run: |
+          ./ci/linux/test_unit.sh
+      - name: Surface failing tests
+        if: always()
+        uses: pmeier/pytest-results-action@main
+        with:
+          # A list of JUnit XML files, directories containing the former, and wildcard
+          # patterns to process.
+          # See @actions/glob for supported patterns.
+          path: test-results.xml
 
-        # Add a summary of the results at the top of the report
-        # Default: true
-        summary: true
+          # Add a summary of the results at the top of the report
+          # Default: true
+          summary: true
 
-        # Select which results should be included in the report.
-        # Follows the same syntax as
-        # `pytest -r`
-        # Default: fEX
-        display-options: fEX
+          # Select which results should be included in the report.
+          # Follows the same syntax as
+          # `pytest -r`
+          # Default: fEX
+          display-options: fEX
 
-        # Fail the workflow if no JUnit XML was found.
-        # Default: true
-        fail-on-empty: true
+          # Fail the workflow if no JUnit XML was found.
+          # Default: true
+          fail-on-empty: true
 
   typecheck:
     runs-on: ubuntu-latest
     strategy:
       matrix:
         python-version: ["3.11"]
-#        python-version: [3.8, 3.9, 3.10, 3.11]
+    #        python-version: [3.8, 3.9, 3.10, 3.11]
     steps:
-    - uses: actions/checkout@v3
-    - name: Make script executable
-      run: |
-        chmod +x ./ci/linux/create_venv.sh
-        chmod +x ./ci/linux/install_dependencies.sh
-        chmod +x ./ci/linux/typecheck.sh
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ matrix.python-version }}
-        cache: 'pip'
-    - run: |
-        ./ci/linux/create_venv.sh
-        ./ci/linux/install_dependencies.sh
+      - uses: actions/checkout@v3
+      - name: Make script executable
+        run: |
+          chmod +x ./ci/linux/create_venv.sh
+          chmod +x ./ci/linux/install_dependencies.sh
+          chmod +x ./ci/linux/typecheck.sh
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: "pip"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+      - run: |
+          ./ci/linux/create_venv.sh
+          ./ci/linux/install_dependencies.sh
 
-    - name: Add mypy annotator
-      uses: pr-annotators/mypy-pr-annotator@v1.0.0
+      - name: Add mypy annotator
+        uses: pr-annotators/mypy-pr-annotator@v1.0.0
 
-    - name: run typechecker
-      run: |
-        ./ci/linux/typecheck.sh
+      - name: run typechecker
+        run: |
+          ./ci/linux/typecheck.sh
 
   build:
     name: Build the python package
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [ "3.11" ]
+        python-version: ["3.11"]
     steps:
       - uses: actions/checkout@v3
       - name: Make script executable
         run: |
-            chmod +x ./ci/linux/create_venv.sh
-            chmod +x ./ci/linux/install_dependencies.sh
-            chmod +x ./ci/linux/build_python_package.sh
+          chmod +x ./ci/linux/create_venv.sh
+          chmod +x ./ci/linux/install_dependencies.sh
+          chmod +x ./ci/linux/build_python_package.sh
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
-          cache: 'pip'
+          cache: "pip"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
       - run: |
           ./ci/linux/create_venv.sh
           ./ci/linux/install_dependencies.sh

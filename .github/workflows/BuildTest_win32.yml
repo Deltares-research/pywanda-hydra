@@ -20,6 +20,8 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           cache: "pip"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
       - run: |
           .\ci\win32\create_venv.cmd
           .\ci\win32\install_dependencies.cmd
