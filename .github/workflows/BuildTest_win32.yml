@@ -12,16 +12,16 @@ jobs:
         python-version: ["3.11"]
     #        python-version: [3.8, 3.9, 3.10, 3.11]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
           cache: "pip"
       - name: Install uv
-        uses: astral-sh/setup-uv@v6
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b
       - run: |
           .\ci\win32\create_venv.cmd
           .\ci\win32\install_dependencies.cmd
