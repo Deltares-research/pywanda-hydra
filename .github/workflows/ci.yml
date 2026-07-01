@@ -20,7 +20,7 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v6
       - name: Ruff lint
-        run: uv run ruff check ./src/pywandahydra
+        run: ./ci/win32/lint.cmd
 
   test:
     runs-on: windows-latest
@@ -30,11 +30,6 @@ jobs:
     #        python-version: [3.8, 3.9, 3.10, 3.11]
     steps:
       - uses: actions/checkout@v3
-      - name: Make script executable
-        run: |
-          chmod +x ./ci/win32/create_venv.bat
-          chmod +x ./ci/win32/install_dependencies.bat
-          chmod +x ./ci/win32/test_unit.bat
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
         with:
@@ -43,33 +38,11 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v6
       - run: |
-          ./ci/win32/create_venv.bat
-          ./ci/win32/install_dependencies.bat
+          ./ci/win32/create_venv.cmd
+          ./ci/win32/install_dependencies.cmd
       - name: run unit tests
         run: |
-          ./ci/win32/test_unit.bat
-      - name: Surface failing tests
-        if: always()
-        uses: pmeier/pytest-results-action@main
-        with:
-          # A list of JUnit XML files, directories containing the former, and wildcard
-          # patterns to process.
-          # See @actions/glob for supported patterns.
-          path: test-results.xml
-
-          # Add a summary of the results at the top of the report
-          # Default: true
-          summary: true
-
-          # Select which results should be included in the report.
-          # Follows the same syntax as
-          # `pytest -r`
-          # Default: fEX
-          display-options: fEX
-
-          # Fail the workflow if no JUnit XML was found.
-          # Default: true
-          fail-on-empty: true
+          ./ci/win32/test_unit.cmd
 
   typecheck:
     runs-on: windows-latest
@@ -79,11 +52,6 @@ jobs:
     #        python-version: [3.8, 3.9, 3.10, 3.11]
     steps:
       - uses: actions/checkout@v3
-      - name: Make script executable
-        run: |
-          chmod +x ./ci/win32/create_venv.bat
-          chmod +x ./ci/win32/install_dependencies.bat
-          chmod +x ./ci/linux/typecheck.sh
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
         with:
@@ -92,15 +60,15 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v6
       - run: |
-          ./ci/linux/create_venv.sh
-          ./ci/linux/install_dependencies.sh
+          ./ci/win32/create_venv.cmd
+          ./ci/win32/install_dependencies.cmd
 
       - name: Add mypy annotator
         uses: pr-annotators/mypy-pr-annotator@v1.0.0
 
       - name: run typechecker
         run: |
-          ./ci/linux/typecheck.sh
+          ./ci/win32/typecheck.cmd
 
   build:
     name: Build the python package
@@ -110,11 +78,6 @@ jobs:
         python-version: ["3.11"]
     steps:
       - uses: actions/checkout@v3
-      - name: Make script executable
-        run: |
-          chmod +x ./ci/win32/create_venv.bat
-          chmod +x ./ci/win32/install_dependencies.bat
-          chmod +x ./ci/win32/build_python_package.bat
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
         with:
@@ -123,9 +86,8 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v6
       - run: |
-          ./ci/win32/create_venv.bat
-          ./ci/win32/install_dependencies.bat
+          ./ci/win32/create_venv.cmd
+          ./ci/win32/install_dependencies.cmd
 
       - name: build
-        run: |
-          ./ci/linux/build_python_package.sh
+        run: uv build
