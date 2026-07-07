@@ -51,6 +51,7 @@ def extract_component_outputs(
     model: pywanda.WandaModel,
     specs: Sequence[ExportTableSpecification | TimePlotSpecification],
     adapter: WandaAdapter,
+    resolution: dict[str, list[str]] | None = None,
 ) -> pd.DataFrame:
     """Extract time-series data for every *Output* specification.
 
@@ -75,6 +76,12 @@ def extract_component_outputs(
         One or more export-table specifications.
     adapter : WandaAdapter
         Adapter used for item resolution and unit-converted outputs.
+    resolution : dict[str, list[str]], optional
+        When provided, it is populated in-place with a mapping of each
+        spec's original ``component`` identifier (which may be a keyword)
+        to the concrete item names it resolved to. Post-processing steps
+        (e.g. the summary table) use this to match keyword specs against
+        the resolved column names after the model session has closed.
 
     Returns
     -------
@@ -99,6 +106,11 @@ def extract_component_outputs(
                 spec.component,
             )
             continue
+        if resolution is not None:
+            resolved_for_spec = resolution.setdefault(spec.component, [])
+            for item_name in item_names:
+                if item_name not in resolved_for_spec:
+                    resolved_for_spec.append(item_name)
         for item_name in item_names:
             key = (item_name, spec.property)
             if key in seen:
@@ -408,9 +420,12 @@ def extract_all(
     -------
     dict[str, Any]
         ``{"components": DataFrame,
-        "routes": dict[str, dict[str, DataFrame]]}``.
+        "routes": dict[str, dict[str, DataFrame]],
+        "resolution": dict[str, list[str]]}``.
         Inner ``"routes"`` values have keys ``"timeseries"``,
-        ``"envelope"`` and optionally ``"profile"``.
+        ``"envelope"`` and optionally ``"profile"``. ``"resolution"``
+        maps each component spec's original identifier (possibly a
+        keyword) to the concrete item names it resolved to.
     """
     # Time plots read from the same components cache, so their
     # (component, property) pairs are extracted alongside the Output sheet
@@ -419,15 +434,18 @@ def extract_all(
         *scenario.post_processing.tables,
         *scenario.post_processing.time_plots,
     ]
+    resolution: dict[str, list[str]] = {}
     return {
         "components": extract_component_outputs(
             model,
             component_specs,
             adapter,
+            resolution=resolution,
         ),
         "routes": extract_route_outputs(
             model,
             scenario.post_processing.routes,
             adapter,
         ),
+        "resolution": resolution,
     }

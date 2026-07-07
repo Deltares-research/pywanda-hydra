@@ -7,6 +7,7 @@ WANDA model session.
 
 from __future__ import annotations
 
+import json
 import logging
 import math
 from pathlib import Path
@@ -107,6 +108,14 @@ class ParquetCache:
 
             logger.info("Cached %d route outputs", len(routes))
 
+        # --- Resolution mapping (identifier -> resolved item names) ------------
+        resolution: dict[str, list[str]] = extracted.get("resolution", {})
+        if resolution:
+            path = self.data_dir / "resolution.json"
+            path.write_text(json.dumps(resolution, indent=2), encoding="utf-8")
+            artefacts["resolution"] = str(path.relative_to(self.data_dir.parent))
+            logger.info("Cached component resolution mapping: %s", path)
+
         return artefacts
 
     # -----------------------------------------------------------------
@@ -125,6 +134,27 @@ class ParquetCache:
             return pd.DataFrame()
         df = pd.read_parquet(path, engine="pyarrow")
         return _restore_flat_cols(df)
+
+    def read_resolution(self) -> dict[str, list[str]]:
+        """Read the cached identifier→resolved-names mapping.
+
+        Returns:
+            Mapping of each component spec's original identifier (which
+            may be a keyword) to the concrete item names it resolved to.
+            Returns an empty dict when no mapping was cached (e.g. older
+            caches), letting callers fall back to exact-name matching.
+        """
+        path = self.data_dir / "resolution.json"
+        if not path.exists():
+            return {}
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            logger.warning("Could not read resolution mapping at %s", path)
+            return {}
+        if not isinstance(data, dict):
+            return {}
+        return {str(k): [str(v) for v in vals] for k, vals in data.items()}
 
     def read_route(self, title: str) -> dict[str, pd.DataFrame]:
         """Read a cached route output by title.

@@ -27,10 +27,19 @@ def render_summary_table(
     if df.empty:
         return pd.DataFrame(columns=["component", "property", "mode", "value"])
 
+    resolution = cache.read_resolution()
+
     rows: list[dict[str, str | float]] = []
     for spec in specs:
+        # A spec's component may be a keyword that resolved to one or more
+        # concrete item names during extraction; the cached columns use those
+        # resolved names, so expand the identifier before matching. Fall back
+        # to the identifier itself for exact-name specs / older caches.
+        resolved_names = resolution.get(spec.component, [spec.component])
         if isinstance(df.columns, pd.MultiIndex):
-            matching = [c for c in df.columns if c[0] == spec.component and c[1] == spec.property]
+            matching = [
+                c for c in df.columns if c[0] in resolved_names and c[1] == spec.property
+            ]
             if not matching:
                 continue
             sub = df.loc[:, matching]
@@ -44,18 +53,23 @@ def render_summary_table(
                 }
             )
         else:
-            col_name = f"{spec.component}|{spec.property}"
-            if col_name in df.columns:
-                series = df[col_name]
-                value = series.min() if spec.mode == "MIN" else series.max()
-                rows.append(
-                    {
-                        "component": spec.component,
-                        "property": spec.property,
-                        "mode": spec.mode,
-                        "value": float(value),
-                    }
-                )
+            matching_cols = [
+                f"{name}|{spec.property}"
+                for name in resolved_names
+                if f"{name}|{spec.property}" in df.columns
+            ]
+            if not matching_cols:
+                continue
+            sub = df[matching_cols]
+            value = sub.min().min() if spec.mode == "MIN" else sub.max().max()
+            rows.append(
+                {
+                    "component": spec.component,
+                    "property": spec.property,
+                    "mode": spec.mode,
+                    "value": float(value),
+                }
+            )
 
     result = pd.DataFrame(rows)
 

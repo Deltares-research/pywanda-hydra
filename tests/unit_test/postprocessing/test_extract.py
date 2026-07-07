@@ -306,6 +306,27 @@ class TestExtractAll(unittest.TestCase):
         self.assertFalse(result["components"].empty)
         self.assertIn("Route A", result["routes"])
 
+    def test_returns_keyword_resolution_mapping(self) -> None:
+        adapter = _FakeAdapter(
+            time_steps=[0.0, 1.0],
+            resolve_map={"MY_KW": ["PUMP P1", "PUMP P2"]},
+            series={
+                ("PUMP P1", "Head"): np.array([1.0, 2.0]),
+                ("PUMP P2", "Head"): np.array([3.0, 4.0]),
+            },
+        )
+        scenario = ScenarioSpecification(
+            meta=ScenarioMeta.model_validate({"Number": 1, "Include": True, "Name": "case_001"}),
+            post_processing=PostProcessingConfig(
+                tables=[ExportTableSpecification(component="MY_KW", property="Head", mode="MAX")],
+            ),
+        )
+
+        result = extract_all(None, scenario, adapter)  # type: ignore[arg-type]
+
+        self.assertIn("resolution", result)
+        self.assertEqual(result["resolution"], {"MY_KW": ["PUMP P1", "PUMP P2"]})
+
 
 if __name__ == "__main__":
     unittest.main()

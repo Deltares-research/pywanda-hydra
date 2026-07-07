@@ -61,6 +61,81 @@ class TestRenderSummaryTable(unittest.TestCase):
 
             self.assertEqual(result.iloc[0]["value"], 1.0)
 
+    def test_keyword_aggregates_multiple_resolved_components_max(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            cache = ParquetCache(Path(tmp_dir))
+            columns = pd.MultiIndex.from_tuples(
+                [
+                    ("PUMP P1", "Head", float("nan")),
+                    ("PUMP P2", "Head", float("nan")),
+                ],
+                names=["component", "property", "s_location"],
+            )
+            components = pd.DataFrame(
+                [[1.0, 5.0], [3.0, 4.0]], columns=columns, index=[0.0, 1.0]
+            )
+            cache.write(
+                {
+                    "components": components,
+                    "routes": {},
+                    "resolution": {"MY_KW": ["PUMP P1", "PUMP P2"]},
+                }
+            )
+
+            specs = [ExportTableSpecification(component="MY_KW", property="Head", mode="MAX")]
+
+            result = render_summary_table(specs, cache)
+
+            self.assertEqual(len(result), 1)
+            row = result.iloc[0]
+            self.assertEqual(row["component"], "MY_KW")
+            self.assertEqual(row["value"], 5.0)
+
+    def test_keyword_aggregates_multiple_resolved_components_min(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            cache = ParquetCache(Path(tmp_dir))
+            columns = pd.MultiIndex.from_tuples(
+                [
+                    ("PUMP P1", "Head", float("nan")),
+                    ("PUMP P2", "Head", float("nan")),
+                ],
+                names=["component", "property", "s_location"],
+            )
+            components = pd.DataFrame(
+                [[1.0, 5.0], [3.0, 4.0]], columns=columns, index=[0.0, 1.0]
+            )
+            cache.write(
+                {
+                    "components": components,
+                    "routes": {},
+                    "resolution": {"MY_KW": ["PUMP P1", "PUMP P2"]},
+                }
+            )
+
+            specs = [ExportTableSpecification(component="MY_KW", property="Head", mode="MIN")]
+
+            result = render_summary_table(specs, cache)
+
+            self.assertEqual(result.iloc[0]["value"], 1.0)
+
+    def test_exact_name_without_resolution_mapping_still_matches(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            cache = ParquetCache(Path(tmp_dir))
+            columns = pd.MultiIndex.from_tuples(
+                [("PUMP P1", "Head", float("nan"))],
+                names=["component", "property", "s_location"],
+            )
+            components = pd.DataFrame([[1.0], [3.0]], columns=columns, index=[0.0, 1.0])
+            # No "resolution" key persisted -> fallback to exact-name matching.
+            cache.write({"components": components, "routes": {}})
+
+            specs = [ExportTableSpecification(component="PUMP P1", property="Head", mode="MAX")]
+
+            result = render_summary_table(specs, cache)
+
+            self.assertEqual(len(result), 1)
+            self.assertEqual(result.iloc[0]["value"], 3.0)
+
     def test_multiindex_no_matching_columns_skipped(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             cache = ParquetCache(Path(tmp_dir))
