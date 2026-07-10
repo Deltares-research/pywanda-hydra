@@ -144,6 +144,71 @@ def run(
 
 
 # ---------------------------------------------------------------------------
+# optimize
+# ---------------------------------------------------------------------------
+
+
+@app.command()
+def optimize(
+    config: Path = typer.Argument(
+        ..., help="Path to the optimization configuration file (.json).", exists=True
+    ),
+    workers: int | None = typer.Option(
+        None, "--workers", "-w", help="Override number of workers."
+    ),
+    c_unit: str = typer.Option(
+        "", "--c-unit", help="Unit label for the C-value axis in the output plot."
+    ),
+    no_plot: bool = typer.Option(False, "--no-plot", help="Skip rendering the range plot."),
+    log_level: str = typer.Option(
+        "INFO", "--log-level", "-l", help="Log level (DEBUG, INFO, WARNING, ERROR)."
+    ),
+) -> None:
+    """Optimize surge-vessel C-value range and number (Zwan et al. 2012)."""
+    faulthandler.enable()
+
+    setup_logging(log_level)
+    logger = logging.getLogger(__name__)
+
+    from ..optimization.config import load_optimization_config, validate_optimization_paths
+    from ..optimization.runner import run_optimization
+
+    try:
+        cfg = load_optimization_config(config)
+    except (ValueError, FileNotFoundError) as e:
+        typer.echo(f"Error loading config: {e}", err=True)
+        raise typer.Exit(code=1) from None
+
+    if workers is not None:
+        if workers < 1:
+            typer.echo("--workers must be >= 1", err=True)
+            raise typer.Exit(code=1)
+        cfg.n_workers = workers
+
+    try:
+        validate_optimization_paths(cfg, config_dir=config.parent)
+    except ValueError as e:
+        typer.echo(f"Invalid runtime configuration: {e}", err=True)
+        raise typer.Exit(code=1) from None
+
+    logger.info("Starting surge-vessel optimization run '%s'", cfg.run_id)
+    results = run_optimization(cfg, c_unit=c_unit, render_plot=not no_plot)
+
+    run_root = cfg.output_root / cfg.run_id
+    if results.min_feasible_vessels is None:
+        typer.echo(
+            "\nOptimization complete: no feasible surge-vessel count found "
+            "within the given bounds."
+        )
+    else:
+        typer.echo(
+            f"\nOptimization complete: minimum feasible number of surge vessels = "
+            f"{results.min_feasible_vessels}"
+        )
+    typer.echo(f"Results written to {run_root}")
+
+
+# ---------------------------------------------------------------------------
 # status
 # ---------------------------------------------------------------------------
 

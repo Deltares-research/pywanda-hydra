@@ -1,0 +1,53 @@
+{
+  "run_id": "surge_opt_001",
+  "output_root": "./runs2",
+  "description": "Surge-vessel optimization (Zwan et al. 2012) example config.",
+
+  "model": {
+    "model_path": "c:/work/repos/wanda/pywanda-hydra/examples/data/model/base_model_optimization.wdi",
+    "wanda_bin": "c:/Program Files (x86)/Deltares/Wanda 4.8/Bin64",
+    "base_model_name": "base",
+    "run_steady": true,
+    "run_unsteady": true,
+    "reuse_existing_data": true
+  },
+
+  "surge_vessel": "AIRVin A1",
+  "properties": {
+    "number": "Number of vessels",
+    "c_value": "Initial C in P*V=C",
+    "laplace": "Laplace coefficient"
+  },
+
+  "pressure_pipes_keyword": "pipes",
+  "pressure_property": "Pressure",
+  "water_level_property": "Liquid level",
+
+  "acceptance": {
+    "min_pressure": -0.2,
+    "min_water_level": -1.2
+  },
+  "laplace": {
+    "water_level": 1.0,
+    "pressure": 1.4
+  },
+
+  "number_of_vessels": {
+    "min": 8,
+    "max": 20,
+    "step": 1
+  },
+
+  "c_value": {
+    "lower": 10.0,
+    "upper": 3500.0
+  },
+  "convergence": {
+    "rel_tol": 0.01,
+    "max_iter": 20
+  },
+
+  "unacceptable_error_patterns": ["Empty"],
+
+  "n_workers": 16
+}

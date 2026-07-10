@@ -256,6 +256,7 @@ examples/data/**/*
 !examples/data/model/*.wdx
 !examples/data/scenarios/
 !examples/data/scenarios/cases.xls
+!examples/data/optimization_config.json
 
 
 *.zip

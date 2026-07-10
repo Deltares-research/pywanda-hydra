@@ -151,7 +151,67 @@ pywandahydra validate run.yaml
 
 ---
 
+## 3a. Surge-vessel optimization (Zwan et al. 2012)
+
+The `optimize` command reproduces the surge-vessel optimization routine from
+*van der Zwan et al. 2012 — "Optimization of surge protection for a large water
+transmission scheme in Abu Dhabi"*.
+
+For a model containing an inclined surge vessel, it finds the **acceptable range of
+C-values** (`C = p·V`, mass control) for a **varying number of surge vessels**, and
+thereby the **minimum number of vessels** that still yields a feasible C-range. Two
+acceptance criteria drive a bisection search per vessel count:
+
+- minimum pipeline pressure ≥ limit, evaluated at **Laplace coefficient 1.4**;
+- minimum surge-vessel water level ≥ limit, evaluated at **Laplace coefficient 1.0**.
+
+Each evaluation is a normal single-scenario run (model copy, unsteady simulation,
+extraction, caching); identical `(count, C, Laplace)` triples are reused via the
+runner's resume mechanism so repeated bisection probes are not re-simulated.
+
+Run it with a JSON config (see [examples/data/optimization_config.json](../examples/data/optimization_config.json)):
+
+```shell
+pywandahydra optimize optimization_config.json
+```
+
+Key config fields:
+
+- `surge_vessel` — identifier/keyword of the inclined vessel component.
+- `properties.number` / `properties.c_value` / `properties.laplace` — the vessel
+  property names to set (defaults: `Number of vessels`, `Initial C in P*V=C`,
+  `Laplace coefficient`).
+- `pressure_pipes_keyword` + `pressure_property` — pipes and property to check for
+  minimum pressure.
+- `water_level_property` — vessel property to check for minimum water level.
+- `acceptance.min_pressure` / `acceptance.min_water_level` — limits, expressed in the
+  **SI units** returned by the WANDA adapter (e.g. Pa, m).
+- `number_of_vessels` — `{min, max, step}` bounds to explore.
+- `c_value` — `{lower, upper}` bisection bracket; `convergence` — `{rel_tol, max_iter}`
+  (the paper stops at < 1 % deviation).
+- `base_parameters` — parameter changes applied to every evaluation (e.g. the flow
+  scenario / operating pressure).
+- `unacceptable_error_patterns` — case-insensitive substrings identifying WANDA
+  simulation failures that are physically meaningful **unacceptable** outcomes rather
+  than fatal errors (default `["Empty"]`). For example, a large C-value can drain the
+  surge vessel, which WANDA reports as `Unsteady error in physical component:
+  AIRVin A1 Empty`. A matching failure is treated as **unacceptable for the water-level
+  criterion** (its upper bound) but **acceptable for pressure** — draining is a
+  high-C / water-level limit, not a pressure failure, so the pressure criterion stays
+  monotonic in C and its lower bound is still found. The bisection continues; any
+  other failure is re-raised.
+
+Outputs land under `output_root/run_id/`:
+
+- `optimization_results.json` and `optimization_results.csv` — per-vessel-count
+  boundary C-values, feasible C-range, and feasibility;
+- `figures/acceptable_c_range.png` — the acceptable-C-range vs. number-of-vessels plot
+  (paper Fig. 8/9 style).
+
+---
+
 ## 4. Adding a new integration
+
 
 ### 4a. Custom scenario source
 
