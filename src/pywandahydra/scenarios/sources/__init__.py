@@ -6,7 +6,6 @@ Registers all built-in source backends on import.
 from __future__ import annotations
 
 import logging
-from importlib.metadata import entry_points
 
 from .base import (  # noqa: F401
     ScenarioSource,
@@ -21,13 +20,12 @@ logger = logging.getLogger(__name__)
 
 
 def bootstrap() -> None:
-    """Register built-in and entry-point scenario sources."""
+    """Register built-in scenario sources.
+
+    External extension machinery has been removed; only built-in sources
+    are available.
+    """
     register_source(XlsScenarioSource)
-    for ep in entry_points(group="pywandahydra.scenario_sources"):
-        try:
-            register_source(ep.load())
-        except Exception:
-            logger.exception("Failed to load pywandahydra.scenario_sources plugin %r", ep.name)
 
 
 bootstrap()

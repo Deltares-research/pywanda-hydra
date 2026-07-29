@@ -15,8 +15,6 @@ be called once per process (idempotent, safe to call repeatedly).
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable
-from importlib.metadata import entry_points
 from typing import Any
 
 from ..steps.aggregate_tables import AggregateTablesStep
@@ -43,21 +41,15 @@ from .default import DefaultWorkflow
 logger = logging.getLogger(__name__)
 
 
-def _load_group(group: str, register: Callable[[type[Any]], type[Any]]) -> None:
-    """Load plugin classes from an entry-point group."""
-    for ep in entry_points(group=group):
-        try:
-            register(ep.load())
-        except Exception:
-            logger.exception("Failed to load %s plugin %r", group, ep.name)
-
-
 def bootstrap() -> None:
     """Register all built-in workflows.
 
     Idempotent: safe to call from every worker process under multiprocessing
     ``spawn`` start method, and safe to call multiple times in the same
     process. Tests can call this to ensure a clean registration state.
+
+    External extension machinery has been removed; only built-in workflows
+    are available.
     """
     register_case_step(SummaryTableStep)
     register_case_step(PlotReportStep)
@@ -65,9 +57,6 @@ def bootstrap() -> None:
     register_run_step(MergePdfsStep)
     register_workflow(DefaultWorkflow)
     register_workflow(ConfigDrivenWorkflow)
-    _load_group("pywandahydra.case_steps", register_case_step)
-    _load_group("pywandahydra.run_steps", register_run_step)
-    _load_group("pywandahydra.workflows", register_workflow)
 
 
 __all__ = [

@@ -8,7 +8,6 @@ outputs are cached alongside standard extraction results.
 from __future__ import annotations
 
 import logging
-from importlib.metadata import entry_points
 from typing import TYPE_CHECKING, Any, ClassVar, Protocol, cast, runtime_checkable
 
 from pydantic import BaseModel
@@ -135,33 +134,18 @@ def resolve_extractor(name: str, params: dict[str, Any] | None = None) -> Extrac
         KeyError: If extractor not registered.
         ValidationError: If params don't match schema.
     """
-    from typing import cast
-
     cls = get_extractor_class(name)
     validated = cls.Params.model_validate(params or {})
     return cast(Extractor, cls(validated))
 
 
 def bootstrap() -> None:
-    """Load all extractor entry points and register them.
+    """Initialize extractor registry with built-in extractors.
 
     This is idempotent; calling multiple times is safe.
+    External extension machinery has been removed; only built-in extractors
+    are available.
     """
-    group_name = "pywandahydra.extractors"
-    eps = entry_points()
-
-    # Handle both importlib.metadata API versions
-    if hasattr(eps, "select"):
-        # Python 3.10+
-        extractors_eps = eps.select(group=group_name)
-    else:
-        # Python 3.9
-        extractors_eps = cast(Any, eps.get(group_name, []))
-
-    for ep in extractors_eps:
-        try:
-            extractor_class = ep.load()
-            register_extractor(extractor_class)
-            logger.debug("Loaded extractor from entry point: %s=%s", ep.name, ep.value)
-        except Exception as e:
-            logger.warning("Failed to load extractor entry point '%s': %s", ep.name, e)
+    # No-op: all registration is now done via @register_extractor decorators
+    # or explicit register_extractor() calls at module import time
+    pass

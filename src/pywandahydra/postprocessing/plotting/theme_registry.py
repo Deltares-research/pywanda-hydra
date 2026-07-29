@@ -1,9 +1,8 @@
-"""Theme registry and entry-point discovery for plotting themes."""
+"""Theme registry for plotting themes."""
 
 from __future__ import annotations
 
 import logging
-from importlib.metadata import entry_points
 
 from .renderers.theme import PlotTheme
 
@@ -42,25 +41,13 @@ def list_themes() -> list[str]:
 
 
 def bootstrap() -> None:
-    """Register built-in themes and load theme entry-point plugins."""
+    """Register built-in plot themes.
+
+    External extension machinery has been removed; only built-in themes
+    are available.
+    """
     register_theme("default", DEFAULT_THEME)
     register_theme("deltares_light", DELTARES_LIGHT)
-
-    for ep in entry_points(group="pywandahydra.themes"):
-        try:
-            loaded = ep.load()
-            if isinstance(loaded, PlotTheme):
-                register_theme(ep.name, loaded)
-            elif callable(loaded):
-                produced = loaded()
-                if isinstance(produced, PlotTheme):
-                    register_theme(ep.name, produced)
-                else:
-                    raise TypeError("Callable theme plugin must return PlotTheme")
-            else:
-                raise TypeError("Theme plugin must be PlotTheme or callable returning PlotTheme")
-        except Exception:
-            logger.exception("Failed to load pywandahydra.themes plugin %r", ep.name)
 
 
 bootstrap()
