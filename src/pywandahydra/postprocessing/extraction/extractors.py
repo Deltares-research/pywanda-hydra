@@ -137,15 +137,4 @@ def resolve_extractor(name: str, params: dict[str, Any] | None = None) -> Extrac
     cls = get_extractor_class(name)
     validated = cls.Params.model_validate(params or {})
     return cast(Extractor, cls(validated))
-
-
-def bootstrap() -> None:
-    """Initialize extractor registry with built-in extractors.
-
-    This is idempotent; calling multiple times is safe.
-    External extension machinery has been removed; only built-in extractors
-    are available.
-    """
-    # No-op: all registration is now done via @register_extractor decorators
-    # or explicit register_extractor() calls at module import time
     pass

@@ -25,7 +25,6 @@ from ..execution.journal import CaseJournal, _now_iso, resume_decision
 from ..postprocessing.core.context import CaseContext, ExtractionContext
 from ..postprocessing.core.pipeline import run_postprocessing
 from ..postprocessing.extraction.extract import extract_all
-from ..postprocessing.extraction.extractors import bootstrap as bootstrap_extractors
 from ..postprocessing.extraction.extractors import resolve_extractor
 from ..postprocessing.io.cache import ParquetCache
 from ..postprocessing.plotting.theme_registry import get_theme
@@ -87,7 +86,6 @@ def run_one_case(plan: CasePlan) -> CaseResult:
     # required under multiprocessing 'spawn' where module-level side effects
     # do not propagate from the parent process).
     bootstrap_workflows()
-    bootstrap_extractors()
 
     # Hold the case lock for the entire execution so two processes can never
     # work the same case directory concurrently — a second WANDA session on
