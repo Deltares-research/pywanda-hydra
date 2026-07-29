@@ -2,7 +2,7 @@
 
 These exercise the typer app via CliRunner without requiring WANDA —
 covering argument parsing, error handling, and output formatting for
-the `status`, `validate`, and `plugins` subcommands.
+the `run`, `status`, `validate`, and `plot` subcommands.
 """
 
 from __future__ import annotations
@@ -289,18 +289,6 @@ class TestValidateCommand(unittest.TestCase):
             self.assertEqual(result.exit_code, 1)
             self.assertIn("Config OK", result.output)
             self.assertIn("Runtime paths INVALID", result.output)
-
-
-class TestPluginsCommand(unittest.TestCase):
-    def test_plugins_lists_registered_components(self) -> None:
-        result = runner.invoke(app, ["plugins"])
-
-        self.assertEqual(result.exit_code, 0)
-        self.assertIn("Extractors:", result.output)
-        self.assertIn("Workflows:", result.output)
-        self.assertIn("Themes:", result.output)
-        self.assertIn("default", result.output)
-
 
 if __name__ == "__main__":
     unittest.main()

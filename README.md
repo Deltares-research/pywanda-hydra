@@ -21,18 +21,18 @@ graph LR
     G --> H[run_one_case / worker.py]
     H --> I[WandaAdapter]
     I --> J[pywanda.WandaModel]
-    H --> K[Extractor plugins]
-    H --> L[ParquetCache]
+    H --> K[Built-in result extraction]
+    K --> L[ParquetCache]
     F --> M[PostProcessingWorkflow]
     M --> N[CaseStep list]
     M --> O[RunStep list]
 ```
 
-### Entry points
+### Command-line interface
 
 **`main`** — CLI entry point registered as the `pywandahydra` console script. Delegates immediately to the Typer `app`.
 
-**`app`** — Typer application exposing the `run`, `validate`, `status`, `plot`, and `plugins` sub-commands.
+**`app`** — Typer application exposing the `run`, `validate`, `status`, and `plot` sub-commands.
 
 ### Config layer
 
@@ -58,7 +58,7 @@ graph LR
 
 **`load_scenarios`** — Loads a scenario file by auto-detecting its extension and dispatching to the registered `ScenarioSource`. Returns a list of `ScenarioSpecification`.
 
-**`ScenarioSource`** — Protocol for scenario loading backends. Implement this to add support for new file formats (see §4).
+**`ScenarioSource`** — Protocol implemented by the bundled scenario loading backends.
 
 **`XlsScenarioSource`** — Built-in source for `.xls`, `.xlsx`, and `.xlsm` files. Reads the `Cases`, `Output`, `Rplots`, and `Tplots` sheets.
 
@@ -70,7 +70,7 @@ graph LR
 
 **`RunResult`** — Frozen dataclass returned by `run` with counts of total / selected / succeeded / failed / skipped cases.
 
-**`CasePlan`** — All the information one worker needs to execute a single case: model spec, scenario spec, output directories, extractor specs, and a config hash for resume detection.
+**`CasePlan`** — All the information one worker needs to execute a single case: model spec, scenario spec, output directories, workflow selection, and a config hash for resume detection.
 
 ### Adapter layer
 
@@ -87,8 +87,6 @@ graph LR
 **`CaseStep`** — Protocol for a per-scenario step. Implement `applicable(ctx)` and `run(ctx)`.
 
 **`RunStep`** — Protocol for a run-level step. Implement `run(ctx)`.
-
-**`Extractor`** — Protocol for custom model-level extraction plugins that run while the WANDA model is still open, before the session closes.
 
 **`ParquetCache`** — Stores and retrieves per-case extraction results as Parquet files. Used both during execution and by the `plot` CLI command.
 
@@ -151,143 +149,17 @@ pywandahydra validate run.yaml
 
 ---
 
-## 4. Adding a new integration
+## 4. Extending pywandahydra
 
-### 4a. Custom scenario source
+pywandahydra does not discover extensions from separately installed packages. Scenario loading, result extraction, and post-processing capabilities are bundled with the application so that a run has deterministic behavior for a given pywandahydra version.
 
-**What to implement** — the `ScenarioSource` protocol from `pywandahydra.scenarios.sources.base`:
+New capabilities are normal source changes to this repository and ship in a pywandahydra release:
 
-```python
-from pathlib import Path
-from pywandahydra.scenarios.schema import ScenarioSpecification
+- Add scenario formats alongside the built-in sources in `src/pywandahydra/scenarios/sources` and cover loading and validation with tests.
+- Add data required by reports to the built-in extraction path in `src/pywandahydra/postprocessing/extraction`, including its durable Parquet representation.
+- Add post-processing behavior alongside the bundled workflows and steps in `src/pywandahydra/postprocessing`, with focused tests for generated tables or figures.
 
-class MySource:
-    extensions: set[str] = {".csv"}
-
-    def load(self, path: Path) -> list[ScenarioSpecification]:
-        ...
-```
-
-**Where to register it** — decorate the class with `@register_source` from `pywandahydra.scenarios.sources.base`, or use the `pywandahydra.scenario_sources` entry-point group in your package's `pyproject.toml`:
-
-```toml
-[project.entry-points."pywandahydra.scenario_sources"]
-csv = "mypackage.sources:MySource"
-```
-
-**Worked example** — the built-in XLS source in [src/pywandahydra/scenarios/sources/xls.py](../src/pywandahydra/scenarios/sources/xls.py). A sample workbook that exercises the `Cases`, `Output`, `Rplots`, and `Tplots` sheets is at [examples/data/scenarios/cases.xls](../examples/data/scenarios/cases.xls).
-
-```python
-from pywandahydra.scenarios.sources.base import register_source
-from pywandahydra.scenarios.schema import ScenarioSpecification
-
-@register_source
-class XlsScenarioSource:
-    extensions: set[str] = {".xls", ".xlsx", ".xlsm"}
-
-    def load(self, path) -> list[ScenarioSpecification]:
-        from pywandahydra.scenarios.sources.xls import read_scenarios_from_excel
-        from pywandahydra.scenarios.mapper import ScenarioLoadOptions
-        return read_scenarios_from_excel(path, ScenarioLoadOptions())
-```
-
-**Checklist**
-- `extensions` must be a `set[str]` with lowercase dot-prefixed extensions (e.g. `{".csv"}`).
-- `load` must return `ScenarioSpecification` objects with a valid `ScenarioMeta` (at minimum `name`, `number`, `include`).
-- The registry is keyed on extension; registering a duplicate extension silently replaces the earlier entry.
-- Raise `ValueError` for malformed input; the runner will catch it and abort with a non-zero exit code.
-
----
-
-### 4b. Custom extractor
-
-**What to implement** — the `Extractor` protocol from `pywandahydra.postprocessing.extraction.extractors`:
-
-```python
-from typing import Any, ClassVar
-from pydantic import BaseModel
-from pywandahydra.postprocessing.extraction.extractors import Extractor
-from pywandahydra.postprocessing.core.context import ExtractionContext
-
-class MyExtractor:
-    name: ClassVar[str] = "my_extractor"
-    description: ClassVar[str] = "Extracts custom energy-loss data."
-
-    class Params(BaseModel):
-        threshold: float = 100.0
-
-    def __init__(self, params: Params | None = None) -> None:
-        self._p = params or self.Params()
-
-    def extract(self, ctx: ExtractionContext) -> dict[str, Any]:
-        # ctx.model  — open pywanda.WandaModel
-        # ctx.scenario — ScenarioSpecification
-        df = ...  # build a DataFrame
-        return {"energy_loss": df}
-```
-
-**Where to register it** — declare an entry point in `pyproject.toml`:
-
-```toml
-[project.entry-points."pywandahydra.extractors"]
-my_extractor = "mypackage.extractors:MyExtractor"
-```
-
-Then reference it in the run config:
-
-```yaml
-execution:
-  extractors:
-    - name: my_extractor
-      params:
-        threshold: 50.0
-```
-
-**Checklist**
-- `name` must be a unique string; it becomes the cache key and the config name.
-- `extract` is called while the model is still open — do not close it.
-- Return a `dict` mapping output names to DataFrames. Empty dict is valid.
-- `Params` must be a `pydantic.BaseModel`; it is validated before `__init__` is called.
-- Run `pywandahydra plugins` to confirm your extractor appears in the registry after installation.
-
----
-
-### 4c. Custom post-processing workflow
-
-**What to implement** — the `PostProcessingWorkflow` protocol from `pywandahydra.postprocessing.core.protocols`:
-
-```python
-from typing import ClassVar
-from pydantic import BaseModel
-from pywandahydra.postprocessing.core.protocols import (
-    CaseStep, PostProcessingWorkflow, RunStep
-)
-from pywandahydra.postprocessing.core.context import CaseContext, PostProcessingRunContext
-
-class MyWorkflow:
-    name: ClassVar[str] = "my_workflow"
-    description: ClassVar[str] = "Minimal custom workflow."
-
-    class Params(BaseModel):
-        pass
-
-    def __init__(self, params: Params) -> None:
-        self._p = params
-
-    def case_steps(self, ctx: CaseContext) -> list[CaseStep]:
-        return []   # return step instances to run per case
-
-    def run_steps(self, ctx: PostProcessingRunContext) -> list[RunStep]:
-        return []   # return step instances to run once after all cases
-```
-
-**Where to register it** — use `register_workflow` from `pywandahydra.postprocessing.workflows.base` or the `pywandahydra.workflows` entry-point group. Activate it by setting `execution.workflow: my_workflow` in the run config.
-
-**Checklist**
-- Both `case_steps` and `run_steps` must return lists (empty is valid).
-- `Params` must be a `pydantic.BaseModel` with defaults for all fields, or validation will fail at startup.
-- `CaseStep.applicable(ctx)` is called before `run(ctx)`; return `False` to skip the step for a given case.
-- Exceptions inside steps are logged and swallowed; the run continues.
+There are no `pywandahydra.*` plugin entry-point groups or runtime registration contract for third-party packages.
 
 ---
 
@@ -299,28 +171,23 @@ class MyWorkflow:
 |--------|------|-------------|
 | `apply_parameter_change` | function | Applies a `ParameterChange` to an open `WandaModel`, handling bulk selectors, disuse, and unit conversion. |
 | `apply_post_processing_overrides` | function | Merges run-level post-processing config (e.g. theme) into each `ScenarioSpecification` in place. |
-| `bootstrap` *(extractors)* | function | Loads all `pywandahydra.extractors` entry points and registers them; idempotent. |
-| `bootstrap` *(workflows)* | function | Loads all `pywandahydra.workflows` entry points and registers them; idempotent. |
+| `bootstrap` *(workflows)* | function | Registers the workflows bundled with pywandahydra; idempotent. |
 | `build_run_context` | function | Creates a `RunContext` from a `RunConfig`, computing the output root directory. |
 | `config_hash` | function | Returns a deterministic `sha256:…` hash of a `RunConfig` for resume-mode comparison. |
 | `find_items_with_keyword` | function | Searches all components, nodes, and signal lines in a model for a keyword, returning `WandaItemRef` list. |
-| `get_extractor_class` | function | Looks up a registered `Extractor` class by name; raises `KeyError` if not found. |
-| `get_source_for_extension` | function | Returns the `ScenarioSource` class registered for a file extension; raises `ValueError` if unsupported. |
-| `get_workflow_class` | function | Looks up a registered `PostProcessingWorkflow` class by name. |
-| `list_extractors` | function | Returns a sorted list of registered extractor names. |
+| `get_source_for_extension` | function | Returns the bundled `ScenarioSource` class registered for a file extension; raises `ValueError` if unsupported. |
+| `get_workflow_class` | function | Looks up a bundled `PostProcessingWorkflow` class by name. |
 | `list_source_extensions` | function | Returns a sorted list of all registered scenario file extensions. |
-| `list_workflows` | function | Returns a sorted list of registered workflow names. |
+| `list_workflows` | function | Returns a sorted list of bundled workflow names. |
 | `load_run_config` | function | Parses a YAML or JSON file into a validated `RunConfig`. |
 | `load_scenarios` | function | Loads a scenario file via the appropriate registered `ScenarioSource`. |
 | `main` | function | CLI entry point; invokes the Typer `app`. |
 | `parse_disuse_value` | function | Normalises legacy disuse values (strings, ints, floats) to the boolean expected by WANDA. |
-| `register_extractor` | function | Registers an `Extractor` class under its `name`; returns the class unchanged. |
-| `register_source` | function | Registers a `ScenarioSource` class for each extension in `extensions`; usable as a decorator. |
-| `register_workflow` | function | Registers a `PostProcessingWorkflow` class under its `name`. |
-| `resolve_extractor` | function | Instantiates a registered extractor with validated params. |
+| `register_source` | function | Internal decorator used to register a bundled `ScenarioSource`. |
+| `register_workflow` | function | Internal helper used to register a bundled `PostProcessingWorkflow`. |
 | `resolve_items` | function | Resolves a component identifier to `WandaItemRef` objects via exact match, then keyword fallback. |
 | `resolve_route_pipes` | function | Returns `(pipe_name, direction)` tuples for all pipes on a named route. |
-| `resolve_workflow` | function | Instantiates a registered workflow with validated params. |
+| `resolve_workflow` | function | Instantiates a bundled workflow with validated params. |
 | `run` *(runner)* | function | Orchestrates a full batch run: builds plans, dispatches workers, aggregates results, runs workflow. |
 | `setup_logging` | function | Configures the root logger with a timestamp format; call once per process. |
 | `validate_run_paths` | function | Validates and resolves all filesystem paths in a `RunConfig` in place; raises `ValueError` on any problem. |
@@ -351,10 +218,9 @@ class MyWorkflow:
 | Export | Kind | Description |
 |--------|------|-------------|
 | `CaseStep` | protocol | Per-scenario post-processing step: implement `applicable(ctx)` and `run(ctx)`. |
-| `Extractor` | protocol | Custom model-level extraction plugin: implement `extract(ctx) -> dict`. |
-| `PostProcessingWorkflow` | protocol | Configurable workflow returning `CaseStep` and `RunStep` lists. |
+| `PostProcessingWorkflow` | protocol | Interface implemented by bundled workflows that return `CaseStep` and `RunStep` lists. |
 | `RunStep` | protocol | Run-level post-processing step: implement `run(ctx)`. |
-| `ScenarioSource` | protocol | Scenario loading backend: implement `extensions` and `load(path)`. |
+| `ScenarioSource` | protocol | Interface implemented by bundled scenario loaders. |
 
 ### Types / literals
 

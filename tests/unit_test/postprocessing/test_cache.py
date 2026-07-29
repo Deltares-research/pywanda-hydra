@@ -104,66 +104,6 @@ def test_write_skips_non_dict_route_payload(parquet_cache: ParquetCache) -> None
     assert parquet_cache.list_routes() == []
 
 
-def test_write_and_read_simple_custom_dataframe(parquet_cache: ParquetCache) -> None:
-    df = pd.DataFrame({"value": [1, 2, 3]})
-
-    artefacts = parquet_cache.write_custom({"my_extractor": df})
-
-    assert "custom_my_extractor" in artefacts
-    result = parquet_cache.read_custom("my_extractor")
-    assert list(result["value"]) == [1, 2, 3]
-
-
-def test_write_and_read_nested_custom_extraction(parquet_cache: ParquetCache) -> None:
-    nested = {
-        "timeseries": pd.DataFrame({"value": [1.0, 2.0]}),
-        "profile": pd.DataFrame({"elevation": [0.0, 1.0]}),
-    }
-
-    artefacts = parquet_cache.write_custom({"my_extractor": nested})
-
-    assert "custom_my_extractor_timeseries" in artefacts
-    assert "custom_my_extractor_profile" in artefacts
-
-    result = parquet_cache.read_custom("my_extractor")
-    assert isinstance(result, dict)
-    assert list(result["timeseries"]["value"]) == [1.0, 2.0]
-
-
-def test_write_custom_skips_empty_dataframe(parquet_cache: ParquetCache) -> None:
-    artefacts = parquet_cache.write_custom({"empty": pd.DataFrame()})
-
-    assert artefacts == {}
-
-
-def test_write_custom_skips_unsupported_type(parquet_cache: ParquetCache) -> None:
-    artefacts = parquet_cache.write_custom({"bad": object()})
-
-    assert artefacts == {}
-
-
-def test_write_custom_with_empty_dict_returns_empty(parquet_cache: ParquetCache) -> None:
-    assert parquet_cache.write_custom({}) == {}
-
-
-def test_read_custom_without_cache_returns_empty_dataframe(parquet_cache: ParquetCache) -> None:
-    result = parquet_cache.read_custom("nothing")
-
-    assert isinstance(result, pd.DataFrame)
-    assert result.empty  # type: ignore[union-attr]
-
-
-def test_list_custom_extractors(parquet_cache: ParquetCache) -> None:
-    parquet_cache.write_custom(
-        {
-            "simple": pd.DataFrame({"a": [1]}),
-            "nested": {"part": pd.DataFrame({"b": [2]})},
-        }
-    )
-
-    assert parquet_cache.list_custom_extractors() == ["nested", "simple"]
-
-
 def test_sanitize_filename_replaces_path_separators_and_spaces() -> None:
     assert _sanitize_filename("a/b\\c d") == "a_b_c_d"
 

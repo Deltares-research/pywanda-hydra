@@ -1,1 +1,1 @@
-"""Extraction runtime and plugin registry for postprocessing."""
+"""Simulation result extraction helpers."""

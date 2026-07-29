@@ -4,7 +4,7 @@ Reads the route timeseries from the standard Parquet cache (time × s-location)
 and renders a 2-D pcolormesh figure per case showing a hydraulic property as a
 function of both position along the route and simulation time.
 
-No custom extractor is required: the standard extraction already writes a
+The built-in extraction writes a
 ``timeseries.parquet`` for every route plot defined in the scenario.
 
 Route selection
@@ -22,13 +22,8 @@ Two optional parameters let you narrow or override this:
     Explicit list of route titles (the cache key, e.g.
     ``"PS-1 to Plant - Pressure"``).  When set, ``properties`` is ignored
     and only these titles are plotted — regardless of what is in the scenario.
-    Useful when running the step standalone from Python or when you want a
+    Useful when running the step directly from Python or when you want a
     fixed set of plots independent of the XLS.
-
---- Plugin registration (pyproject.toml) ---
-
-    [project.entry-points."pywandahydra.case_steps"]
-    space_time_plot = "my_plugin.steps:SpaceTimePlotStep"
 
 --- YAML: all routes from scenario, Pressure only ---
 

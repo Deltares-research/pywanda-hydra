@@ -9,11 +9,6 @@ themed line (same rendering as the per-case report pages).  Head and
 elevation share the same y-axis (both in metres), which is standard for
 hydraulic grade line (HGL) plots.
 
---- Plugin registration (pyproject.toml) ---
-
-    [project.entry-points."pywandahydra.run_steps"]
-    compare_route_scenarios = "my_plugin.steps:RouteComparisonStep"
-
 --- YAML workflow config ---
 
     execution:

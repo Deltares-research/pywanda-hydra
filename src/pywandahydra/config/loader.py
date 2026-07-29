@@ -44,7 +44,6 @@ class ExecutionConfig(BaseModel):
             multiprocessing.
         resume: Whether to skip already-completed cases.
         workflow: Post-processing workflow name + params.
-        extractors: List of custom extractors to run during model execution.
         verbose: Enable detailed logging during execution (default False).
     """
 
@@ -54,10 +53,6 @@ class ExecutionConfig(BaseModel):
     resume: bool = False
     verbose: bool = False
     workflow: WorkflowSpec = Field(default_factory=WorkflowSpec)
-    extractors: list[dict[str, Any]] = Field(
-        default_factory=list,
-        description="List of extractor specs: [{name: str, params: dict}]",
-    )
 
     @model_validator(mode="before")
     @classmethod

@@ -5,6 +5,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Removed
+- Installed-package plugin discovery and all `pywandahydra.*` plugin entry-point
+  groups. Supported scenario loading and post-processing behavior now ships with
+  pywandahydra.
+- Custom extractor configuration, execution, and cache persistence, together
+  with the `plugins` CLI command.
+
 ### Fixed
 - CLI runs crashed with a silent access violation (exit `0xC0000005`) inside
   `pywanda.WandaModel` while the same run completed under a debugger. Root
