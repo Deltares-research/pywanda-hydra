@@ -11,8 +11,6 @@ def prepare_scenario_model(
     base_model_path: Path,
     scenario_dir: str | Path,
     scenario_name: str,
-    *,
-    reuse_existing_data: bool = True,
 ) -> Path:
     """Scenario-specific WANDA model.
 
@@ -25,9 +23,6 @@ def prepare_scenario_model(
         Path to the base .wdi model file.
     scenario_dir : str | Path
         Directory where the scenario model will be created.
-    reuse_existing_data : bool, optional
-        If True and the scenario model file already exists, reuse it
-        instead of re-copying from the base model (default is True).
     scenario_name : str
         Name of the scenario, used to name the model files.
     """
@@ -47,11 +42,7 @@ def prepare_scenario_model(
     # Source companion files
     src_wdx = base_wdi.with_suffix(".wdx")
 
-    # If reusing existing data, and the scenario .wdi exists -> skip copying
-    if reuse_existing_data and target_wdi.exists():
-        return target_wdi
-
-    # Otherwise, remove existing model files and any stale WANDA engine
+    # Remove existing model files and any stale WANDA engine
     # artifacts from a previous run (.wdo, ._sm, ._um, .__I, .__R, ...).
     # Opening a fresh .wdi against a stale .wdo can hang the WANDA engine.
     # A PermissionError here means another process still has the model open;

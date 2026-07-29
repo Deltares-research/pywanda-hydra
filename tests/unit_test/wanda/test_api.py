@@ -57,7 +57,6 @@ class TestWandaAPI(unittest.TestCase):
             / "wanda"
             / "test_scenario",
             scenario_name="test_scenario",
-            reuse_existing_data=self.model_spec.reuse_existing_data,
         )
 
     def get_wanda_session(self):

@@ -42,11 +42,12 @@ class PywandaAdapter:
         reuse_existing_data: bool,
     ) -> Path:
         """Prepare scenario-specific model files and return model path."""
+        # Note: reuse_existing_data parameter is accepted for protocol compatibility
+        # but not used. Always creates fresh copy. Slice 03 will remove this parameter.
         return prepare_scenario_model(
             base_model_path,
             scenario_dir,
             scenario_name,
-            reuse_existing_data=reuse_existing_data,
         )
 
     def apply(self, handle: pywanda.WandaModel, change: ParameterChange) -> None:

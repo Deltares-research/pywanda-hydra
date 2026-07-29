@@ -39,29 +39,3 @@ class PlotTextAnnotation(BaseModel):
     dx: float = 0.0
     dy: float = 0.0
     text: str
-
-
-class RouteSeries(BaseModel):
-    """Specification for a data series in a route plot."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    label: str
-    values: list[float]
-
-
-class RouteData(BaseModel):
-    """Specification for route plot data."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    s_location: list[float]
-    series: list[RouteSeries]
-
-    s_location_profile: list[float] | None = None
-    elevation: list[float] | None = None
-
-    start_label: str | None = None
-    end_label: str | None = None
-
-    text_annotations: list[PlotTextAnnotation] = Field(default_factory=list)
