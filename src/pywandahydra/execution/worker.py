@@ -22,10 +22,9 @@ from filelock import Timeout
 
 from ..execution.case_plan import CasePlan
 from ..execution.journal import CaseJournal, _now_iso, resume_decision
-from ..postprocessing.core.context import CaseContext, ExtractionContext
+from ..postprocessing.core.context import CaseContext
 from ..postprocessing.core.pipeline import run_postprocessing
 from ..postprocessing.extraction.extract import extract_all
-from ..postprocessing.extraction.extractors import resolve_extractor
 from ..postprocessing.io.cache import ParquetCache
 from ..postprocessing.plotting.theme_registry import get_theme
 from ..postprocessing.workflows import bootstrap as bootstrap_workflows
@@ -166,62 +165,6 @@ def _run_simulations(
             journal.event("unsteady_done")
 
 
-def _run_custom_extractors(
-    model: Any,
-    adapter: WandaAdapter,
-    plan: CasePlan,
-    cache: ParquetCache,
-) -> dict[str, Any]:
-    """Run all configured custom extractors while the model is open."""
-    custom_extracted: dict[str, Any] = {}
-    logger.info(
-        "Case %s: Running %d custom extractors",
-        plan.case_id,
-        len(plan.extractors),
-    )
-    for extractor_spec in plan.extractors:
-        extractor_name = extractor_spec.get("name")
-        extractor_params = extractor_spec.get("params", {})
-        if not extractor_name:
-            logger.warning("Skipping extractor spec with no name: %s", extractor_spec)
-            continue
-
-        try:
-            extractor = resolve_extractor(extractor_name, extractor_params)
-            extraction_ctx = ExtractionContext(
-                model=model,
-                adapter=adapter,
-                scenario=plan.scenario,
-                case_id=plan.case_id,
-                case_dir=plan.case_dir,
-                cache=cache,
-            )
-            result = extractor.extract(extraction_ctx)
-            if result:
-                custom_extracted[extractor_name] = result
-                logger.info(
-                    "Extractor '%s' completed for case '%s'.",
-                    extractor_name,
-                    plan.case_id,
-                )
-            else:
-                logger.debug(
-                    "Extractor '%s' returned no data for case '%s'.",
-                    extractor_name,
-                    plan.case_id,
-                )
-        except Exception as e:
-            logger.error(
-                "Extractor '%s' failed for case '%s': %s",
-                extractor_name,
-                plan.case_id,
-                e,
-                exc_info=True,
-            )
-
-    return custom_extracted
-
-
 def _finalize_success(
     plan: CasePlan,
     journal: CaseJournal,
@@ -352,16 +295,10 @@ def _execute_case(plan: CasePlan, journal: CaseJournal) -> CaseResult:
                 n_routes=len(extracted["routes"]),
             )
 
-            # --- Run custom extractors while model is open ---
-            cache = ParquetCache(plan.case_dir)
-            custom_extracted = _run_custom_extractors(model, adapter, plan, cache)
-
-        # --- Cache extracted data (standard + custom) to Parquet ---
+        # --- Persist extracted data to Parquet ---
         logger.info("Case %s: WANDA session closed, writing cache...", plan.case_id)
         cache = ParquetCache(plan.case_dir)
         artefacts = cache.write(extracted)
-        custom_artefacts = cache.write_custom(custom_extracted)
-        artefacts.update(custom_artefacts)
         logger.info("Case %s: Cache written with %d artefacts", plan.case_id, len(artefacts))
         journal.event("cached", artefacts=artefacts)
 

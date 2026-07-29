@@ -1,13 +1,15 @@
 """Unit tests for wanda.session module."""
 
+import shutil
+import sys
 import unittest
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 from pywandahydra.config.models import ModelSpecification
 from pywandahydra.wanda.session import wanda_session
 
 # Import shared helper from root conftest
-import sys
 sys.path.insert(0, str(Path(__file__).parents[2]))
 from conftest import find_wanda_bin
 
@@ -45,14 +47,18 @@ class TestWandaSession(unittest.TestCase):
 
     def test_wanda_session_with_upgrade_enabled(self):
         """Test the wanda_session context manager with upgrade=True."""
-        # Arrange
-        spec = self.model_spec.model_copy(update={"upgrade": True})
+        with TemporaryDirectory() as temp_dir:
+            model_path = Path(temp_dir) / self.model_spec.model_path.name
+            shutil.copy2(self.model_spec.model_path, model_path)
+            companion_path = self.model_spec.model_path.with_suffix(".wdx")
+            shutil.copy2(companion_path, model_path.with_suffix(".wdx"))
+            spec = self.model_spec.model_copy(
+                update={"model_path": model_path, "upgrade": True}
+            )
 
-        # Act
-        with wanda_session(spec=spec) as model:
-            # Assert
-            self.assertIsNotNone(model)
-            self.assertEqual(len(model.get_all_pipes()), 3)
+            with wanda_session(spec=spec) as model:
+                self.assertIsNotNone(model)
+                self.assertEqual(len(model.get_all_pipes()), 3)
 
     def test_wanda_session_raises_for_invalid_wanda_bin(self):
         """Test that an invalid wanda_bin directory raises an exception."""

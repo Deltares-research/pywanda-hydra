@@ -130,7 +130,6 @@ def run(
         resume=cfg.execution.resume,
         workflow_name=cfg.execution.workflow.name,
         workflow_params=cfg.execution.workflow.params,
-        extractors=cfg.execution.extractors,
     )
 
     # Summary

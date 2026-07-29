@@ -109,7 +109,6 @@ def main() -> None:
             verbose=cfg.execution.verbose,
             workflow_name=cfg.execution.workflow.name,
             workflow_params=cfg.execution.workflow.params,
-            extractors=cfg.execution.extractors,
         )
 
         print(

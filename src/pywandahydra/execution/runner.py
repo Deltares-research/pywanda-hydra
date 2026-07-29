@@ -61,7 +61,6 @@ def run(
     verbose: bool = False,
     workflow_name: str = "default",
     workflow_params: dict[str, Any] | None = None,
-    extractors: list[dict[str, Any]] | None = None,
     adapter_class: str = "pywandahydra.wanda.pywanda_adapter:PywandaAdapter",
 ) -> RunResult:
     """Run scenarios with the specified model and context.
@@ -81,7 +80,6 @@ def run(
         verbose: Enable detailed logging during execution.
         workflow_name: Post-processing workflow name.
         workflow_params: Post-processing workflow parameters.
-        extractors: List of custom extractor specs to run during model execution.
         adapter_class: Import path for the WandaAdapter implementation.
 
     Returns:
@@ -113,7 +111,6 @@ def run(
         run_root,
         workflow_name=workflow.name,
         workflow_params=workflow_params,
-        extractors=extractors,
         adapter_class=adapter_class,
     )
     if not plans:

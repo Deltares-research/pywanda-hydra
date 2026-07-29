@@ -111,6 +111,20 @@ class TestLoadRunConfig(unittest.TestCase):
 
             self.assertEqual(cfg.execution.workflow.name, "default")
 
+    def test_custom_extractors_are_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            config_path = Path(tmp_dir) / "config.yaml"
+            data = _minimal_config_dict(
+                model_path="model.wdi", wanda_bin="bin", scenario_file="scenarios.xls"
+            )
+            data["execution"] = {"extractors": [{"name": "external"}]}
+            config_path.write_text(yaml.safe_dump(data), encoding="utf-8")
+
+            with self.assertRaises(ValueError) as ctx:
+                load_run_config(config_path)
+
+            self.assertIn("extractors", str(ctx.exception))
+
 
 class TestValidateRunPaths(unittest.TestCase):
     def _write_config(self, tmp_path: Path) -> tuple[RunConfig, Path]:

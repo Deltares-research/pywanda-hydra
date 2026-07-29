@@ -5,6 +5,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from filelock import FileLock
+
 from pywandahydra.config.models import ModelSpecification
 from pywandahydra.execution.case_plan import CasePlan
 from pywandahydra.execution.journal import CaseJournal
@@ -105,7 +107,11 @@ class TestWorkerFailurePath(unittest.TestCase):
             journal = CaseJournal(plan.case_dir)
             journal.acquire()
             try:
-                result = run_one_case(plan)
+                with patch(
+                    "pywandahydra.execution.journal.FileLock",
+                    side_effect=lambda path, timeout: FileLock(path, timeout=0),
+                ):
+                    result = run_one_case(plan)
             finally:
                 journal.release()
 

@@ -14,16 +14,16 @@ Older A-J plans are superseded. Do not implement workflow discriminated unions,
 
 - Repository default branch: `master` at `8b34cf7` when the v2 work began.
 - Slice 01 implementation: `7ba3206` on `refactor-v2/01-cleanup`.
-- Active branch: `refactor-v2/02-remove-plugins` at `89c4ec0`.
+- Active branch: `refactor-v2/02-remove-plugins`.
 - Active pull request: [#30 - Slice 02: Remove external extension/plugin machinery](https://github.com/Deltares-research/pywanda-hydra/pull/30).
-- Slice 02 is open and not yet accepted as the base for Slice 03/04.
+- Slice 02 implementation and local merge gates are complete; user merge approval is pending.
 
 ## Status
 
 | Slice | Plan | Branch | Depends on | Risk | Status |
 |---|---|---|---|---|---|
 | 01 | [`01-cleanup.md`](01-cleanup.md) | `refactor-v2/01-cleanup` | baseline | low | implemented at `7ba3206`; stacked prerequisite |
-| 02 | [`02-remove-plugins.md`](02-remove-plugins.md) | `refactor-v2/02-remove-plugins` | 01 | medium | active PR #30; acceptance incomplete |
+| 02 | [`02-remove-plugins.md`](02-remove-plugins.md) | `refactor-v2/02-remove-plugins` | 01 | medium | in review; local merge gate passed |
 | 03 | [`03-wanda-model-access.md`](03-wanda-model-access.md) | `refactor-v2/03-wanda-model-access` | 02 | high | pending |
 | 04 | [`04-scenario-document.md`](04-scenario-document.md) | `refactor-v2/04-scenario-document` | 02 | medium | pending; may develop with 03 |
 | 05 | [`05-scenario-models.md`](05-scenario-models.md) | `refactor-v2/05-scenario-models` | 03, 04 | high | pending |
@@ -68,17 +68,19 @@ Readable ordering:
 
 ## Active Slice 02 gate
 
-PR #30 has removed runtime entry-point discovery, but it is not complete against the approved
-Slice 02 plan. Before it becomes the base for subsequent slices:
+PR #30 now satisfies the approved Slice 02 scope:
 
-- remove all `[project.entry-points."pywandahydra.*"]` declarations from `pyproject.toml`;
-- delete the custom extractor Protocol/registry/configuration/case-plan/worker path;
-- remove custom-extractor persistence methods that have no remaining caller;
-- remove the dangling `pass` after `resolve_extractor` while deleting that module;
-- retain built-in workflows/steps/themes only as temporary local behavior for later slices;
-- remove generated `test_results_slice02.txt` from the PR;
-- verify binary WANDA fixture changes are intentional; otherwise restore them outside the model-running test;
-- pass the focused and merge gates in [`02-remove-plugins.md`](02-remove-plugins.md).
+- package metadata and production code contain no external entry-point discovery;
+- the custom extractor contract, configuration, execution path, persistence, tests, and example
+  are removed;
+- built-in workflow/step/theme/source registration remains only as the planned temporary bridge;
+- generated test output is removed;
+- the WANDA fixture is restored to the `master` blob, and the upgrade test uses a temporary copy;
+- all 370 tests pass, including 39 real-WANDA/preflight/integration tests;
+- Ruff, mypy, coverage, package build, and `git diff --check` pass.
+
+The remaining gate is explicit user approval and merge. Do not start dependent Slices 03 or 04
+until PR #30 is merged and recorded as their base.
 
 ## Coordinator checkpoints
 
