@@ -2,15 +2,17 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 
 from pywandahydra.config.models import ModelSpecification
 from pywandahydra.scenarios.schema import ParameterChange
-from pywandahydra.wanda.adapter import ModelHandle
+
+ModelHandle = Any
 
 
-class FakeWandaAdapter:
+class FakeWandaModelAccess:
     """In-memory adapter used by worker tests without pywanda dependency."""
 
     @contextmanager
@@ -105,7 +107,7 @@ class FakeWandaAdapter:
         return np.zeros((3, 1), dtype=np.float64)
 
 
-class FailingWandaAdapter(FakeWandaAdapter):
+class FailingWandaModelAccess(FakeWandaModelAccess):
     """Fake adapter whose steady-state run always raises.
 
     Used to exercise the worker's failure path (journal transition to
@@ -115,3 +117,8 @@ class FailingWandaAdapter(FakeWandaAdapter):
     def run_steady(self, handle: ModelHandle) -> None:
         del handle
         raise RuntimeError("simulated steady-state failure")
+
+
+# Backward-compatible aliases for older test names.
+FakeWandaAdapter = FakeWandaModelAccess
+FailingWandaAdapter = FailingWandaModelAccess

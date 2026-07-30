@@ -15,8 +15,7 @@ from __future__ import annotations
 import logging
 import os
 import time
-from importlib import import_module
-from typing import Any, TypedDict, cast
+from typing import Any, TypedDict
 
 from filelock import Timeout
 
@@ -28,7 +27,8 @@ from ..postprocessing.extraction.extract import extract_all
 from ..postprocessing.io.cache import ParquetCache
 from ..postprocessing.plotting.theme_registry import get_theme
 from ..postprocessing.workflows import bootstrap as bootstrap_workflows
-from ..wanda.adapter import WandaAdapter
+from ..wanda.model_access import WandaModelAccess
+from ..wanda.pywanda_model_access import PywandaModelAccess
 
 logger = logging.getLogger(__name__)
 
@@ -49,22 +49,9 @@ class CaseResult(TypedDict, total=False):
     scenario_dir: str
 
 
-def _load_adapter(plan: CasePlan) -> WandaAdapter:
-    """Instantiate the configured adapter class for this case.
-
-    Implemented to support loading of custom adapter (e.g., FakeAdapter for testing)
-    specified by import path in the CasePlan.
-    """
-    module_name, _, class_name = plan.adapter_class.partition(":")
-    if not module_name or not class_name:
-        raise ValueError(
-            f"Invalid adapter class path '{plan.adapter_class}'. "
-            "Expected format 'package.module:ClassName'."
-        )
-
-    module = import_module(module_name)
-    adapter_class = getattr(module, class_name)
-    return cast(WandaAdapter, adapter_class())
+def _build_model_access() -> WandaModelAccess:
+    """Construct the internal production model-access implementation."""
+    return PywandaModelAccess()
 
 
 def run_one_case(plan: CasePlan) -> CaseResult:
@@ -112,7 +99,7 @@ def run_one_case(plan: CasePlan) -> CaseResult:
 
 
 def _apply_parameters(
-    adapter: WandaAdapter,
+    adapter: WandaModelAccess,
     model: Any,
     plan: CasePlan,
     journal: CaseJournal,
@@ -142,7 +129,7 @@ def _apply_parameters(
 
 
 def _run_simulations(
-    adapter: WandaAdapter,
+    adapter: WandaModelAccess,
     model: Any,
     plan: CasePlan,
     journal: CaseJournal,
@@ -248,9 +235,9 @@ def _execute_case(plan: CasePlan, journal: CaseJournal) -> CaseResult:
         )
 
     start_time = time.perf_counter()
-    logger.info("Case %s: Loading adapter...", plan.case_id)
-    adapter = _load_adapter(plan)
-    logger.info("Case %s: Adapter loaded successfully", plan.case_id)
+    logger.info("Case %s: Building model access...", plan.case_id)
+    adapter = _build_model_access()
+    logger.info("Case %s: Model access ready", plan.case_id)
 
     try:
         # --- Prepare scenario model copy ---

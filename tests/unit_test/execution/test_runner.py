@@ -9,6 +9,7 @@ from pywandahydra.config.models import ModelSpecification, RunContext
 from pywandahydra.execution import runner
 from pywandahydra.execution.journal import CaseJournal
 from pywandahydra.scenarios.schema import ScenarioMeta, ScenarioSpecification
+from unit_test.wanda.fakes import FakeWandaModelAccess
 
 
 class TestRunner(unittest.TestCase):
@@ -72,6 +73,10 @@ class TestRunner(unittest.TestCase):
                     return_value=None,
                 ),
                 patch(
+                    "pywandahydra.execution.worker._build_model_access",
+                    return_value=FakeWandaModelAccess(),
+                ),
+                patch(
                     "pywandahydra.execution.worker.run_postprocessing",
                     return_value={"summary_table": True},
                 ),
@@ -81,7 +86,6 @@ class TestRunner(unittest.TestCase):
                     ctx=ctx,
                     scenarios=[scenario],
                     persist_manifest=True,
-                    adapter_class="unit_test.wanda.fakes:FakeWandaAdapter",
                 )
 
             self.assertEqual(result.n_total, 1)
@@ -110,6 +114,10 @@ class TestRunner(unittest.TestCase):
                     return_value=None,
                 ),
                 patch(
+                    "pywandahydra.execution.worker._build_model_access",
+                    return_value=FakeWandaModelAccess(),
+                ),
+                patch(
                     "pywandahydra.execution.worker.run_postprocessing",
                     return_value={"summary_table": True},
                 ),
@@ -119,7 +127,6 @@ class TestRunner(unittest.TestCase):
                     ctx=ctx,
                     scenarios=[scenario],
                     persist_manifest=False,
-                    adapter_class="unit_test.wanda.fakes:FakeWandaAdapter",
                 )
             self.assertEqual(first.n_success, 1)
 
@@ -137,6 +144,10 @@ class TestRunner(unittest.TestCase):
                     return_value=None,
                 ),
                 patch(
+                    "pywandahydra.execution.worker._build_model_access",
+                    return_value=FakeWandaModelAccess(),
+                ),
+                patch(
                     "pywandahydra.execution.worker.run_postprocessing",
                     return_value={"summary_table": True},
                 ),
@@ -147,7 +158,6 @@ class TestRunner(unittest.TestCase):
                     scenarios=[scenario],
                     persist_manifest=False,
                     resume=True,
-                    adapter_class="unit_test.wanda.fakes:FakeWandaAdapter",
                 )
 
             self.assertEqual(second.n_skipped, 1)

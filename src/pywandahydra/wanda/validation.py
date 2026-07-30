@@ -12,7 +12,7 @@ from typing import Any, cast
 from ..config.models import ModelSpecification
 from ..disuse import parse_disuse_value
 from ..scenarios.schema import ScenarioSpecification
-from .api import get_item, resolve_items
+from .item_lookup import get_item, resolve_items
 from .session import wanda_session
 
 logger = logging.getLogger(__name__)

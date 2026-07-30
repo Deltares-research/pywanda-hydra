@@ -37,7 +37,7 @@ from ...scenarios.schema import (
     ScenarioSpecification,
     TimePlotSpecification,
 )
-from ...wanda.adapter import WandaAdapter
+from ...wanda.model_access import WandaModelAccess
 
 logger = logging.getLogger(__name__)
 
@@ -50,13 +50,13 @@ logger = logging.getLogger(__name__)
 def extract_component_outputs(
     model: pywanda.WandaModel,
     specs: Sequence[ExportTableSpecification | TimePlotSpecification],
-    adapter: WandaAdapter,
+    adapter: WandaModelAccess,
 ) -> pd.DataFrame:
     """Extract time-series data for every *Output* specification.
 
     Each specification identifies a *component* (or keyword) and a
     *property*. The component identifier is resolved via the
-    configured :class:`~pywandahydra.wanda.adapter.WandaAdapter`, so it
+    configured :class:`~pywandahydra.wanda.model_access.WandaModelAccess`, so it
     can be an exact name **or** a keyword that matches multiple items.
 
     The returned DataFrame has:
@@ -73,7 +73,7 @@ def extract_component_outputs(
         An open WANDA model that has been simulated.
     specs : Sequence[ExportTableSpecification]
         One or more export-table specifications.
-    adapter : WandaAdapter
+    adapter : WandaModelAccess
         Adapter used for item resolution and unit-converted outputs.
 
     Returns
@@ -166,7 +166,7 @@ def extract_component_outputs(
 def extract_route_outputs(
     model: pywanda.WandaModel,
     specs: Sequence[RoutePlotSpecification],
-    adapter: WandaAdapter,
+    adapter: WandaModelAccess,
 ) -> dict[str, dict[str, pd.DataFrame]]:
     """Extract route-based property data for every *RPlots* specification.
 
@@ -194,7 +194,7 @@ def extract_route_outputs(
         An open WANDA model that has been simulated.
     specs : Sequence[RoutePlotSpecification]
         One or more route-plot specifications.
-    adapter : WandaAdapter
+    adapter : WandaModelAccess
         Adapter used to resolve route topology and model outputs.
 
     Returns
@@ -390,7 +390,7 @@ def _normalise_pipe_series(
 def extract_all(
     model: pywanda.WandaModel,
     scenario: ScenarioSpecification,
-    adapter: WandaAdapter,
+    adapter: WandaModelAccess,
 ) -> dict[str, Any]:
     """Run all extractions defined on a scenario specification.
 
@@ -401,7 +401,7 @@ def extract_all(
     scenario : ScenarioSpecification
         The scenario whose ``tables``, ``time_plots`` and ``routes``
         post-processing lists drive the extraction.
-    adapter : WandaAdapter
+    adapter : WandaModelAccess
         Adapter used for route-related model operations.
 
     Returns
