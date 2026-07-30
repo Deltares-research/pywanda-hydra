@@ -8,8 +8,8 @@ from unittest.mock import MagicMock
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from pywandahydra.postprocessing.plotting.models import AxisSpec
 from pywandahydra.postprocessing.plotting.renderers.route_plot import render_route_plot
+from pywandahydra.scenarios.models.plot_axis import AxisSpecification
 from pywandahydra.scenarios.models.plot_route import RoutePlotSpecification
 
 
@@ -114,8 +114,8 @@ class TestRenderRoutePlot(unittest.TestCase):
         cache = self._make_cache({"envelope": envelope})
         spec = self._make_spec(
             title="Custom Title",
-            x_axis=AxisSpec(label="Distance [m]"),
-            y_axis=AxisSpec(label="Discharge [m3/s]"),
+            x_axis=AxisSpecification(label="Distance [m]"),
+            y_axis=AxisSpecification(label="Discharge [m3/s]"),
         )
 
         # Act

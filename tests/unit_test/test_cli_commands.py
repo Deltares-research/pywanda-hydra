@@ -10,6 +10,7 @@ from __future__ import annotations
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import yaml
@@ -112,9 +113,7 @@ class TestRunCommand(unittest.TestCase):
             config_path = _write_run_config(tmp_dir)
 
             with patch("pywandahydra.cli.commands.faulthandler.enable"):
-                result = runner.invoke(
-                    app, ["run", str(config_path), "--workers", "0"]
-                )
+                result = runner.invoke(app, ["run", str(config_path), "--workers", "0"])
 
             self.assertEqual(result.exit_code, 1)
             self.assertIn("--workers must be >= 1", result.output)
@@ -153,7 +152,7 @@ class TestRunCommand(unittest.TestCase):
             with (
                 patch("pywandahydra.cli.commands.faulthandler.enable"),
                 patch(
-                    "pywandahydra.scenarios.mapper.load_scenarios",
+                    "pywandahydra.scenarios.loader.load_scenario_document",
                     side_effect=ValueError("bad scenarios"),
                 ),
             ):
@@ -168,7 +167,10 @@ class TestRunCommand(unittest.TestCase):
 
             with (
                 patch("pywandahydra.cli.commands.faulthandler.enable"),
-                patch("pywandahydra.scenarios.mapper.load_scenarios", return_value=[]),
+                patch(
+                    "pywandahydra.scenarios.loader.load_scenario_document",
+                    return_value=SimpleNamespace(scenarios=[]),
+                ),
                 patch(
                     "pywandahydra.wanda.validation.assert_preflight_valid",
                     side_effect=ValueError("preflight failed"),
@@ -185,7 +187,10 @@ class TestRunCommand(unittest.TestCase):
 
             with (
                 patch("pywandahydra.cli.commands.faulthandler.enable"),
-                patch("pywandahydra.scenarios.mapper.load_scenarios", return_value=[]),
+                patch(
+                    "pywandahydra.scenarios.loader.load_scenario_document",
+                    return_value=SimpleNamespace(scenarios=[]),
+                ),
                 patch("pywandahydra.wanda.validation.assert_preflight_valid"),
                 patch(
                     "pywandahydra.config.loader.apply_post_processing_overrides",
@@ -213,11 +218,12 @@ class TestRunCommand(unittest.TestCase):
 
             with (
                 patch("pywandahydra.cli.commands.faulthandler.enable"),
-                patch("pywandahydra.scenarios.mapper.load_scenarios", return_value=[]),
-                patch("pywandahydra.wanda.validation.assert_preflight_valid"),
                 patch(
-                    "pywandahydra.execution.runner.run", return_value=success_result
+                    "pywandahydra.scenarios.loader.load_scenario_document",
+                    return_value=SimpleNamespace(scenarios=[]),
                 ),
+                patch("pywandahydra.wanda.validation.assert_preflight_valid"),
+                patch("pywandahydra.execution.runner.run", return_value=success_result),
             ):
                 result = runner.invoke(app, ["run", str(config_path), "--resume"])
 
@@ -240,11 +246,12 @@ class TestRunCommand(unittest.TestCase):
 
             with (
                 patch("pywandahydra.cli.commands.faulthandler.enable"),
-                patch("pywandahydra.scenarios.mapper.load_scenarios", return_value=[]),
-                patch("pywandahydra.wanda.validation.assert_preflight_valid"),
                 patch(
-                    "pywandahydra.execution.runner.run", return_value=failed_result
+                    "pywandahydra.scenarios.loader.load_scenario_document",
+                    return_value=SimpleNamespace(scenarios=[]),
                 ),
+                patch("pywandahydra.wanda.validation.assert_preflight_valid"),
+                patch("pywandahydra.execution.runner.run", return_value=failed_result),
             ):
                 result = runner.invoke(app, ["run", str(config_path)])
 
@@ -289,6 +296,7 @@ class TestValidateCommand(unittest.TestCase):
             self.assertEqual(result.exit_code, 1)
             self.assertIn("Config OK", result.output)
             self.assertIn("Runtime paths INVALID", result.output)
+
 
 if __name__ == "__main__":
     unittest.main()
