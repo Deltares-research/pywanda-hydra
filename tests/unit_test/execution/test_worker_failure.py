@@ -12,6 +12,7 @@ from pywandahydra.execution.case_plan import CasePlan
 from pywandahydra.execution.journal import CaseJournal
 from pywandahydra.execution.worker import run_one_case
 from pywandahydra.scenarios.schema import ScenarioMeta, ScenarioSpecification
+from unit_test.wanda.fakes import FailingWandaModelAccess, FakeWandaModelAccess
 
 
 class TestWorkerFailurePath(unittest.TestCase):
@@ -43,12 +44,17 @@ class TestWorkerFailurePath(unittest.TestCase):
                 case_dir=root_dir / "scenarios" / "case_failing",
                 model_spec=model_spec,
                 scenario=scenario,
-                adapter_class="unit_test.wanda.fakes:FailingWandaAdapter",
             )
 
-            with patch(
-                "pywandahydra.execution.worker.bootstrap_workflows",
-                return_value=None,
+            with (
+                patch(
+                    "pywandahydra.execution.worker.bootstrap_workflows",
+                    return_value=None,
+                ),
+                patch(
+                    "pywandahydra.execution.worker._build_model_access",
+                    return_value=FailingWandaModelAccess(),
+                ),
             ):
                 result = run_one_case(plan)
 
@@ -101,7 +107,6 @@ class TestWorkerFailurePath(unittest.TestCase):
                 case_dir=root_dir / "scenarios" / "case_locked",
                 model_spec=model_spec,
                 scenario=scenario,
-                adapter_class="unit_test.wanda.fakes:FakeWandaAdapter",
             )
 
             journal = CaseJournal(plan.case_dir)
@@ -111,7 +116,11 @@ class TestWorkerFailurePath(unittest.TestCase):
                     "pywandahydra.execution.journal.FileLock",
                     side_effect=lambda path, timeout: FileLock(path, timeout=0),
                 ):
-                    result = run_one_case(plan)
+                    with patch(
+                        "pywandahydra.execution.worker._build_model_access",
+                        return_value=FakeWandaModelAccess(),
+                    ):
+                        result = run_one_case(plan)
             finally:
                 journal.release()
 

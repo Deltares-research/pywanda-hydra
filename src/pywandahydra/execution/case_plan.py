@@ -27,7 +27,6 @@ class CasePlan:
         scenario: The full scenario specification.
         workflow_name: Post-processing workflow name.
         workflow_params: Post-processing workflow parameters.
-        adapter_class: Import path for the WandaAdapter implementation.
         attempt: Current attempt number (for retries).
         config_hash: SHA-256 hash of the plan for idempotency checks.
     """
@@ -38,7 +37,6 @@ class CasePlan:
     scenario: ScenarioSpecification
     workflow_name: str = "default"
     workflow_params: dict[str, Any] = field(default_factory=dict)
-    adapter_class: str = "pywandahydra.wanda.pywanda_adapter:PywandaAdapter"
     attempt: int = 1
     config_hash: str = field(default="", repr=False)
 
@@ -75,7 +73,6 @@ def build_case_plans(
     run_root: Path,
     workflow_name: str = "default",
     workflow_params: dict[str, Any] | None = None,
-    adapter_class: str = "pywandahydra.wanda.pywanda_adapter:PywandaAdapter",
 ) -> list[CasePlan]:
     """Build CasePlan objects for all included scenarios.
 
@@ -85,7 +82,6 @@ def build_case_plans(
         run_root: Root directory for the run output.
         workflow_name: Post-processing workflow name.
         workflow_params: Post-processing workflow parameters.
-        adapter_class: Import path for the WandaAdapter implementation.
 
     Returns:
         List of CasePlan objects for included scenarios.
@@ -106,7 +102,6 @@ def build_case_plans(
                 scenario=scenario,
                 workflow_name=workflow_name,
                 workflow_params=dict(workflow_params or {}),
-                adapter_class=adapter_class,
             )
         )
     return plans

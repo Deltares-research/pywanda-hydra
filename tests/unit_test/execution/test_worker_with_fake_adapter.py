@@ -9,6 +9,7 @@ from pywandahydra.config.models import ModelSpecification
 from pywandahydra.execution.case_plan import CasePlan
 from pywandahydra.execution.worker import run_one_case
 from pywandahydra.scenarios.schema import ScenarioMeta, ScenarioSpecification
+from unit_test.wanda.fakes import FakeWandaModelAccess
 
 
 class TestWorkerWithFakeAdapter(unittest.TestCase):
@@ -40,16 +41,21 @@ class TestWorkerWithFakeAdapter(unittest.TestCase):
                 case_dir=root_dir / "scenarios" / "case_fake",
                 model_spec=model_spec,
                 scenario=scenario,
-                adapter_class="unit_test.wanda.fakes:FakeWandaAdapter",
             )
 
             with patch(
                 "pywandahydra.execution.worker.bootstrap_workflows",
                 return_value=None,
             ):
-                with patch(
-                    "pywandahydra.execution.worker.run_postprocessing",
-                    return_value={"summary_table": True},
+                with (
+                    patch(
+                        "pywandahydra.execution.worker._build_model_access",
+                        return_value=FakeWandaModelAccess(),
+                    ),
+                    patch(
+                        "pywandahydra.execution.worker.run_postprocessing",
+                        return_value={"summary_table": True},
+                    ),
                 ):
                     result = run_one_case(plan)
 
