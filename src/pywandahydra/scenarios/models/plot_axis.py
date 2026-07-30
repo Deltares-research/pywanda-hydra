@@ -1,4 +1,4 @@
-"""Pydantic models used by plotting configuration and plot data layers."""
+"""Axis and annotation models used by scenario plot specifications."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 ScaleType = Literal["linear"]
 
 
-class AxisSpec(BaseModel):
+class AxisSpecification(BaseModel):
     """Specification for a plot axis."""
 
     model_config = ConfigDict(extra="forbid")

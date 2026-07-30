@@ -6,6 +6,9 @@ from pathlib import Path
 
 import pandas as pd
 
+from pywandahydra.config.models import ModelSpecification
+from pywandahydra.execution.case_plan import build_case_plans
+from pywandahydra.scenarios.loader import load_scenario_document
 from pywandahydra.scenarios.mapper import ScenarioLoadOptions, load_scenarios
 from pywandahydra.scenarios.schema import ScenarioSpecification
 from pywandahydra.scenarios.sources.xls import _read_rplots_sheet, _read_tplots_sheet
@@ -20,19 +23,98 @@ class TestScenarioLoading(unittest.TestCase):
         self.test_xls_path = Path(self.data_dir, "ExampleParameter.xls")
 
     def test_load_scenarios_from_xls(self) -> None:
-        """Test loading scenarios from an XLS file."""
+        """Scenario loading keeps valid rows; include filtering is deferred."""
         # Arrange
         options = ScenarioLoadOptions()
 
         # Act
         scenarios = load_scenarios(self.test_xls_path, options=options)
 
-        print(scenarios)
-
         # Assert
         self.assertIsInstance(scenarios, list)
         self.assertIsInstance(scenarios[0], ScenarioSpecification)
-        self.assertEqual(len(scenarios), 105)  # Expected number of scenarios
+        included = sum(1 for s in scenarios if s.meta.include)
+        self.assertEqual(included, 105)
+        self.assertGreaterEqual(len(scenarios), included)
+
+    def test_load_document_keeps_excluded_rows_and_tracks_source_path(self) -> None:
+        """ScenarioDocument preserves valid rows and stores workbook source path."""
+        with tempfile.TemporaryDirectory() as td:
+            workbook = Path(td) / "doc.xlsx"
+            cases = pd.DataFrame(
+                [
+                    ["Number", "Include", "Name", "PIPE P1"],
+                    ["My analysis", 77, "2024.1", "Diameter"],
+                    [1, 1, "Case A", 0.50],
+                    [2, 0, "Case B", 0.75],
+                ]
+            )
+            with pd.ExcelWriter(workbook, engine="openpyxl") as writer:
+                cases.to_excel(writer, sheet_name="Cases", index=False, header=False)
+
+            options = ScenarioLoadOptions(
+                global_description_col="Number",
+                global_wanda_version_col="Name",
+                global_project_number_col="Include",
+            )
+            document = load_scenario_document(workbook, options=options)
+
+        self.assertEqual(document.source_path, workbook)
+        self.assertEqual(document.analysis_metadata.analysis_description, "My analysis")
+        self.assertEqual(len(document.scenarios), 2)
+        self.assertEqual(sum(1 for s in document.scenarios if s.meta.include), 1)
+
+    def test_include_filtering_happens_in_case_plan_builder(self) -> None:
+        """Execution selection point keeps only included scenarios."""
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            workbook = root / "doc.xlsx"
+            cases = pd.DataFrame(
+                [
+                    ["Number", "Include", "Name", "PIPE P1"],
+                    ["My analysis", 77, "2024.1", "Diameter"],
+                    [1, 1, "Case A", 0.50],
+                    [2, 0, "Case B", 0.75],
+                ]
+            )
+            with pd.ExcelWriter(workbook, engine="openpyxl") as writer:
+                cases.to_excel(writer, sheet_name="Cases", index=False, header=False)
+
+            options = ScenarioLoadOptions(
+                global_description_col="Number",
+                global_wanda_version_col="Name",
+                global_project_number_col="Include",
+            )
+            document = load_scenario_document(workbook, options=options)
+
+            model_path = root / "base_model.wdi"
+            model_path.write_bytes(b"base")
+            model_spec = ModelSpecification(
+                model_path=model_path,
+                wanda_bin=Path(r"c:\wanda\bin"),
+                base_model_name="base_model",
+                run_steady=False,
+                run_unsteady=False,
+                reuse_existing_data=False,
+            )
+
+            plans = build_case_plans(
+                model_spec=model_spec,
+                scenarios=list(document.scenarios),
+                run_root=root / "run",
+            )
+
+        self.assertEqual(len(document.scenarios), 2)
+        self.assertEqual(len(plans), 1)
+        self.assertEqual(plans[0].case_id, "Case A")
+
+    def test_unsupported_extension_raises(self) -> None:
+        """Loader rejects unsupported scenario file extensions."""
+        with tempfile.TemporaryDirectory() as td:
+            unsupported = Path(td) / "scenarios.csv"
+            unsupported.write_text("dummy", encoding="utf-8")
+            with self.assertRaises(ValueError):
+                load_scenario_document(unsupported)
 
     def test_rplots_parses_fig_and_plot_columns(self) -> None:
         """Rplots parser should preserve fig/page key and plot/row ordering fields."""

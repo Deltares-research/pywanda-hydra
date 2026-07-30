@@ -6,8 +6,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from pywandahydra.postprocessing.plotting.models import AxisSpec
-
+from .plot_axis import AxisSpecification
 from .validators import ensure_non_empty_string, normalize_fig, normalize_optional_int
 
 
@@ -21,8 +20,8 @@ class RoutePlotSpecification(BaseModel):
         legend (str | None): The legend label for the plot.
         fig (str | None): The figure identifier for the plot.
         plot (int | None): The plot number within the figure.
-        x_axis (AxisSpec): The specification for the x-axis.
-        y_axis (AxisSpec): The specification for the y-axis.
+        x_axis (AxisSpecification): The specification for the x-axis.
+        y_axis (AxisSpecification): The specification for the y-axis.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -34,8 +33,8 @@ class RoutePlotSpecification(BaseModel):
     legend: str | None = None
     fig: str | None = None
     plot: int | None = None
-    x_axis: AxisSpec = Field(default_factory=lambda: AxisSpec(label=""))
-    y_axis: AxisSpec = Field(default_factory=lambda: AxisSpec(label=""))
+    x_axis: AxisSpecification = Field(default_factory=lambda: AxisSpecification(label=""))
+    y_axis: AxisSpecification = Field(default_factory=lambda: AxisSpecification(label=""))
 
     @field_validator("title")
     @classmethod

@@ -11,9 +11,10 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from matplotlib.figure import Figure
 
+from pywandahydra.scenarios.models.plot_axis import AxisSpecification
+
 from ...io.cache import ParquetCache
 from ...io.export import savefig
-from ..models import AxisSpec
 from .common import apply_axis_spec, configure_matplotlib_defaults
 from .theme import PlotTheme
 
@@ -28,8 +29,8 @@ def render_time_series_plot(
     cache: ParquetCache,
     *,
     title: str | None = None,
-    x_axis: AxisSpec | None = None,
-    y_axis: AxisSpec | None = None,
+    x_axis: AxisSpecification | None = None,
+    y_axis: AxisSpecification | None = None,
     output_dir: Path | None = None,
     filename: str | None = None,
     export_props: dict[str, dict[str, Any]] | None = None,

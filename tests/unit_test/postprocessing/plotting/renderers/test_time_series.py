@@ -8,8 +8,8 @@ from unittest.mock import MagicMock
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from pywandahydra.postprocessing.plotting.models import AxisSpec
 from pywandahydra.postprocessing.plotting.renderers.time_series import render_time_series_plot
+from pywandahydra.scenarios.models.plot_axis import AxisSpecification
 
 
 class TestRenderTimeSeriesPlot(unittest.TestCase):
@@ -108,8 +108,8 @@ class TestRenderTimeSeriesPlot(unittest.TestCase):
         # Arrange
         df = pd.DataFrame({"Pipe1|Discharge": [1.0, 2.0, 3.0]}, index=[0.0, 1.0, 2.0])
         cache = self._make_cache(df)
-        x_axis = AxisSpec(label="Time [h]")
-        y_axis = AxisSpec(label="Discharge [m3/s]")
+        x_axis = AxisSpecification(label="Time [h]")
+        y_axis = AxisSpecification(label="Discharge [m3/s]")
 
         # Act
         fig = render_time_series_plot(

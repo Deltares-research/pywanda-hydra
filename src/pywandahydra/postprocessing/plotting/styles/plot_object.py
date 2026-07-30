@@ -7,7 +7,7 @@ import numpy as np
 from matplotlib.axes._axes import Axes
 from pydantic import BaseModel
 
-from pywandahydra.postprocessing.plotting.models import AxisSpec
+from pywandahydra.scenarios.models.plot_axis import AxisSpecification
 
 
 class PlotObject(ABC):
@@ -17,8 +17,8 @@ class PlotObject(ABC):
         self,
         *,
         title: str,
-        x_axis: AxisSpec,
-        y_axis: AxisSpec,
+        x_axis: AxisSpecification,
+        y_axis: AxisSpecification,
     ):
         """Initialize the plot object.
 
@@ -26,9 +26,9 @@ class PlotObject(ABC):
         ----------
         title : str
             The title of the plot.
-        x_axis : AxisSpec
+        x_axis : AxisSpecification
             Specification for the x-axis.
-        y_axis : AxisSpec
+        y_axis : AxisSpecification
             Specification for the y-axis.
         """
         self.title = title
@@ -113,7 +113,14 @@ TData = TypeVar("TData", bound=BaseModel)
 class DataPlot(PlotObject, Generic[TData]):
     """Base class for data-driven plots."""
 
-    def __init__(self, *, data: TData, title: str, x_axis: AxisSpec, y_axis: AxisSpec):
+    def __init__(
+        self,
+        *,
+        data: TData,
+        title: str,
+        x_axis: AxisSpecification,
+        y_axis: AxisSpecification,
+    ):
         self.data = data
         super().__init__(title=title, x_axis=x_axis, y_axis=y_axis)
 

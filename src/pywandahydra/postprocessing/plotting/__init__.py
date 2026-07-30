@@ -4,11 +4,12 @@ This package contains rendering utilities, plotting models, and theme
 registry helpers used by post-processing workflows.
 """
 
-from .models import AxisSpec, PlotTextAnnotation
+from pywandahydra.scenarios.models.plot_axis import AxisSpecification, PlotTextAnnotation
+
 from .theme_registry import bootstrap, get_theme, list_themes, register_theme
 
 __all__ = [
-    "AxisSpec",
+    "AxisSpecification",
     "PlotTextAnnotation",
     "bootstrap",
     "get_theme",
