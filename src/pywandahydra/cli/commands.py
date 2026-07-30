@@ -50,7 +50,7 @@ def run(
         validate_run_paths,
     )
     from ..execution.runner import run as run_scenarios
-    from ..scenarios.mapper import load_scenarios
+    from ..scenarios.loader import load_scenario_document
     from ..wanda.validation import assert_preflight_valid
 
     # Load and validate config
@@ -82,7 +82,8 @@ def run(
     scenario_path = cfg.scenario_file
 
     try:
-        scenarios = load_scenarios(scenario_path)
+        scenario_document = load_scenario_document(scenario_path)
+        scenarios = list(scenario_document.scenarios)
     except (ValueError, FileNotFoundError) as e:
         typer.echo(f"Error loading scenarios: {e}", err=True)
         raise typer.Exit(code=1) from None
@@ -196,7 +197,7 @@ def validate(
 ) -> None:
     """Validate a configuration file without running anything."""
     from ..config.loader import load_run_config, validate_run_paths
-    from ..scenarios.mapper import assert_scenario_file_valid, load_scenarios
+    from ..scenarios.loader import assert_scenario_file_valid, load_scenario_document
 
     try:
         cfg = load_run_config(config)
@@ -219,7 +220,8 @@ def validate(
         raise typer.Exit(code=1) from None
 
     try:
-        scenarios = load_scenarios(cfg.scenario_file)
+        scenario_document = load_scenario_document(cfg.scenario_file)
+        scenarios = list(scenario_document.scenarios)
         n_included = sum(1 for s in scenarios if s.meta.include)
         typer.echo(f"Scenarios OK: {len(scenarios)} total, {n_included} included")
     except (ValueError, FileNotFoundError) as e:
@@ -291,15 +293,15 @@ def plot(
         else:
             # Render all available routes from cache
             for route_title in cache.list_routes():
-                from ..postprocessing.plotting.models import AxisSpec
+                from ..scenarios.models.plot_axis import AxisSpecification
                 from ..scenarios.schema import RoutePlotSpecification
 
                 spec = RoutePlotSpecification(
                     route_id=route_title,
                     property="",
                     title=route_title,
-                    x_axis=AxisSpec(label="Distance [m]"),
-                    y_axis=AxisSpec(label=""),
+                    x_axis=AxisSpecification(label="Distance [m]"),
+                    y_axis=AxisSpecification(label=""),
                 )
                 render_route_plot(spec, cache, output_dir=figures_dir, export_props=export_props)
 

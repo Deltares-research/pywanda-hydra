@@ -6,8 +6,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from pywandahydra.postprocessing.plotting.models import AxisSpec
-
+from .plot_axis import AxisSpecification
 from .validators import (
     ensure_non_empty_string,
     normalize_fig,
@@ -31,8 +30,8 @@ class TimePlotSpecification(BaseModel):
         color (str | None): The color of the plot line.
         style (str | None): The line style of the plot line.
         marker (str | None): The marker style for the plot line.
-        x_axis (AxisSpec): The specification for the x-axis.
-        y_axis (AxisSpec): The specification for the y-axis.
+        x_axis (AxisSpecification): The specification for the x-axis.
+        y_axis (AxisSpecification): The specification for the y-axis.
 
     """
 
@@ -49,8 +48,8 @@ class TimePlotSpecification(BaseModel):
     color: str | None = None
     style: str | None = None
     marker: str | None = None
-    x_axis: AxisSpec = Field(default_factory=lambda: AxisSpec(label=""))
-    y_axis: AxisSpec = Field(default_factory=lambda: AxisSpec(label=""))
+    x_axis: AxisSpecification = Field(default_factory=lambda: AxisSpecification(label=""))
+    y_axis: AxisSpecification = Field(default_factory=lambda: AxisSpecification(label=""))
 
     @field_validator("component", "property")
     @classmethod

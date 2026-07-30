@@ -12,8 +12,8 @@ import numpy as np
 import pandas as pd
 from pydantic import ValidationError
 
-from pywandahydra.postprocessing.plotting.models import AxisSpec
-
+from ..models.document import ScenarioDocument, ScenarioWarning
+from ..models.plot_axis import AxisSpecification
 from ..schema import (
     AnalysisMeta,
     ExportTableSpecification,
@@ -24,10 +24,9 @@ from ..schema import (
     ScenarioSpecification,
     TimePlotSpecification,
 )
-from .base import SourceValidationIssue, register_source
 
 if TYPE_CHECKING:
-    from ..mapper import ScenarioLoadOptions
+    from ..loader import ScenarioLoadOptions
 
 logger = logging.getLogger(__name__)
 
@@ -229,7 +228,10 @@ def _parse_plot_sheet(
     *,
     strict: bool,
     kind: str,
-    build_spec: Callable[[_RowGetter, str, str, str | None, AxisSpec, AxisSpec], _SpecT],
+    build_spec: Callable[
+        [_RowGetter, str, str, str | None, AxisSpecification, AxisSpecification],
+        _SpecT,
+    ],
 ) -> list[_SpecT]:
     """Parse a plot sheet (RPlots/TPlots) shared structure into specifications.
 
@@ -308,14 +310,14 @@ def _parse_plot_sheet(
                 )
             seen_titles.add(title)
 
-        x_axis = AxisSpec(
+        x_axis = AxisSpecification(
             label=_as_str_or_none(get("xlabel")) or "",
             min=_float_or_none(get("xmin")),
             max=_float_or_none(get("xmax")),
             tick_interval=_float_or_none(get("xtick")),
             factor=_float_or_none(get("xscale")) or 1.0,
         )
-        y_axis = AxisSpec(
+        y_axis = AxisSpecification(
             label=_as_str_or_none(get("ylabel")) or "",
             min=_float_or_none(get("ymin")),
             max=_float_or_none(get("ymax")),
@@ -361,8 +363,8 @@ def _read_rplots_sheet(
         comp: str,
         prop: str,
         title: str | None,
-        x_axis: AxisSpec,
-        y_axis: AxisSpec,
+        x_axis: AxisSpecification,
+        y_axis: AxisSpecification,
     ) -> RoutePlotSpecification:
         return RoutePlotSpecification(
             route_id=comp,
@@ -406,8 +408,8 @@ def _read_tplots_sheet(
         comp: str,
         prop: str,
         title: str | None,
-        x_axis: AxisSpec,
-        y_axis: AxisSpec,
+        x_axis: AxisSpecification,
+        y_axis: AxisSpecification,
     ) -> TimePlotSpecification:
         return TimePlotSpecification(
             component=comp,
@@ -433,10 +435,8 @@ def _read_tplots_sheet(
     )
 
 
-def read_scenarios_from_excel(
-    path: str | Path, opts: ScenarioLoadOptions
-) -> list[ScenarioSpecification]:
-    """Read scenarios from an Excel file.
+def load_excel_document(path: str | Path, opts: ScenarioLoadOptions) -> ScenarioDocument:
+    """Read scenarios from an Excel file into a ``ScenarioDocument``.
 
     Reads the *Cases* sheet for scenario parameters, and optionally the
     *Output*, *RPlots*, and *TPlots* sheets for post-processing specifications.
@@ -450,8 +450,8 @@ def read_scenarios_from_excel(
 
     Returns
     -------
-    List[ScenarioSpecification]
-        A list of scenario specifications read from the Excel file.
+    ScenarioDocument
+        Document aggregate with workbook metadata and all valid rows.
     """
     # Read the Excel file
     input_data = pd.read_excel(
@@ -547,11 +547,6 @@ def read_scenarios_from_excel(
                 )
             )
 
-        # Construct ScenarioSpecification only if included
-        if not meta.include:
-            logger.debug("Scenario '%s' (Number=%d) is not included.", meta.name, meta.number)
-            continue
-
         scenarios.append(
             ScenarioSpecification(
                 meta=meta,
@@ -561,6 +556,8 @@ def read_scenarios_from_excel(
                     routes=rplot_specs,
                     time_plots=tplot_specs,
                 ),
+                # Slice 04: temporary metadata copy retained for current report code.
+                # Slice 05 removes this duplicate and uses document-level metadata.
                 analysis_meta=analysis_context,
                 source={
                     "file": path,
@@ -570,10 +567,23 @@ def read_scenarios_from_excel(
             )
         )
 
-    return scenarios
+    return ScenarioDocument(
+        analysis_metadata=analysis_context,
+        scenarios=tuple(scenarios),
+        source_path=Path(path),
+        warnings=(),
+    )
 
 
-def check_xls_structure(path: str | Path, opts: ScenarioLoadOptions) -> list[SourceValidationIssue]:
+def read_scenarios_from_excel(
+    path: str | Path,
+    opts: ScenarioLoadOptions,
+) -> list[ScenarioSpecification]:
+    """Compatibility helper returning only scenarios from the workbook document."""
+    return list(load_excel_document(path, opts).scenarios)
+
+
+def check_xls_structure(path: str | Path, opts: ScenarioLoadOptions) -> list[ScenarioWarning]:
     """Check that an Excel workbook has the sheets/columns scenario loading needs.
 
     Unlike ``strict_validation`` (which raises on the first problem found
@@ -589,24 +599,22 @@ def check_xls_structure(path: str | Path, opts: ScenarioLoadOptions) -> list[Sou
 
     Returns
     -------
-    list[SourceValidationIssue]
+    list[ScenarioWarning]
         All structural issues found. Empty if the workbook is well-formed.
     """
-    issues: list[SourceValidationIssue] = []
+    issues: list[ScenarioWarning] = []
 
     try:
         book_ctx = pd.ExcelFile(path)
     except Exception as exc:
-        return [
-            SourceValidationIssue(sheet="<workbook>", message=f"Could not open workbook: {exc}")
-        ]
+        return [ScenarioWarning(sheet="<workbook>", message=f"Could not open workbook: {exc}")]
 
     with book_ctx as book:
         sheet_names = set(book.sheet_names)
 
         if opts.cases_sheet not in sheet_names:
             issues.append(
-                SourceValidationIssue(
+                ScenarioWarning(
                     sheet=opts.cases_sheet,
                     message=(
                         f"Required sheet '{opts.cases_sheet}' not found. "
@@ -620,7 +628,7 @@ def check_xls_structure(path: str | Path, opts: ScenarioLoadOptions) -> list[Sou
             missing = {"Number", "Include", "Name"} - header_set
             if missing:
                 issues.append(
-                    SourceValidationIssue(
+                    ScenarioWarning(
                         sheet=opts.cases_sheet,
                         message=f"Missing required column(s): {sorted(missing)}",
                     )
@@ -635,7 +643,7 @@ def check_xls_structure(path: str | Path, opts: ScenarioLoadOptions) -> list[Sou
                 continue
             if sheet_name not in sheet_names:
                 issues.append(
-                    SourceValidationIssue(
+                    ScenarioWarning(
                         sheet=sheet_name,
                         message=(
                             f"Sheet '{sheet_name}' not found (required because "
@@ -651,7 +659,7 @@ def check_xls_structure(path: str | Path, opts: ScenarioLoadOptions) -> list[Sou
             missing = {"title", "name", "property"} - columns_ci
             if missing:
                 issues.append(
-                    SourceValidationIssue(
+                    ScenarioWarning(
                         sheet=sheet_name,
                         message=f"Missing required column(s): {sorted(missing)}",
                     )
@@ -660,7 +668,7 @@ def check_xls_structure(path: str | Path, opts: ScenarioLoadOptions) -> list[Sou
         if opts.output_sheet is not None:
             if opts.output_sheet not in sheet_names:
                 issues.append(
-                    SourceValidationIssue(
+                    ScenarioWarning(
                         sheet=opts.output_sheet,
                         message=(
                             f"Sheet '{opts.output_sheet}' not found (required because "
@@ -673,7 +681,7 @@ def check_xls_structure(path: str | Path, opts: ScenarioLoadOptions) -> list[Sou
                 n_cols = pd.read_excel(book, opts.output_sheet, header=None, nrows=1).shape[1]
                 if n_cols < 3:
                     issues.append(
-                        SourceValidationIssue(
+                        ScenarioWarning(
                             sheet=opts.output_sheet,
                             message=(
                                 "Sheet must have at least 3 columns (component, "
@@ -683,23 +691,3 @@ def check_xls_structure(path: str | Path, opts: ScenarioLoadOptions) -> list[Sou
                     )
 
     return issues
-
-
-@register_source
-class XlsScenarioSource:
-    """Scenario source for Excel files (.xls, .xlsx, .xlsm)."""
-
-    extensions: set[str] = {".xls", ".xlsx", ".xlsm"}
-
-    def __init__(self, options: ScenarioLoadOptions | None = None) -> None:
-        from ..mapper import ScenarioLoadOptions
-
-        self.options = options or ScenarioLoadOptions()
-
-    def load(self, path: Path) -> list[ScenarioSpecification]:
-        """Load scenarios from an Excel workbook."""
-        return read_scenarios_from_excel(path, self.options)
-
-    def check_structure(self, path: Path) -> list[SourceValidationIssue]:
-        """Run structural preflight checks on an Excel workbook."""
-        return check_xls_structure(path, self.options)

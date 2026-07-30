@@ -8,24 +8,32 @@ from __future__ import annotations
 
 from .models import (
     AnalysisMeta,
+    AxisSpecification,
     ChangeMode,
     ExportTableSpecification,
     ParameterChange,
+    PlotTextAnnotation,
     PostProcessingConfig,
     RoutePlotSpecification,
+    ScenarioDocument,
     ScenarioMeta,
     ScenarioSpecification,
+    ScenarioWarning,
     TimePlotSpecification,
 )
 
 __all__ = [
     "AnalysisMeta",
+    "AxisSpecification",
     "ChangeMode",
     "ExportTableSpecification",
     "ParameterChange",
+    "PlotTextAnnotation",
     "PostProcessingConfig",
     "RoutePlotSpecification",
+    "ScenarioDocument",
     "ScenarioMeta",
     "ScenarioSpecification",
+    "ScenarioWarning",
     "TimePlotSpecification",
 ]

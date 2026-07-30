@@ -5,7 +5,7 @@ from __future__ import annotations
 import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
 
-from ..models import AxisSpec
+from pywandahydra.scenarios.models.plot_axis import AxisSpecification
 
 
 def configure_matplotlib_defaults() -> None:
@@ -18,8 +18,8 @@ def configure_matplotlib_defaults() -> None:
     )
 
 
-def apply_axis_spec(ax: Axes, spec: AxisSpec, *, axis: str) -> None:
-    """Apply an AxisSpec to a matplotlib Axes."""
+def apply_axis_spec(ax: Axes, spec: AxisSpecification, *, axis: str) -> None:
+    """Apply an AxisSpecification to a matplotlib Axes."""
     if axis == "x":
         if spec.label:
             ax.set_xlabel(spec.label)
