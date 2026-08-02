@@ -11,7 +11,7 @@ from pywandahydra.config.models import ModelSpecification
 from pywandahydra.execution.case_plan import CasePlan
 from pywandahydra.execution.journal import CaseJournal
 from pywandahydra.execution.worker import run_one_case
-from pywandahydra.scenarios.schema import ScenarioMeta, ScenarioSpecification
+from pywandahydra.scenarios.schema import ScenarioSpecification
 from unit_test.wanda.fakes import FailingWandaModelAccess, FakeWandaModelAccess
 
 
@@ -31,13 +31,9 @@ class TestWorkerFailurePath(unittest.TestCase):
                 run_unsteady=False,
             )
             scenario = ScenarioSpecification(
-                meta=ScenarioMeta.model_validate(
-                    {
-                        "Number": 1,
-                        "Include": True,
-                        "Name": "case_failing",
-                    }
-                )
+                number=1,
+                include=True,
+                name="case_failing",
             )
             plan = CasePlan(
                 case_id="case_failing",
@@ -94,13 +90,9 @@ class TestWorkerFailurePath(unittest.TestCase):
                 run_unsteady=False,
             )
             scenario = ScenarioSpecification(
-                meta=ScenarioMeta.model_validate(
-                    {
-                        "Number": 1,
-                        "Include": True,
-                        "Name": "case_locked",
-                    }
-                )
+                number=1,
+                include=True,
+                name="case_locked",
             )
             plan = CasePlan(
                 case_id="case_locked",

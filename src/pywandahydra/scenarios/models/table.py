@@ -1,4 +1,4 @@
-"""Post-processing table export schema model."""
+"""Min/max post-processing table schema model."""
 
 from __future__ import annotations
 
@@ -9,8 +9,8 @@ from pydantic import BaseModel, ConfigDict, field_validator
 from .validators import ensure_non_empty_string
 
 
-class ExportTableSpecification(BaseModel):
-    """Data model representing specifications for exporting a table."""
+class MinMaxTableSpecification(BaseModel):
+    """A request to export the minimum or maximum of a component property."""
 
     model_config = ConfigDict(extra="forbid")
 

@@ -9,7 +9,7 @@ from pathlib import Path
 import numpy as np
 
 from pywandahydra.config.models import ModelSpecification
-from pywandahydra.scenarios.schema import ParameterChange
+from pywandahydra.scenarios.schema import ModelParameterChange
 from pywandahydra.wanda.pywanda_model_access import PywandaModelAccess
 
 # Import shared helper from root conftest
@@ -72,7 +72,7 @@ class TestPywandaModelAccess(unittest.TestCase):
 
     def test_apply_general_change_and_save_input(self) -> None:
         with self.get_session() as model:
-            change = ParameterChange(component="general", property="Time step", value=12.5)
+            change = ModelParameterChange(component="general", property="Time step", value=12.5)
 
             self.adapter.apply(model, change)
             self.adapter.save_input(model)
@@ -163,7 +163,7 @@ class TestPywandaModelAccess(unittest.TestCase):
 
     def test_apply_delegation(self) -> None:
         with self.get_session() as model:
-            change = ParameterChange(component="general", property="Time step", value=10.0)
+            change = ModelParameterChange(component="general", property="Time step", value=10.0)
             self.adapter.apply(model, change)
 
             self.assertEqual(model.get_property("Time step").get_scalar_float(), 10.0)

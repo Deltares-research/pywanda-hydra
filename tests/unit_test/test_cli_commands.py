@@ -19,6 +19,7 @@ from typer.testing import CliRunner
 from pywandahydra.cli.commands import app
 from pywandahydra.execution.journal import CaseJournal
 from pywandahydra.execution.runner import RunResult
+from pywandahydra.scenarios.schema import AnalysisMeta
 
 runner = CliRunner()
 
@@ -169,7 +170,7 @@ class TestRunCommand(unittest.TestCase):
                 patch("pywandahydra.cli.commands.faulthandler.enable"),
                 patch(
                     "pywandahydra.scenarios.loader.load_scenario_document",
-                    return_value=SimpleNamespace(scenarios=[]),
+                    return_value=SimpleNamespace(scenarios=[], analysis_metadata=AnalysisMeta()),
                 ),
                 patch(
                     "pywandahydra.wanda.validation.assert_preflight_valid",
@@ -189,7 +190,7 @@ class TestRunCommand(unittest.TestCase):
                 patch("pywandahydra.cli.commands.faulthandler.enable"),
                 patch(
                     "pywandahydra.scenarios.loader.load_scenario_document",
-                    return_value=SimpleNamespace(scenarios=[]),
+                    return_value=SimpleNamespace(scenarios=[], analysis_metadata=AnalysisMeta()),
                 ),
                 patch("pywandahydra.wanda.validation.assert_preflight_valid"),
                 patch(
@@ -220,7 +221,7 @@ class TestRunCommand(unittest.TestCase):
                 patch("pywandahydra.cli.commands.faulthandler.enable"),
                 patch(
                     "pywandahydra.scenarios.loader.load_scenario_document",
-                    return_value=SimpleNamespace(scenarios=[]),
+                    return_value=SimpleNamespace(scenarios=[], analysis_metadata=AnalysisMeta()),
                 ),
                 patch("pywandahydra.wanda.validation.assert_preflight_valid"),
                 patch("pywandahydra.execution.runner.run", return_value=success_result),
@@ -248,7 +249,7 @@ class TestRunCommand(unittest.TestCase):
                 patch("pywandahydra.cli.commands.faulthandler.enable"),
                 patch(
                     "pywandahydra.scenarios.loader.load_scenario_document",
-                    return_value=SimpleNamespace(scenarios=[]),
+                    return_value=SimpleNamespace(scenarios=[], analysis_metadata=AnalysisMeta()),
                 ),
                 patch("pywandahydra.wanda.validation.assert_preflight_valid"),
                 patch("pywandahydra.execution.runner.run", return_value=failed_result),

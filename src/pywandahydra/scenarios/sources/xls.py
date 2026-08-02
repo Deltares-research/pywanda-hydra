@@ -16,13 +16,15 @@ from ..models.document import ScenarioDocument, ScenarioWarning
 from ..models.plot_axis import AxisSpecification
 from ..schema import (
     AnalysisMeta,
-    ExportTableSpecification,
-    ParameterChange,
-    PostProcessingConfig,
+    FigurePostProcessingConfiguration,
+    MinMaxTableSpecification,
+    ModelParameterChange,
+    PostProcessingConfiguration,
+    ReportConfiguration,
     RoutePlotSpecification,
-    ScenarioMeta,
     ScenarioSpecification,
-    TimePlotSpecification,
+    TablePostProcessingConfiguration,
+    TimeSeriesPlotSpecification,
 )
 
 if TYPE_CHECKING:
@@ -133,7 +135,7 @@ def _extract_analysis_meta(
 def _read_output_sheet(
     path: str | Path,
     opts: ScenarioLoadOptions,
-) -> list[ExportTableSpecification]:
+) -> list[MinMaxTableSpecification]:
     """Read the *Output* sheet and return a list of export-table specifications.
 
     Expected sheet layout (no header row, columns by position)::
@@ -154,7 +156,7 @@ def _read_output_sheet(
 
     Returns
     -------
-    List[ExportTableSpecification]
+    List[MinMaxTableSpecification]
         Parsed export-table specifications.
     """
     try:
@@ -176,7 +178,7 @@ def _read_output_sheet(
             )
         return []
 
-    specs: list[ExportTableSpecification] = []
+    specs: list[MinMaxTableSpecification] = []
     seen: set[tuple[str, str]] = set()
     for idx, row in df.iterrows():
         comp = _as_str_or_none(row.iloc[0])
@@ -201,7 +203,7 @@ def _read_output_sheet(
         seen.add(key)
 
         mode = cast(Any, mode_str)
-        specs.append(ExportTableSpecification(component=comp, property=prop, mode=mode))
+        specs.append(MinMaxTableSpecification(component=comp, property=prop, mode=mode))
 
     return specs
 
@@ -389,7 +391,7 @@ def _read_rplots_sheet(
 def _read_tplots_sheet(
     path: str | Path,
     opts: ScenarioLoadOptions,
-) -> list[TimePlotSpecification]:
+) -> list[TimeSeriesPlotSpecification]:
     """Read the *TPlots* sheet and return a list of plot specifications.
 
     Expected sheet layout (with a header row)::
@@ -410,8 +412,8 @@ def _read_tplots_sheet(
         title: str | None,
         x_axis: AxisSpecification,
         y_axis: AxisSpecification,
-    ) -> TimePlotSpecification:
-        return TimePlotSpecification(
+    ) -> TimeSeriesPlotSpecification:
+        return TimeSeriesPlotSpecification(
             component=comp,
             property=prop,
             title=title,
@@ -503,27 +505,41 @@ def load_excel_document(path: str | Path, opts: ScenarioLoadOptions) -> Scenario
 
         # Extract metadata
         row_dict = input_data.iloc[i].to_dict()
+        # For meta fields, extract only the first level of the MultiIndex.
+        # Convert NaN → None and numpy scalars → Python natives.
+        meta_df: dict[str, Any] = {}
+        for k, v in row_dict.items():
+            if k[1] != "":
+                continue
+            if _is_nan(v):
+                meta_df[k[0]] = None
+            elif isinstance(v, np.generic):
+                meta_df[k[0]] = v.item()
+            else:
+                meta_df[k[0]] = v
+
+        # Split flat metadata into identity, report config, and extra columns.
+        identity_keys = {"Number", "Include", "Name"}
+        report_keys = {"Description", "Appendix", "Chapter", "Date"}
+        extra_columns = {
+            key: value
+            for key, value in meta_df.items()
+            if key not in identity_keys and key not in report_keys
+        }
         try:
-            # For meta fields, extract only the first level of the MultiIndex.
-            # Convert NaN → None and numpy scalars → Python natives.
-            meta_df: dict[str, Any] = {}
-            for k, v in row_dict.items():
-                if k[1] != "":
-                    continue
-                if _is_nan(v):
-                    meta_df[k[0]] = None
-                elif isinstance(v, np.generic):
-                    meta_df[k[0]] = v.item()
-                else:
-                    meta_df[k[0]] = v
-            meta = ScenarioMeta.model_validate(meta_df)
+            report = ReportConfiguration(
+                description=meta_df.get("Description"),
+                appendix=meta_df.get("Appendix"),
+                chapter=meta_df.get("Chapter"),
+                date=meta_df.get("Date"),
+            )
         except ValidationError as e:
             raise ValueError(
-                f"Error validating scenario metadata at row {i} in '{opts.cases_sheet}': {e}"
+                f"Error validating scenario report metadata at row {i} in '{opts.cases_sheet}': {e}"
             ) from e
 
         # Extract parameter changes
-        parameters: list[ParameterChange] = []
+        parameter_changes: list[ModelParameterChange] = []
         for col_tuple in input_data.columns:
             prop_name = col_tuple[1]
             if prop_name == "":
@@ -539,33 +555,41 @@ def load_excel_document(path: str | Path, opts: ScenarioLoadOptions) -> Scenario
                 value = value.item()
 
             # Add parameter change
-            parameters.append(
-                ParameterChange(
+            parameter_changes.append(
+                ModelParameterChange(
                     component=col_tuple[0],
                     property=prop_name,
                     value=value,
                 )
             )
 
-        scenarios.append(
-            ScenarioSpecification(
-                meta=meta,
-                parameters=parameters,
-                post_processing=PostProcessingConfig(
-                    tables=output_specs,
-                    routes=rplot_specs,
-                    time_plots=tplot_specs,
-                ),
-                # Slice 04: temporary metadata copy retained for current report code.
-                # Slice 05 removes this duplicate and uses document-level metadata.
-                analysis_meta=analysis_context,
-                source={
-                    "file": path,
-                    "sheet": opts.cases_sheet,
-                    "row_index": i,
-                },
+        try:
+            scenarios.append(
+                ScenarioSpecification(
+                    number=cast(int, meta_df.get("Number")),
+                    include=cast(bool, meta_df.get("Include", True)),
+                    name=cast(str, meta_df.get("Name")),
+                    parameter_changes=parameter_changes,
+                    post_processing=PostProcessingConfiguration(
+                        tables=TablePostProcessingConfiguration(minmax=output_specs),
+                        figures=FigurePostProcessingConfiguration(
+                            routes=rplot_specs,
+                            time_series=tplot_specs,
+                        ),
+                        report=report,
+                    ),
+                    extra_columns=extra_columns,
+                    source={
+                        "file": path,
+                        "sheet": opts.cases_sheet,
+                        "row_index": i,
+                    },
+                )
             )
-        )
+        except ValidationError as e:
+            raise ValueError(
+                f"Error validating scenario at row {i} in '{opts.cases_sheet}': {e}"
+            ) from e
 
     return ScenarioDocument(
         analysis_metadata=analysis_context,

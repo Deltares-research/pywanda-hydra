@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
+# Import shared helper from root conftest
+import sys
 from pathlib import Path
 
 import pytest
 
 from pywandahydra.config.models import ModelSpecification
 
-# Import shared helper from root conftest
-import sys
 sys.path.insert(0, str(Path(__file__).parents[1]))
 from conftest import find_wanda_bin
 

@@ -9,7 +9,7 @@ from pywandahydra.config.models import ModelSpecification
 from pywandahydra.execution.case_plan import CasePlan
 from pywandahydra.execution.journal import CaseJournal, resume_decision
 from pywandahydra.execution.worker import run_one_case
-from pywandahydra.scenarios.schema import ScenarioMeta, ScenarioSpecification
+from pywandahydra.scenarios.schema import ScenarioSpecification
 
 
 class TestResumePolicy(unittest.TestCase):
@@ -29,13 +29,9 @@ class TestResumePolicy(unittest.TestCase):
             run_unsteady=False,
         )
         scenario = ScenarioSpecification(
-            meta=ScenarioMeta.model_validate(
-                {
-                    "Number": 1,
-                    "Include": True,
-                    "Name": case_name,
-                }
-            )
+            number=1,
+            include=True,
+            name=case_name,
         )
         return CasePlan(
             case_id=case_name,
@@ -116,8 +112,12 @@ class TestResumePolicy(unittest.TestCase):
     def test_config_hash_is_invariant_to_case_rename(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp_path = Path(tmp_dir)
-            plan_a = self._build_plan(root_dir=tmp_path, reuse_existing_data=True, case_name="case_a")
-            plan_b = self._build_plan(root_dir=tmp_path, reuse_existing_data=True, case_name="case_b")
+            plan_a = self._build_plan(
+                root_dir=tmp_path, reuse_existing_data=True, case_name="case_a"
+            )
+            plan_b = self._build_plan(
+                root_dir=tmp_path, reuse_existing_data=True, case_name="case_b"
+            )
 
             self.assertEqual(plan_a.config_hash, plan_b.config_hash)
 

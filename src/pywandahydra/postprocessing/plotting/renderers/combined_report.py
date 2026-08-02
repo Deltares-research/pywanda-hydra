@@ -17,21 +17,16 @@ import pandas as pd
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 
-from ....scenarios.schema import RoutePlotSpecification, TimePlotSpecification
+from ....scenarios.schema import RoutePlotSpecification, TimeSeriesPlotSpecification
 from ...io.cache import ParquetCache
 from ..styles.layout import draw_layout
-from .report_page import (
-    ReportMeta,
-    _create_content_axes,
-    _plot_route_series,
-    _to_page_metadata,
-)
+from .report_page import ReportMeta, _create_content_axes, _plot_route_series, _to_page_metadata
 from .theme import PlotTheme
 from .time_report_page import _plot_time_series_group
 
 logger = logging.getLogger(__name__)
 
-PlotSpec = RoutePlotSpecification | TimePlotSpecification
+PlotSpec = RoutePlotSpecification | TimeSeriesPlotSpecification
 
 
 @dataclass(frozen=True)
@@ -57,7 +52,7 @@ def _render_route_panel(ax: Axes, specs: list[PlotSpec], ctx: PanelContext) -> b
 
 
 def _render_time_panel(ax: Axes, specs: list[PlotSpec], ctx: PanelContext) -> bool:
-    time_specs = [s for s in specs if isinstance(s, TimePlotSpecification)]
+    time_specs = [s for s in specs if isinstance(s, TimeSeriesPlotSpecification)]
     if ctx.components.empty:
         logger.warning(
             "No cached component data - skipping time plot subplot for %s.",
@@ -77,7 +72,7 @@ class PanelRenderer:
 
 PANEL_RENDERERS: dict[type, PanelRenderer] = {
     RoutePlotSpecification: PanelRenderer(render=_render_route_panel, max_specs_per_panel=1),
-    TimePlotSpecification: PanelRenderer(render=_render_time_panel, max_specs_per_panel=None),
+    TimeSeriesPlotSpecification: PanelRenderer(render=_render_time_panel, max_specs_per_panel=None),
 }
 
 
@@ -95,7 +90,7 @@ def render_combined_report_pages(
     theme = theme or PlotTheme()
 
     components = pd.DataFrame()
-    if any(isinstance(s, TimePlotSpecification) for s in specs):
+    if any(isinstance(s, TimeSeriesPlotSpecification) for s in specs):
         components = cache.read_components()
         if components.empty:
             logger.warning("No cached component data - time plots will be skipped.")

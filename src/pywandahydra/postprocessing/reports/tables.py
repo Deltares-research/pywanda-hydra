@@ -8,7 +8,7 @@ from typing import Any
 
 import pandas as pd
 
-from ...scenarios.schema import ExportTableSpecification
+from ...scenarios.schema import MinMaxTableSpecification
 from ..io.cache import ParquetCache
 from ..io.export import save_table
 
@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 def render_summary_table(
-    specs: list[ExportTableSpecification],
+    specs: list[MinMaxTableSpecification],
     cache: ParquetCache,
     *,
     output_dir: Path | None = None,

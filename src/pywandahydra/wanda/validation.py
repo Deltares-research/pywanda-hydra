@@ -133,24 +133,11 @@ def validate_scenarios_against_model(
     issues: list[ValidationIssue] = []
 
     with wanda_session(model_spec) as model:
-        # Validate global overrides
-        for change in model_spec.global_overrides:
-            issues.extend(
-                _validate_component_property(
-                    model,
-                    scenario="GLOBAL",
-                    source="global_overrides",
-                    component=change.component,
-                    property_name=change.property,
-                    value=change.value,
-                )
-            )
-
         # Validate scenario parameters and post-processing specs
         for scenario in scenarios:
-            scenario_name = scenario.meta.name
+            scenario_name = scenario.name
 
-            for change in scenario.parameters:
+            for change in scenario.parameter_changes:
                 issues.extend(
                     _validate_component_property(
                         model,
@@ -162,7 +149,7 @@ def validate_scenarios_against_model(
                     )
                 )
 
-            for table_spec in scenario.post_processing.tables:
+            for table_spec in scenario.post_processing.tables.minmax:
                 issues.extend(
                     _validate_component_property(
                         model,
@@ -174,7 +161,7 @@ def validate_scenarios_against_model(
                     )
                 )
 
-            for route_spec in scenario.post_processing.routes:
+            for route_spec in scenario.post_processing.figures.routes:
                 issues.extend(
                     _validate_component_property(
                         model,
@@ -186,7 +173,7 @@ def validate_scenarios_against_model(
                     )
                 )
 
-            for time_spec in scenario.post_processing.time_plots:
+            for time_spec in scenario.post_processing.figures.time_series:
                 issues.extend(
                     _validate_component_property(
                         model,

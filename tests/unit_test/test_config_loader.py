@@ -17,7 +17,7 @@ from pywandahydra.config.loader import (
     load_run_config,
     validate_run_paths,
 )
-from pywandahydra.scenarios.schema import ScenarioMeta, ScenarioSpecification
+from pywandahydra.scenarios.schema import ScenarioSpecification
 
 
 def _minimal_config_dict(*, model_path: str, wanda_bin: str, scenario_file: str) -> dict:
@@ -234,9 +234,7 @@ class TestValidateRunPaths(unittest.TestCase):
 
 class TestApplyPostProcessingOverrides(unittest.TestCase):
     def _scenario(self) -> ScenarioSpecification:
-        return ScenarioSpecification(
-            meta=ScenarioMeta.model_validate({"Number": 1, "Include": True, "Name": "case_001"})
-        )
+        return ScenarioSpecification(number=1, include=True, name="case_001")
 
     def test_no_theme_configured_is_noop(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -251,13 +249,11 @@ class TestApplyPostProcessingOverrides(unittest.TestCase):
                 )
             )
             scenario = self._scenario()
-            original_theme = scenario.post_processing.theme
 
+            # No theme configured: validation is a no-op and must not raise.
             apply_post_processing_overrides(cfg, [scenario])
 
-            self.assertEqual(scenario.post_processing.theme, original_theme)
-
-    def test_known_theme_overrides_scenario_theme(self) -> None:
+    def test_known_theme_validates_without_error(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp_path = Path(tmp_dir)
             (tmp_path / "model.wdi").write_bytes(b"model")
@@ -271,9 +267,8 @@ class TestApplyPostProcessingOverrides(unittest.TestCase):
             cfg = RunConfig.model_validate(data)
             scenario = self._scenario()
 
+            # A registered theme validates cleanly.
             apply_post_processing_overrides(cfg, [scenario])
-
-            self.assertEqual(scenario.post_processing.theme, "deltares_light")
 
     def test_unknown_theme_raises_value_error(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:

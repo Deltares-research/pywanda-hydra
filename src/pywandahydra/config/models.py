@@ -8,7 +8,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from ..scenarios.schema import AnalysisMeta, ParameterChange
+from ..scenarios.schema import AnalysisMeta
 
 
 class ModelSpecification(BaseModel):
@@ -54,12 +54,6 @@ class ModelSpecification(BaseModel):
     # Optional execution settings you may want centrally:
     run_steady: bool = True
     run_unsteady: bool = False
-
-    # Genneral settings to apply before scenarios (global tweaks)
-    global_overrides: list[ParameterChange] = Field(
-        default_factory=list,
-        description="Global parameter changes to apply before scenarios changes.",
-    )
 
     @field_validator("model_path", mode="before")
     @classmethod

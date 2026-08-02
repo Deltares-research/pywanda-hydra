@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from ..config.models import ModelSpecification
-from ..scenarios.schema import ScenarioSpecification
+from ..scenarios.schema import AnalysisMeta, ScenarioSpecification
 
 
 @dataclass(frozen=True, slots=True)
@@ -25,6 +25,7 @@ class CasePlan:
         case_dir: Absolute path to the case output directory.
         model_spec: Model specification (paths, run flags, global overrides).
         scenario: The full scenario specification.
+        analysis_metadata: Analysis-level metadata shared by all cases.
         workflow_name: Post-processing workflow name.
         workflow_params: Post-processing workflow parameters.
         attempt: Current attempt number (for retries).
@@ -35,6 +36,7 @@ class CasePlan:
     case_dir: Path
     model_spec: ModelSpecification
     scenario: ScenarioSpecification
+    analysis_metadata: AnalysisMeta = field(default_factory=AnalysisMeta)
     workflow_name: str = "default"
     workflow_params: dict[str, Any] = field(default_factory=dict)
     attempt: int = 1
@@ -57,10 +59,7 @@ class CasePlan:
             "workflow_params": self.workflow_params,
             "run_steady": self.model_spec.run_steady,
             "run_unsteady": self.model_spec.run_unsteady,
-            "global_overrides": [
-                ch.model_dump(mode="json") for ch in self.model_spec.global_overrides
-            ],
-            "parameters": [ch.model_dump(mode="json") for ch in self.scenario.parameters],
+            "parameters": [ch.model_dump(mode="json") for ch in self.scenario.parameter_changes],
             "post_processing": self.scenario.post_processing.model_dump(mode="json"),
         }
         raw = json.dumps(payload, sort_keys=True, default=str)
@@ -73,6 +72,7 @@ def build_case_plans(
     run_root: Path,
     workflow_name: str = "default",
     workflow_params: dict[str, Any] | None = None,
+    analysis_metadata: AnalysisMeta | None = None,
 ) -> list[CasePlan]:
     """Build CasePlan objects for all included scenarios.
 
@@ -82,16 +82,18 @@ def build_case_plans(
         run_root: Root directory for the run output.
         workflow_name: Post-processing workflow name.
         workflow_params: Post-processing workflow parameters.
+        analysis_metadata: Analysis-level metadata shared by all cases.
 
     Returns:
         List of CasePlan objects for included scenarios.
     """
+    meta = analysis_metadata if analysis_metadata is not None else AnalysisMeta()
     plans: list[CasePlan] = []
     for scenario in scenarios:
-        if not scenario.meta.include:
+        if not scenario.include:
             continue
 
-        case_id = scenario.meta.name
+        case_id = scenario.name
         case_dir = run_root / "scenarios" / case_id
 
         plans.append(
@@ -100,6 +102,7 @@ def build_case_plans(
                 case_dir=case_dir,
                 model_spec=model_spec,
                 scenario=scenario,
+                analysis_metadata=meta,
                 workflow_name=workflow_name,
                 workflow_params=dict(workflow_params or {}),
             )

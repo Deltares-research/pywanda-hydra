@@ -116,7 +116,7 @@ from pywandahydra.postprocessing.plotting.renderers.report_page import (
 from pywandahydra.postprocessing.plotting.renderers.theme import PlotTheme
 from pywandahydra.postprocessing.plotting.styles.layout import draw_layout
 from pywandahydra.postprocessing.steps.report_meta import build_report_meta
-from pywandahydra.scenarios.schema import ScenarioMeta, ScenarioSpecification
+from pywandahydra.scenarios.schema import ScenarioSpecification
 
 logger = logging.getLogger(__name__)
 
@@ -328,7 +328,7 @@ class SpaceTimePlotStep(CaseStep):
         self._p = params or self.Params()
 
     def applicable(self, ctx: CaseContext) -> bool:
-        return bool(ctx.scenario.post_processing.routes) or bool(ctx.cache.list_routes())
+        return bool(ctx.scenario.post_processing.figures.routes) or bool(ctx.cache.list_routes())
 
     def run(self, ctx: CaseContext) -> None:
         titles = self._resolve_titles(ctx)
@@ -351,7 +351,7 @@ class SpaceTimePlotStep(CaseStep):
         if self._p.route_titles is not None:
             return list(self._p.route_titles)
 
-        specs = ctx.scenario.post_processing.routes
+        specs = ctx.scenario.post_processing.figures.routes
         if self._p.properties is not None:
             allowed = {p.lower() for p in self._p.properties}
             specs = [s for s in specs if s.property.lower() in allowed]
@@ -429,7 +429,7 @@ class SpaceTimePlotStep(CaseStep):
 
             ax.set_xlabel("s-distance (m)")
             ax.set_ylabel("Time (s)")
-            ax.set_title(f"{title} — {ctx.scenario.meta.name}", fontsize=_THEME.axis_title_size)
+            ax.set_title(f"{title} — {ctx.scenario.name}", fontsize=_THEME.axis_title_size)
             ax.autoscale(tight=True, axis="x")
             _annotate_pipe_boundaries_mesh(ax, route_data, _THEME)
 
@@ -453,9 +453,7 @@ def _load_case_context(case_dir: Path, case_number: int) -> CaseContext:
         state = json.loads(state_path.read_text(encoding="utf-8"))
         case_id = state.get("case_id", case_id)
 
-    scenario = ScenarioSpecification(
-        meta=ScenarioMeta.model_validate({"Number": case_number, "Include": True, "Name": case_id})
-    )
+    scenario = ScenarioSpecification(number=case_number, include=True, name=case_id)
     return CaseContext(cache=ParquetCache(case_dir), scenario=scenario, case_dir=case_dir)
 
 

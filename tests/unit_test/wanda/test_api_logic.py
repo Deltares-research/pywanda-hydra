@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import unittest
 
-from pywandahydra.scenarios.schema import ParameterChange
+from pywandahydra.scenarios.schema import ModelParameterChange
 from pywandahydra.wanda.api import (
     ParameterApplicationError,
     WandaItemRef,
@@ -236,7 +236,7 @@ class TestApplyParameterChange(unittest.TestCase):
     def test_general_property_set(self) -> None:
         model = _FakeModel()
         model._properties["Time step"] = _FakeProp()
-        change = ParameterChange(component="general", property="Time step", value=15.0)
+        change = ModelParameterChange(component="general", property="Time step", value=15.0)
 
         apply_parameter_change(model, change)
 
@@ -245,7 +245,7 @@ class TestApplyParameterChange(unittest.TestCase):
     def test_disuse_sets_flag_on_matched_component(self) -> None:
         model = _FakeModel()
         model._components["PUMP P1"] = _FakeComponent("PUMP P1", is_pipe=False)
-        change = ParameterChange(component="PUMP P1", property="disuse", value=0)
+        change = ModelParameterChange(component="PUMP P1", property="disuse", value=0)
 
         apply_parameter_change(model, change)
 
@@ -256,7 +256,7 @@ class TestApplyParameterChange(unittest.TestCase):
         comp = _FakeComponent("PIPE P1", is_pipe=True)
         comp.properties["Diameter"] = _FakeProp(unit_factor=1000.0)
         model._components["PIPE P1"] = comp
-        change = ParameterChange(component="PIPE P1", property="Diameter", value=1.0)
+        change = ModelParameterChange(component="PIPE P1", property="Diameter", value=1.0)
 
         apply_parameter_change(model, change)
 
@@ -264,7 +264,7 @@ class TestApplyParameterChange(unittest.TestCase):
 
     def test_unknown_component_raises_parameter_application_error(self) -> None:
         model = _FakeModel()
-        change = ParameterChange(component="MISSING", property="Head", value=1.0)
+        change = ModelParameterChange(component="MISSING", property="Head", value=1.0)
 
         with self.assertRaises(ParameterApplicationError) as ctx:
             apply_parameter_change(model, change)
@@ -274,7 +274,7 @@ class TestApplyParameterChange(unittest.TestCase):
     def test_property_error_is_wrapped_as_parameter_application_error(self) -> None:
         model = _FakeModel()
         model._components["PIPE P1"] = _FakeComponent("PIPE P1", is_pipe=True)
-        change = ParameterChange(component="PIPE P1", property="DoesNotExist", value=1.0)
+        change = ModelParameterChange(component="PIPE P1", property="DoesNotExist", value=1.0)
 
         with self.assertRaises(ParameterApplicationError) as ctx:
             apply_parameter_change(model, change)

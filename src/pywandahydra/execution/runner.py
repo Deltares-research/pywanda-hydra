@@ -109,6 +109,7 @@ def run(
         run_root,
         workflow_name=workflow.name,
         workflow_params=workflow_params,
+        analysis_metadata=ctx.analysis_meta,
     )
     if not plans:
         return RunResult(

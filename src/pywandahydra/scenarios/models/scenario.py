@@ -2,22 +2,60 @@
 
 from __future__ import annotations
 
+import math
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from .meta import AnalysisMeta, ScenarioMeta
-from .parameter import ParameterChange
-from .post_processing import PostProcessingConfig
+from .parameter_change import ModelParameterChange
+from .post_processing import PostProcessingConfiguration
 
 
 class ScenarioSpecification(BaseModel):
-    """Data model representing a complete scenario specification."""
+    """A single scenario: flat identity, parameter changes, and post-processing."""
 
     model_config = ConfigDict(extra="forbid")
 
-    meta: ScenarioMeta
-    analysis_meta: AnalysisMeta = Field(default_factory=AnalysisMeta)
-    parameters: list[ParameterChange] = Field(default_factory=list)
-    post_processing: PostProcessingConfig = Field(default_factory=lambda: PostProcessingConfig())
+    number: int
+    include: bool = True
+    name: str
+
+    parameter_changes: list[ModelParameterChange] = Field(default_factory=list)
+    post_processing: PostProcessingConfiguration = Field(
+        default_factory=PostProcessingConfiguration
+    )
+    extra_columns: dict[str, Any] = Field(default_factory=dict)
     source: dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("number", mode="before")
+    @classmethod
+    def coerce_number(cls, v: Any) -> Any:
+        if isinstance(v, float):
+            if math.isnan(v):
+                raise ValueError("number must not be NaN")
+            if v.is_integer():
+                return int(v)
+        return v
+
+    @field_validator("include", mode="before")
+    @classmethod
+    def coerce_include(cls, v: Any) -> bool:
+        if v is None:
+            return True
+        if isinstance(v, float):
+            if math.isnan(v):
+                return True
+            return int(v) == 1
+        if isinstance(v, int):
+            return v == 1
+        if isinstance(v, str):
+            return v.strip().lower() in ("1", "true", "yes", "y")
+        return bool(v)
+
+    @field_validator("name")
+    @classmethod
+    def name_non_empty(cls, v: str) -> str:
+        s = v.strip()
+        if not s:
+            raise ValueError("name must be non-empty")
+        return s

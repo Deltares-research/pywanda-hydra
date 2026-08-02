@@ -13,7 +13,7 @@ from pywandahydra.postprocessing.plotting.renderers.time_report_page import (  #
     _select_columns,
     _warn_duplicate_axis_definitions,
 )
-from pywandahydra.scenarios.models.plot_time import TimePlotSpecification  # noqa: E402
+from pywandahydra.scenarios.schema import TimeSeriesPlotSpecification  # noqa: E402
 
 
 def _make_components() -> pd.DataFrame:
@@ -35,19 +35,19 @@ def _make_components() -> pd.DataFrame:
 class TestSelectColumns(unittest.TestCase):
     def test_non_multiindex_columns_returns_empty(self) -> None:
         components = pd.DataFrame({"a": [1.0]})
-        spec = TimePlotSpecification(component="PUMP P1", property="Head")
+        spec = TimeSeriesPlotSpecification(component="PUMP P1", property="Head")
 
         self.assertEqual(_select_columns(components, spec), [])
 
     def test_no_matching_columns_returns_empty(self) -> None:
         components = _make_components()
-        spec = TimePlotSpecification(component="MISSING", property="Head")
+        spec = TimeSeriesPlotSpecification(component="MISSING", property="Head")
 
         self.assertEqual(_select_columns(components, spec), [])
 
     def test_single_match_uses_component_label(self) -> None:
         components = _make_components()
-        spec = TimePlotSpecification(component="PUMP P1", property="Head")
+        spec = TimeSeriesPlotSpecification(component="PUMP P1", property="Head")
 
         result = _select_columns(components, spec)
 
@@ -58,7 +58,7 @@ class TestSelectColumns(unittest.TestCase):
 
     def test_multiple_s_locations_without_requested_location_returns_all(self) -> None:
         components = _make_components()
-        spec = TimePlotSpecification(component="PIPE P1", property="Pressure")
+        spec = TimeSeriesPlotSpecification(component="PIPE P1", property="Pressure")
 
         result = _select_columns(components, spec)
 
@@ -68,7 +68,7 @@ class TestSelectColumns(unittest.TestCase):
 
     def test_requested_location_selects_nearest_column(self) -> None:
         components = _make_components()
-        spec = TimePlotSpecification(component="PIPE P1", property="Pressure", location=1.0)
+        spec = TimeSeriesPlotSpecification(component="PIPE P1", property="Pressure", location=1.0)
 
         result = _select_columns(components, spec)
 
@@ -81,8 +81,8 @@ class TestSelectColumns(unittest.TestCase):
 class TestWarnDuplicateAxisDefinitions(unittest.TestCase):
     def test_no_duplicates_does_not_raise(self) -> None:
         specs = [
-            TimePlotSpecification(component="PUMP P1", property="Head", title="Title"),
-            TimePlotSpecification(component="PUMP P2", property="Head"),
+            TimeSeriesPlotSpecification(component="PUMP P1", property="Head", title="Title"),
+            TimeSeriesPlotSpecification(component="PUMP P2", property="Head"),
         ]
 
         # Should simply log a warning when needed; no exception either way.
@@ -90,8 +90,8 @@ class TestWarnDuplicateAxisDefinitions(unittest.TestCase):
 
     def test_duplicate_titles_logs_warning(self) -> None:
         specs = [
-            TimePlotSpecification(component="PUMP P1", property="Head", title="A"),
-            TimePlotSpecification(component="PUMP P2", property="Head", title="B"),
+            TimeSeriesPlotSpecification(component="PUMP P1", property="Head", title="A"),
+            TimeSeriesPlotSpecification(component="PUMP P2", property="Head", title="B"),
         ]
 
         with self.assertLogs(
@@ -113,7 +113,7 @@ class TestPlotTimeSeriesGroup(unittest.TestCase):
 
     def test_returns_false_and_logs_warning_when_no_data(self) -> None:
         components = _make_components()
-        specs = [TimePlotSpecification(component="MISSING", property="Head")]
+        specs = [TimeSeriesPlotSpecification(component="MISSING", property="Head")]
 
         with self.assertLogs(
             "pywandahydra.postprocessing.plotting.renderers.time_report_page",
@@ -126,7 +126,7 @@ class TestPlotTimeSeriesGroup(unittest.TestCase):
 
     def test_plots_single_series_with_default_title_and_legend(self) -> None:
         components = _make_components()
-        specs = [TimePlotSpecification(component="PUMP P1", property="Head")]
+        specs = [TimeSeriesPlotSpecification(component="PUMP P1", property="Head")]
 
         result = _plot_time_series_group(self.ax, specs, components, self.theme)
 
@@ -138,7 +138,7 @@ class TestPlotTimeSeriesGroup(unittest.TestCase):
 
     def test_plots_multiple_s_location_series_for_pipe(self) -> None:
         components = _make_components()
-        specs = [TimePlotSpecification(component="PIPE P1", property="Pressure")]
+        specs = [TimeSeriesPlotSpecification(component="PIPE P1", property="Pressure")]
 
         result = _plot_time_series_group(self.ax, specs, components, self.theme)
 
@@ -150,8 +150,8 @@ class TestPlotTimeSeriesGroup(unittest.TestCase):
     def test_multiple_specs_combine_onto_one_axes(self) -> None:
         components = _make_components()
         specs = [
-            TimePlotSpecification(component="PUMP P1", property="Head", title="Combined"),
-            TimePlotSpecification(component="PIPE P1", property="Pressure", location=0.0),
+            TimeSeriesPlotSpecification(component="PUMP P1", property="Head", title="Combined"),
+            TimeSeriesPlotSpecification(component="PIPE P1", property="Pressure", location=0.0),
         ]
 
         result = _plot_time_series_group(self.ax, specs, components, self.theme)
@@ -162,7 +162,9 @@ class TestPlotTimeSeriesGroup(unittest.TestCase):
 
     def test_custom_legend_label_used_when_provided(self) -> None:
         components = _make_components()
-        specs = [TimePlotSpecification(component="PUMP P1", property="Head", legend="My Pump")]
+        specs = [
+            TimeSeriesPlotSpecification(component="PUMP P1", property="Head", legend="My Pump")
+        ]
 
         _plot_time_series_group(self.ax, specs, components, self.theme)
 

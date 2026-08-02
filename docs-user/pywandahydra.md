@@ -38,7 +38,7 @@ graph LR
 
 **`RunConfig`** — Top-level Pydantic model loaded from YAML or JSON. Holds `ModelSpecification`, `ExecutionConfig`, the path to the scenario file, and optional run-level post-processing overrides. Validated on load; extra keys are rejected.
 
-**`ModelSpecification`** — Describes the base WANDA model: where the `.wdi` file lives, where the WANDA binaries are, simulation flags (`run_steady`, `run_unsteady`), and any `global_overrides` applied before per-scenario changes.
+**`ModelSpecification`** — Describes the base WANDA model: where the `.wdi` file lives, where the WANDA binaries are, and simulation flags (`run_steady`, `run_unsteady`).
 
 **`ExecutionConfig`** — Controls parallelism (`n_workers`), resume mode, and which `WorkflowSpec` to activate.
 
@@ -50,11 +50,9 @@ graph LR
 
 ### Scenario layer
 
-**`ScenarioSpecification`** — One row from the scenario workbook: metadata (`ScenarioMeta`), a list of `ParameterChange` objects, and post-processing specs (tables, route plots, time-series plots).
+**`ScenarioSpecification`** — One row from the scenario workbook: flat identity (`number`, `include`, `name`), a list of `ModelParameterChange` objects, and post-processing specs (tables, route plots, time-series plots).
 
-**`ScenarioMeta`** — Per-scenario metadata: `name`, `number`, `include` flag, and optional description.
-
-**`ParameterChange`** — A `(component, property, value, mode)` tuple. `mode` is `"set"` (default), `"scale"`, or `"offset"`. The special property `"disuse"` normalises legacy string/numeric values automatically via `parse_disuse_value`.
+**`ModelParameterChange`** — A `(component, property, value)` change. The special property `"disuse"` normalises legacy string/numeric values automatically via `parse_disuse_value`.
 
 **`load_scenarios`** — Loads a scenario file by auto-detecting its extension and dispatching to the registered `ScenarioSource`. Returns a list of `ScenarioSpecification`.
 
@@ -76,7 +74,7 @@ graph LR
 
 **`WandaAdapter`** — Protocol/abstract base wrapping `pywanda.WandaModel`.
 
-**`apply_parameter_change`** — Applies one `ParameterChange` to an open `WandaModel`. Handles bulk selectors (`PALL` = all pipes, `CALL` = all components), the `disuse` property, and SI-to-model-unit conversion.
+**`apply_parameter_change`** — Applies one `ModelParameterChange` to an open `WandaModel`. Handles bulk selectors (`PALL` = all pipes, `CALL` = all components), the `disuse` property, and SI-to-model-unit conversion.
 
 **`resolve_items`** — Resolves a component identifier string to one or more `WandaItemRef` objects using exact lookup, then keyword search as a fallback.
 
@@ -169,7 +167,7 @@ There are no `pywandahydra.*` plugin entry-point groups or runtime registration 
 
 | Export | Kind | Description |
 |--------|------|-------------|
-| `apply_parameter_change` | function | Applies a `ParameterChange` to an open `WandaModel`, handling bulk selectors, disuse, and unit conversion. |
+| `apply_parameter_change` | function | Applies a `ModelParameterChange` to an open `WandaModel`, handling bulk selectors, disuse, and unit conversion. |
 | `apply_post_processing_overrides` | function | Merges run-level post-processing config (e.g. theme) into each `ScenarioSpecification` in place. |
 | `bootstrap` *(workflows)* | function | Registers the workflows bundled with pywandahydra; idempotent. |
 | `build_run_context` | function | Creates a `RunContext` from a `RunConfig`, computing the output root directory. |
@@ -199,16 +197,15 @@ There are no `pywandahydra.*` plugin entry-point groups or runtime registration 
 | `AnalysisMeta` | class | Pydantic model for run-level metadata read from the scenario workbook (description, WANDA version, project number). |
 | `CasePlan` | class | Frozen dataclass holding everything one worker needs to execute one scenario case. |
 | `ExecutionConfig` | class | Pydantic model controlling parallelism, resume mode, and workflow selection. |
-| `ModelSpecification` | class | Pydantic model describing the base WANDA model: paths, simulation flags, and global overrides. |
-| `ParameterChange` | class | Pydantic model for a single `(component, property, value, mode)` change to apply to the model. |
+| `ModelSpecification` | class | Pydantic model describing the base WANDA model: paths and simulation flags. |
+| `ModelParameterChange` | class | Pydantic model for a single `(component, property, value)` change to apply to the model. |
 | `PostProcessingRunConfig` | class | Pydantic model for run-level post-processing overrides (currently `theme`). |
 | `RunConfig` | class | Top-level Pydantic model combining all settings for one batch run. |
 | `RunContext` | class | Pydantic model carrying the run ID, timestamp, and output root directory through the execution layer. |
 | `RunMetadata` | class | Auto-captured snapshot of environment metadata (hostname, OS, Python version) written to `run_metadata.json`. |
 | `RunResult` | class | Frozen dataclass returned by `run()` with success / failure / skip counts and per-case results. |
 | `ScenarioLoadOptions` | class | Frozen dataclass controlling how the XLS source reads the scenario workbook (sheet names, header rows, strict mode). |
-| `ScenarioMeta` | class | Pydantic model for per-scenario metadata: `name`, `number`, `include`, and optional description. |
-| `ScenarioSpecification` | class | Pydantic model for one complete scenario: metadata, parameter changes, and post-processing specs. |
+| `ScenarioSpecification` | class | Pydantic model for one complete scenario: flat identity, parameter changes, and post-processing specs. |
 | `WandaItemRef` | class | Frozen dataclass identifying one item in a WANDA model by name and type (`component`, `node`, or `signal_line`). |
 | `WorkflowSpec` | class | Pydantic model pairing a workflow name with its parameter dict. |
 | `XlsScenarioSource` | class | Built-in `ScenarioSource` for `.xls`, `.xlsx`, and `.xlsm` workbooks. |
@@ -226,5 +223,4 @@ There are no `pywandahydra.*` plugin entry-point groups or runtime registration 
 
 | Export | Kind | Description |
 |--------|------|-------------|
-| `ChangeMode` | type | Literal `"set" \| "scale" \| "offset"` — how a `ParameterChange` is applied. |
 | `ItemType` | type | Literal `"component" \| "node" \| "signal_line"` — WANDA item kind used in `WandaItemRef`. |

@@ -1,10 +1,12 @@
 """Unit tests for wanda.api module."""
 
+# Import shared helper from root conftest
+import sys
 import unittest
 from pathlib import Path
 
 from pywandahydra.config.models import ModelSpecification
-from pywandahydra.scenarios.schema import ParameterChange
+from pywandahydra.scenarios.schema import ModelParameterChange
 from pywandahydra.wanda.api import (
     WandaItemRef,
     apply_parameter_change,
@@ -15,8 +17,6 @@ from pywandahydra.wanda.api import (
 from pywandahydra.wanda.create_scenario import prepare_scenario_model
 from pywandahydra.wanda.session import wanda_session
 
-# Import shared helper from root conftest
-import sys
 sys.path.insert(0, str(Path(__file__).parents[2]))
 from conftest import find_wanda_bin
 
@@ -31,10 +31,7 @@ class TestWandaAPI(unittest.TestCase):
         except FileNotFoundError as exc:
             self.skipTest(f"WANDA not available: {exc}")
         self.model_spec = ModelSpecification(
-            model_path=Path(__file__).parents[2]
-            / "data"
-            / "wanda"
-            / "base_model.wdi",
+            model_path=Path(__file__).parents[2] / "data" / "wanda" / "base_model.wdi",
             wanda_bin=wanda_bin,
             base_model_name="base_model",
             run_steady=False,
@@ -52,10 +49,7 @@ class TestWandaAPI(unittest.TestCase):
 
         prepare_scenario_model(
             base_model_path=self.model_spec.model_path,
-            scenario_dir=Path(__file__).parents[2]
-            / "data"
-            / "wanda"
-            / "test_scenario",
+            scenario_dir=Path(__file__).parents[2] / "data" / "wanda" / "test_scenario",
             scenario_name="test_scenario",
         )
 
@@ -68,9 +62,7 @@ class TestWandaAPI(unittest.TestCase):
         # Arrange
         with self.get_wanda_session() as model:
             # Act
-            change = ParameterChange(
-                component="general", property="Time step", value=15.0
-            )
+            change = ModelParameterChange(component="general", property="Time step", value=15.0)
             apply_parameter_change(model, change)
             time_step_prop = model.get_property("Time step")
 
@@ -82,7 +74,7 @@ class TestWandaAPI(unittest.TestCase):
         # Arrange
         with self.get_wanda_session() as model:
             # Act
-            change = ParameterChange(component="PUMP P1", property="disuse", value=0)
+            change = ModelParameterChange(component="PUMP P1", property="disuse", value=0)
             apply_parameter_change(model, change)
             pump = model.get_component("PUMP P1")
 
@@ -99,9 +91,7 @@ class TestWandaAPI(unittest.TestCase):
             items = find_items_with_keyword(model, keyword)
 
             # Assert
-            self.assertListEqual(
-                [item.name for item in items], ["PUMP P1", "PUMP P2", "PUMP P3"]
-            )
+            self.assertListEqual([item.name for item in items], ["PUMP P1", "PUMP P2", "PUMP P3"])
             self.assertListEqual([item.type for item in items], ["component"] * 3)
 
     def test_resolve_items(self):

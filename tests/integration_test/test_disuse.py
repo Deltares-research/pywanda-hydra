@@ -9,7 +9,7 @@ import pytest
 
 from pywandahydra.config.models import ModelSpecification, RunContext
 from pywandahydra.execution import runner
-from pywandahydra.scenarios.schema import ParameterChange, ScenarioMeta, ScenarioSpecification
+from pywandahydra.scenarios.schema import ModelParameterChange, ScenarioSpecification
 from pywandahydra.wanda.api import find_items_with_keyword, get_item
 from pywandahydra.wanda.session import wanda_session
 
@@ -22,8 +22,12 @@ class TestDisusePSFullKeyword(unittest.TestCase):
 
     def _scenario(self, *, disused: bool) -> ScenarioSpecification:
         return ScenarioSpecification(
-            meta=ScenarioMeta.model_validate({"Number": 1, "Include": True, "Name": "disuse_test"}),
-            parameters=[ParameterChange(component="PSFull", property="disuse", value=disused)],
+            number=1,
+            include=True,
+            name="disuse_test",
+            parameter_changes=[
+                ModelParameterChange(component="PSFull", property="disuse", value=disused)
+            ],
         )
 
     def _scenario_model_path(self, ctx: RunContext) -> Path:

@@ -7,14 +7,11 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from pywandahydra.config.loader import ExecutionConfig
-from pywandahydra.postprocessing.core.context import (
-    CaseContext,
-    PostProcessingRunContext,
-)
+from pywandahydra.postprocessing.core.context import CaseContext, PostProcessingRunContext
 from pywandahydra.postprocessing.io.cache import ParquetCache
 from pywandahydra.postprocessing.workflows import bootstrap
 from pywandahydra.postprocessing.workflows.base import resolve_workflow
-from pywandahydra.scenarios.schema import ScenarioMeta, ScenarioSpecification
+from pywandahydra.scenarios.schema import ScenarioSpecification
 
 
 class TestWorkflowConfig(unittest.TestCase):
@@ -42,13 +39,9 @@ class TestWorkflowConfig(unittest.TestCase):
             case_dir.mkdir(parents=True, exist_ok=True)
 
             scenario = ScenarioSpecification(
-                meta=ScenarioMeta.model_validate(
-                    {
-                        "Number": 1,
-                        "Include": True,
-                        "Name": "case_001",
-                    }
-                )
+                number=1,
+                include=True,
+                name="case_001",
             )
             case_ctx = CaseContext(
                 cache=ParquetCache(case_dir),
@@ -67,9 +60,7 @@ class TestWorkflowConfig(unittest.TestCase):
                 },
             )
 
-            self.assertEqual(
-                [s.name for s in workflow.case_steps(case_ctx)], ["summary_table"]
-            )
+            self.assertEqual([s.name for s in workflow.case_steps(case_ctx)], ["summary_table"])
             self.assertEqual(
                 [s.name for s in workflow.run_steps(post_processing_run_ctx)],
                 ["aggregate_tables"],

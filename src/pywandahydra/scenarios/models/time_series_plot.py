@@ -1,4 +1,4 @@
-"""Time-plot schema model."""
+"""Time-series-plot schema model."""
 
 from __future__ import annotations
 
@@ -15,8 +15,8 @@ from .validators import (
 )
 
 
-class TimePlotSpecification(BaseModel):
-    """Data model representing a time-plot specification loaded from a scenario file.
+class TimeSeriesPlotSpecification(BaseModel):
+    """A time-series-plot specification loaded from a scenario file.
 
     Attributes:
         component (str): The name of the component to plot.

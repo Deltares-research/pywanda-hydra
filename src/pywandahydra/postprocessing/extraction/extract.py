@@ -32,10 +32,10 @@ import pandas as pd
 import pywanda
 
 from ...scenarios.schema import (
-    ExportTableSpecification,
+    MinMaxTableSpecification,
     RoutePlotSpecification,
     ScenarioSpecification,
-    TimePlotSpecification,
+    TimeSeriesPlotSpecification,
 )
 from ...wanda.model_access import WandaModelAccess
 
@@ -49,7 +49,7 @@ logger = logging.getLogger(__name__)
 
 def extract_component_outputs(
     model: pywanda.WandaModel,
-    specs: Sequence[ExportTableSpecification | TimePlotSpecification],
+    specs: Sequence[MinMaxTableSpecification | TimeSeriesPlotSpecification],
     adapter: WandaModelAccess,
 ) -> pd.DataFrame:
     """Extract time-series data for every *Output* specification.
@@ -71,7 +71,7 @@ def extract_component_outputs(
     ----------
     model : pywanda.WandaModel
         An open WANDA model that has been simulated.
-    specs : Sequence[ExportTableSpecification]
+    specs : Sequence[MinMaxTableSpecification]
         One or more export-table specifications.
     adapter : WandaModelAccess
         Adapter used for item resolution and unit-converted outputs.
@@ -415,9 +415,9 @@ def extract_all(
     # Time plots read from the same components cache, so their
     # (component, property) pairs are extracted alongside the Output sheet
     # specifications; duplicates are de-duplicated inside the extractor.
-    component_specs: list[ExportTableSpecification | TimePlotSpecification] = [
-        *scenario.post_processing.tables,
-        *scenario.post_processing.time_plots,
+    component_specs: list[MinMaxTableSpecification | TimeSeriesPlotSpecification] = [
+        *scenario.post_processing.tables.minmax,
+        *scenario.post_processing.figures.time_series,
     ]
     return {
         "components": extract_component_outputs(
@@ -427,7 +427,7 @@ def extract_all(
         ),
         "routes": extract_route_outputs(
             model,
-            scenario.post_processing.routes,
+            scenario.post_processing.figures.routes,
             adapter,
         ),
     }

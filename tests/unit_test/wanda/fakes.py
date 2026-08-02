@@ -7,7 +7,7 @@ from typing import Any
 import numpy as np
 
 from pywandahydra.config.models import ModelSpecification
-from pywandahydra.scenarios.schema import ParameterChange
+from pywandahydra.scenarios.schema import ModelParameterChange
 
 ModelHandle = Any
 
@@ -35,7 +35,7 @@ class FakeWandaModelAccess:
         target.write_bytes(base_model_path.read_bytes())
         return target
 
-    def apply(self, handle: ModelHandle, change: ParameterChange) -> None:
+    def apply(self, handle: ModelHandle, change: ModelParameterChange) -> None:
         del handle, change
 
     def save_input(self, handle: ModelHandle) -> None:
