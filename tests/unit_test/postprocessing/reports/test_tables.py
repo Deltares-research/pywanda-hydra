@@ -10,14 +10,14 @@ import pandas as pd
 
 from pywandahydra.postprocessing.io.cache import ParquetCache
 from pywandahydra.postprocessing.reports.tables import aggregate_case_tables, render_summary_table
-from pywandahydra.scenarios.schema import ExportTableSpecification
+from pywandahydra.scenarios.schema import MinMaxTableSpecification
 
 
 class TestRenderSummaryTable(unittest.TestCase):
     def test_empty_cache_returns_empty_dataframe_with_columns(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             cache = ParquetCache(Path(tmp_dir))
-            specs = [ExportTableSpecification(component="PUMP P1", property="Head", mode="MAX")]
+            specs = [MinMaxTableSpecification(component="PUMP P1", property="Head", mode="MAX")]
 
             result = render_summary_table(specs, cache)
 
@@ -34,7 +34,7 @@ class TestRenderSummaryTable(unittest.TestCase):
             components = pd.DataFrame([[1.0, 2.0], [3.0, 4.0]], columns=columns, index=[0.0, 1.0])
             cache.write({"components": components, "routes": {}})
 
-            specs = [ExportTableSpecification(component="PUMP P1", property="Head", mode="MAX")]
+            specs = [MinMaxTableSpecification(component="PUMP P1", property="Head", mode="MAX")]
 
             result = render_summary_table(specs, cache)
 
@@ -55,7 +55,7 @@ class TestRenderSummaryTable(unittest.TestCase):
             components = pd.DataFrame([[1.0], [3.0]], columns=columns, index=[0.0, 1.0])
             cache.write({"components": components, "routes": {}})
 
-            specs = [ExportTableSpecification(component="PUMP P1", property="Head", mode="MIN")]
+            specs = [MinMaxTableSpecification(component="PUMP P1", property="Head", mode="MIN")]
 
             result = render_summary_table(specs, cache)
 
@@ -71,7 +71,7 @@ class TestRenderSummaryTable(unittest.TestCase):
             components = pd.DataFrame([[1.0], [3.0]], columns=columns, index=[0.0, 1.0])
             cache.write({"components": components, "routes": {}})
 
-            specs = [ExportTableSpecification(component="MISSING", property="Flow", mode="MAX")]
+            specs = [MinMaxTableSpecification(component="MISSING", property="Flow", mode="MAX")]
 
             result = render_summary_table(specs, cache)
 
@@ -91,7 +91,7 @@ class TestRenderSummaryTable(unittest.TestCase):
             components = pd.DataFrame([[1.0], [3.0]], columns=columns, index=[0.0, 1.0])
             cache.write({"components": components, "routes": {}})
 
-            specs = [ExportTableSpecification(component="PUMP P1", property="Head", mode="MAX")]
+            specs = [MinMaxTableSpecification(component="PUMP P1", property="Head", mode="MAX")]
 
             result = render_summary_table(specs, cache, output_dir=output_dir)
 

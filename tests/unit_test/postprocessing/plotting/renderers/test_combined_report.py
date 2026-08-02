@@ -15,8 +15,10 @@ from pywandahydra.postprocessing.plotting.renderers.combined_report import (
 )
 from pywandahydra.postprocessing.plotting.renderers.report_page import ReportMeta  # noqa: E402
 from pywandahydra.postprocessing.plotting.renderers.theme import PlotTheme  # noqa: E402
-from pywandahydra.scenarios.models.plot_route import RoutePlotSpecification  # noqa: E402
-from pywandahydra.scenarios.models.plot_time import TimePlotSpecification  # noqa: E402
+from pywandahydra.scenarios.schema import (  # noqa: E402
+    RoutePlotSpecification,
+    TimeSeriesPlotSpecification,
+)
 
 BASE_META = ReportMeta(
     case_name="case_001",
@@ -96,7 +98,7 @@ class TestRenderCombinedReportPages(unittest.TestCase):
 
     def test_single_time_spec_produces_one_figure_with_plotted_series(self) -> None:
         _write_components_cache(self.cache)
-        spec = TimePlotSpecification(component="PUMP P1", property="Head", fig="1", plot=1)
+        spec = TimeSeriesPlotSpecification(component="PUMP P1", property="Head", fig="1", plot=1)
 
         figures = render_combined_report_pages(
             [spec], self.cache, report_meta_base=BASE_META, theme=self.theme
@@ -162,7 +164,7 @@ class TestRenderCombinedReportPages(unittest.TestCase):
 
     def test_missing_component_cache_skips_time_panel(self) -> None:
         # No components cache written.
-        spec = TimePlotSpecification(component="PUMP P1", property="Head", fig="1", plot=1)
+        spec = TimeSeriesPlotSpecification(component="PUMP P1", property="Head", fig="1", plot=1)
 
         with self.assertLogs(
             "pywandahydra.postprocessing.plotting.renderers.combined_report",
@@ -180,7 +182,7 @@ class TestRenderCombinedReportPages(unittest.TestCase):
         _write_components_cache(self.cache)
         specs = [
             RoutePlotSpecification(route_id="Route A", property="Pressure", fig="1", plot=1),
-            TimePlotSpecification(component="PUMP P1", property="Head", fig="1", plot=1),
+            TimeSeriesPlotSpecification(component="PUMP P1", property="Head", fig="1", plot=1),
         ]
 
         with self.assertRaises(ValueError):

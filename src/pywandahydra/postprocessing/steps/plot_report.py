@@ -26,11 +26,9 @@ class PlotReportStep:
         self._p = params or self.Params()
 
     def applicable(self, ctx: CaseContext) -> bool:
-        """Run only when route or time plots are defined and this step is enabled."""
+        """Run only when route or time plots are defined."""
         pp = ctx.scenario.post_processing
-        if pp.enabled_steps and self.name not in pp.enabled_steps:
-            return False
-        return len(pp.routes) > 0 or len(pp.time_plots) > 0
+        return len(pp.figures.routes) > 0 or len(pp.figures.time_series) > 0
 
     def run(self, ctx: CaseContext) -> None:
         """Render all route and time plots to one consolidated per-case PDF."""
@@ -43,8 +41,8 @@ class PlotReportStep:
         case_pdf = figures_dir / f"{case_id}.pdf"
 
         specs: list[PlotSpec] = [
-            *ctx.scenario.post_processing.routes,
-            *ctx.scenario.post_processing.time_plots,
+            *ctx.scenario.post_processing.figures.routes,
+            *ctx.scenario.post_processing.figures.time_series,
         ]
 
         with plt.ioff():

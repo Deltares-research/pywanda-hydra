@@ -17,9 +17,9 @@ from pywandahydra.config.models import ModelSpecification, RunContext
 from pywandahydra.execution import runner
 from pywandahydra.postprocessing.io.cache import ParquetCache
 from pywandahydra.scenarios.schema import (
-    PostProcessingConfig,
+    FigurePostProcessingConfiguration,
+    PostProcessingConfiguration,
     RoutePlotSpecification,
-    ScenarioMeta,
     ScenarioSpecification,
 )
 
@@ -41,14 +41,16 @@ class TestFailedRoute(unittest.TestCase):
             root_dir=self.tmp_path / "test_failed_route",
         )
         scenario = ScenarioSpecification(
-            meta=ScenarioMeta.model_validate(
-                {"Number": 1, "Include": True, "Name": "scenario_001"}
-            ),
-            post_processing=PostProcessingConfig(
-                routes=[
-                    RoutePlotSpecification(route_id="RouteA", property="Pressure"),
-                    RoutePlotSpecification(route_id="InvalidRoute", property="Pressure"),
-                ]
+            number=1,
+            include=True,
+            name="scenario_001",
+            post_processing=PostProcessingConfiguration(
+                figures=FigurePostProcessingConfiguration(
+                    routes=[
+                        RoutePlotSpecification(route_id="RouteA", property="Pressure"),
+                        RoutePlotSpecification(route_id="InvalidRoute", property="Pressure"),
+                    ]
+                )
             ),
         )
 

@@ -24,16 +24,14 @@ class SummaryTableStep:
         self._p = params or self.Params()
 
     def applicable(self, ctx: CaseContext) -> bool:
-        """Run only if the scenario defines output specifications and the step is enabled."""
+        """Run only if the scenario defines output specifications."""
         pp = ctx.scenario.post_processing
-        if pp.enabled_steps and self.name not in pp.enabled_steps:
-            return False
-        return len(pp.tables) > 0
+        return len(pp.tables.minmax) > 0
 
     def run(self, ctx: CaseContext) -> None:
         """Render the summary table to the case directory."""
         render_summary_table(
-            ctx.scenario.post_processing.tables,
+            ctx.scenario.post_processing.tables.minmax,
             ctx.cache,
             output_dir=ctx.case_dir,
             export_props=ctx.export_table_props,

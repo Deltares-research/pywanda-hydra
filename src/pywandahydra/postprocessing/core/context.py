@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from ...scenarios.schema import ScenarioSpecification
+from ...scenarios.schema import AnalysisMeta, ScenarioSpecification
 from ..io.cache import ParquetCache
 from ..io.export import DEFAULT_TABLE_EXPORT_PROPS, build_figure_export_props
 from ..plotting.renderers.theme import PlotTheme
@@ -20,6 +20,7 @@ class CaseContext:
     cache: ParquetCache
     scenario: ScenarioSpecification
     case_dir: Path
+    analysis_metadata: AnalysisMeta = field(default_factory=AnalysisMeta)
     theme: PlotTheme = field(default_factory=PlotTheme)
     export_figure_props: dict[str, dict[str, Any]] = field(
         default_factory=build_figure_export_props

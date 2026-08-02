@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+# Import shared helper from root conftest
+import sys
 import unittest
 from contextlib import contextmanager
 from pathlib import Path
@@ -9,20 +11,18 @@ from unittest.mock import patch
 
 from pywandahydra.config.models import ModelSpecification
 from pywandahydra.scenarios.models.plot_route import RoutePlotSpecification
-from pywandahydra.scenarios.models.plot_time import TimePlotSpecification
-from pywandahydra.scenarios.models.tables import ExportTableSpecification
 from pywandahydra.scenarios.schema import (
-    AnalysisMeta,
-    ParameterChange,
-    PostProcessingConfig,
-    ScenarioMeta,
+    FigurePostProcessingConfiguration,
+    MinMaxTableSpecification,
+    ModelParameterChange,
+    PostProcessingConfiguration,
     ScenarioSpecification,
+    TablePostProcessingConfiguration,
+    TimeSeriesPlotSpecification,
 )
 from pywandahydra.wanda.api import WandaItemRef
 from pywandahydra.wanda.validation import PreflightValidationError, assert_preflight_valid
 
-# Import shared helper from root conftest
-import sys
 sys.path.insert(0, str(Path(__file__).parents[2]))
 from conftest import find_wanda_bin
 
@@ -76,23 +76,13 @@ class TestPreflightValidation(unittest.TestCase):
     def _scenario(
         self, *, component: str, property_name: str, value: object
     ) -> ScenarioSpecification:
-        meta = ScenarioMeta.model_validate(
-            {
-                "Number": 1,
-                "Include": True,
-                "Name": "case_001",
-                "Description": None,
-                "Extra": None,
-                "Appendix": None,
-                "Chapter": None,
-                "Date": None,
-            }
-        )
         return ScenarioSpecification(
-            meta=meta,
-            analysis_meta=AnalysisMeta(),
-            parameters=[ParameterChange(component=component, property=property_name, value=value)],
-            post_processing=PostProcessingConfig(),
+            number=1,
+            include=True,
+            name="case_001",
+            parameter_changes=[
+                ModelParameterChange(component=component, property=property_name, value=value)
+            ],
             source={},
         )
 
@@ -129,14 +119,18 @@ class TestPreflightValidation(unittest.TestCase):
             )
 
     def test_preflight_fails_on_missing_table_property(self) -> None:
-        meta = ScenarioMeta.model_validate({"Number": 1, "Include": True, "Name": "case_001"})
         scenario = ScenarioSpecification(
-            meta=meta,
-            analysis_meta=AnalysisMeta(),
-            post_processing=PostProcessingConfig(
-                tables=[
-                    ExportTableSpecification(component="PIPE P1", property="Missing", mode="MAX")
-                ]
+            number=1,
+            include=True,
+            name="case_001",
+            post_processing=PostProcessingConfiguration(
+                tables=TablePostProcessingConfiguration(
+                    minmax=[
+                        MinMaxTableSpecification(
+                            component="PIPE P1", property="Missing", mode="MAX"
+                        )
+                    ]
+                )
             ),
             source={},
         )
@@ -159,12 +153,14 @@ class TestPreflightValidation(unittest.TestCase):
         self.assertIn("PIPE P1.Missing", str(ctx.exception))
 
     def test_preflight_fails_on_missing_route(self) -> None:
-        meta = ScenarioMeta.model_validate({"Number": 1, "Include": True, "Name": "case_001"})
         scenario = ScenarioSpecification(
-            meta=meta,
-            analysis_meta=AnalysisMeta(),
-            post_processing=PostProcessingConfig(
-                routes=[RoutePlotSpecification(route_id="Route A", property="Pressure")]
+            number=1,
+            include=True,
+            name="case_001",
+            post_processing=PostProcessingConfiguration(
+                figures=FigurePostProcessingConfiguration(
+                    routes=[RoutePlotSpecification(route_id="Route A", property="Pressure")]
+                )
             ),
             source={},
         )
@@ -183,12 +179,16 @@ class TestPreflightValidation(unittest.TestCase):
         self.assertIn("post_processing.routes", str(ctx.exception))
 
     def test_preflight_fails_on_missing_time_plot_property(self) -> None:
-        meta = ScenarioMeta.model_validate({"Number": 1, "Include": True, "Name": "case_001"})
         scenario = ScenarioSpecification(
-            meta=meta,
-            analysis_meta=AnalysisMeta(),
-            post_processing=PostProcessingConfig(
-                time_plots=[TimePlotSpecification(component="PIPE P1", property="Missing")]
+            number=1,
+            include=True,
+            name="case_001",
+            post_processing=PostProcessingConfiguration(
+                figures=FigurePostProcessingConfiguration(
+                    time_series=[
+                        TimeSeriesPlotSpecification(component="PIPE P1", property="Missing")
+                    ]
+                )
             ),
             source={},
         )
@@ -209,29 +209,6 @@ class TestPreflightValidation(unittest.TestCase):
 
         self.assertIn("post_processing.time_plots", str(ctx.exception))
         self.assertIn("PIPE P1.Missing", str(ctx.exception))
-
-    def test_preflight_fails_on_invalid_global_override(self) -> None:
-        model_spec = self._model_spec().model_copy(
-            update={
-                "global_overrides": [
-                    ParameterChange(component="MISSING", property="Head", value=1.0)
-                ]
-            }
-        )
-
-        with (
-            patch("pywandahydra.wanda.validation.wanda_session", _fake_wanda_session),
-            patch("pywandahydra.wanda.validation.resolve_items", return_value=[]),
-            self.assertRaises(PreflightValidationError) as ctx,
-        ):
-            assert_preflight_valid(
-                model_spec=model_spec,
-                scenarios=[],
-                isolated=False,
-            )
-
-        self.assertIn("[GLOBAL]", str(ctx.exception))
-        self.assertIn("global_overrides", str(ctx.exception))
 
     def test_preflight_accepts_legacy_disuse_zero(self) -> None:
         scenarios = [self._scenario(component="PIPE P1", property_name="disuse", value=0)]
@@ -271,11 +248,13 @@ class TestPreflightValidationIsolated(unittest.TestCase):
     def _scenario(
         self, *, component: str, property_name: str, value: object
     ) -> ScenarioSpecification:
-        meta = ScenarioMeta.model_validate({"Number": 1, "Include": True, "Name": "case_001"})
         return ScenarioSpecification(
-            meta=meta,
-            analysis_meta=AnalysisMeta(),
-            parameters=[ParameterChange(component=component, property=property_name, value=value)],
+            number=1,
+            include=True,
+            name="case_001",
+            parameter_changes=[
+                ModelParameterChange(component=component, property=property_name, value=value)
+            ],
         )
 
     def test_isolated_validation_accepts_valid_scenario(self) -> None:

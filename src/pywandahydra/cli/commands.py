@@ -104,11 +104,14 @@ def run(
         "Loaded %d scenarios from %s (%d included)",
         len(scenarios),
         scenario_path.name,
-        sum(1 for s in scenarios if s.meta.include),
+        sum(1 for s in scenarios if s.include),
     )
 
     # Build run context
     ctx = build_run_context(cfg)
+    # Bridge analysis metadata from the scenario document onto the run context
+    # (temporary path until Slice 07's RunPlan owns it).
+    ctx.analysis_meta = scenario_document.analysis_metadata
 
     # Write run metadata
     from ..execution.artifacts import create_run_directories
@@ -222,7 +225,7 @@ def validate(
     try:
         scenario_document = load_scenario_document(cfg.scenario_file)
         scenarios = list(scenario_document.scenarios)
-        n_included = sum(1 for s in scenarios if s.meta.include)
+        n_included = sum(1 for s in scenarios if s.include)
         typer.echo(f"Scenarios OK: {len(scenarios)} total, {n_included} included")
     except (ValueError, FileNotFoundError) as e:
         typer.echo(f"Scenarios INVALID: {e}", err=True)

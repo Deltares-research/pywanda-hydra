@@ -1,21 +1,41 @@
-"""Post-processing configuration schema model."""
+"""Post-processing configuration schema models."""
 
 from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from .plot_route import RoutePlotSpecification
-from .plot_time import TimePlotSpecification
-from .tables import ExportTableSpecification
+from .report import ReportConfiguration
+from .table import MinMaxTableSpecification
+from .time_series_plot import TimeSeriesPlotSpecification
 
 
-class PostProcessingConfig(BaseModel):
+class TablePostProcessingConfiguration(BaseModel):
+    """Table exports requested for a scenario."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    minmax: list[MinMaxTableSpecification] = Field(default_factory=list)
+
+
+class FigurePostProcessingConfiguration(BaseModel):
+    """Figures requested for a scenario."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    routes: list[RoutePlotSpecification] = Field(default_factory=list)
+    time_series: list[TimeSeriesPlotSpecification] = Field(default_factory=list)
+
+
+class PostProcessingConfiguration(BaseModel):
     """Typed post-processing configuration attached to each scenario."""
 
     model_config = ConfigDict(extra="forbid")
 
-    tables: list[ExportTableSpecification] = Field(default_factory=list)
-    routes: list[RoutePlotSpecification] = Field(default_factory=list)
-    time_plots: list[TimePlotSpecification] = Field(default_factory=list)
-    enabled_steps: list[str] = Field(default_factory=list)
-    theme: str = "default"
+    tables: TablePostProcessingConfiguration = Field(
+        default_factory=TablePostProcessingConfiguration
+    )
+    figures: FigurePostProcessingConfiguration = Field(
+        default_factory=FigurePostProcessingConfiguration
+    )
+    report: ReportConfiguration = Field(default_factory=ReportConfiguration)

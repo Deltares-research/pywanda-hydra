@@ -15,7 +15,7 @@ import numpy as np
 import pandas as pd
 from matplotlib.axes import Axes
 
-from ....scenarios.schema import TimePlotSpecification
+from ....scenarios.schema import TimeSeriesPlotSpecification
 from .common import apply_axis_spec, configure_matplotlib_defaults
 from .theme import PlotTheme
 
@@ -26,7 +26,7 @@ configure_matplotlib_defaults()
 
 def _plot_time_series_group(
     ax: Axes,
-    specs: list[TimePlotSpecification],
+    specs: list[TimeSeriesPlotSpecification],
     components: pd.DataFrame,
     theme: PlotTheme,
 ) -> bool:
@@ -79,7 +79,7 @@ def _plot_time_series_group(
     return True
 
 
-def _warn_duplicate_axis_definitions(specs: list[TimePlotSpecification]) -> None:
+def _warn_duplicate_axis_definitions(specs: list[TimeSeriesPlotSpecification]) -> None:
     """Warn when title/Xlabel/Ylabel are set on more than one spec in a subplot.
 
     Only the first spec's title and axis labels are used for a shared
@@ -109,7 +109,7 @@ def _warn_duplicate_axis_definitions(specs: list[TimePlotSpecification]) -> None
 
 def _select_columns(
     components: pd.DataFrame,
-    spec: TimePlotSpecification,
+    spec: TimeSeriesPlotSpecification,
 ) -> list[tuple[tuple[str, str, float], str]]:
     """Pick the cached columns matching a spec, honoring its ``location``.
 

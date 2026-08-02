@@ -8,7 +8,7 @@ from unittest.mock import patch
 from pywandahydra.config.models import ModelSpecification, RunContext
 from pywandahydra.execution import runner
 from pywandahydra.execution.journal import CaseJournal
-from pywandahydra.scenarios.schema import ScenarioMeta, ScenarioSpecification
+from pywandahydra.scenarios.schema import ScenarioSpecification
 from unit_test.wanda.fakes import FakeWandaModelAccess
 
 
@@ -20,9 +20,7 @@ class TestRunner(unittest.TestCase):
             root_dir=root_dir / "run_001",
         )
 
-    def _build_model_spec(
-        self, root_dir: Path, *, reuse_existing_data: bool
-    ) -> ModelSpecification:
+    def _build_model_spec(self, root_dir: Path, *, reuse_existing_data: bool) -> ModelSpecification:
         model_path = root_dir / "base_model.wdi"
         if not model_path.exists():
             model_path.write_bytes(b"base_model")
@@ -36,9 +34,7 @@ class TestRunner(unittest.TestCase):
         )
 
     def _build_scenario(self, name: str) -> ScenarioSpecification:
-        return ScenarioSpecification(
-            meta=ScenarioMeta.model_validate({"Number": 1, "Include": True, "Name": name})
-        )
+        return ScenarioSpecification(number=1, include=True, name=name)
 
     def test_run_with_no_scenarios_returns_empty_result(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:

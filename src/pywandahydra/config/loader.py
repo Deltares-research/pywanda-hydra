@@ -242,10 +242,11 @@ def validate_run_paths(config: RunConfig, *, config_dir: Path) -> None:
 def apply_post_processing_overrides(
     config: RunConfig, scenarios: list[ScenarioSpecification]
 ) -> None:
-    """Apply run-level post-processing overrides in place.
+    """Validate run-level post-processing overrides.
 
-    Validates the theme against the registered theme registry and overrides
-    each scenario's per-scenario theme when a top-level theme is configured.
+    Validates the theme against the registered theme registry. Application of
+    run-level output settings is deferred to the run-level plan (Slice 07);
+    for now only validation occurs so misconfigured themes still fail fast.
     """
     theme_name = config.post_processing.theme
     if theme_name is None:
@@ -258,8 +259,6 @@ def apply_post_processing_overrides(
         raise ValueError(
             f"post_processing.theme '{theme_name}' is not registered. Known themes: {known}"
         )
-    for scenario in scenarios:
-        scenario.post_processing.theme = theme_name
 
 
 def build_run_context(config: RunConfig) -> RunContext:

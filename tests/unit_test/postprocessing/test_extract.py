@@ -13,9 +13,14 @@ from pywandahydra.postprocessing.extraction.extract import (
     extract_route_outputs,
 )
 from pywandahydra.scenarios.models.plot_route import RoutePlotSpecification
-from pywandahydra.scenarios.models.plot_time import TimePlotSpecification
-from pywandahydra.scenarios.models.tables import ExportTableSpecification
-from pywandahydra.scenarios.schema import PostProcessingConfig, ScenarioMeta, ScenarioSpecification
+from pywandahydra.scenarios.schema import (
+    FigurePostProcessingConfiguration,
+    MinMaxTableSpecification,
+    PostProcessingConfiguration,
+    ScenarioSpecification,
+    TablePostProcessingConfiguration,
+    TimeSeriesPlotSpecification,
+)
 
 
 class _FakeAdapter:
@@ -95,7 +100,7 @@ class TestExtractComponentOutputs(unittest.TestCase):
 
     def test_missing_component_skipped(self) -> None:
         adapter = _FakeAdapter(time_steps=[0.0, 1.0], resolve_map={})
-        specs = [ExportTableSpecification(component="MISSING", property="Head", mode="MAX")]
+        specs = [MinMaxTableSpecification(component="MISSING", property="Head", mode="MAX")]
 
         result = extract_component_outputs(None, specs, adapter)  # type: ignore[arg-type]
 
@@ -108,7 +113,7 @@ class TestExtractComponentOutputs(unittest.TestCase):
             pipe_items=set(),
             series={("PUMP P1", "Head"): np.array([1.0, 2.0, 3.0])},
         )
-        specs = [ExportTableSpecification(component="PUMP P1", property="Head", mode="MAX")]
+        specs = [MinMaxTableSpecification(component="PUMP P1", property="Head", mode="MAX")]
 
         result = extract_component_outputs(None, specs, adapter)  # type: ignore[arg-type]
 
@@ -126,7 +131,7 @@ class TestExtractComponentOutputs(unittest.TestCase):
             pipe_series={("PIPE P1", "Pressure"): np.array([[1.0, 2.0], [3.0, 4.0]])},
             pipe_lengths={"PIPE P1": 10.0},
         )
-        specs = [ExportTableSpecification(component="PIPE P1", property="Pressure", mode="MAX")]
+        specs = [MinMaxTableSpecification(component="PIPE P1", property="Pressure", mode="MAX")]
 
         result = extract_component_outputs(None, specs, adapter)  # type: ignore[arg-type]
 
@@ -140,7 +145,7 @@ class TestExtractComponentOutputs(unittest.TestCase):
             resolve_map={"PUMP P1": ["PUMP P1"]},
             is_pipe_raises={"PUMP P1"},
         )
-        specs = [ExportTableSpecification(component="PUMP P1", property="Head", mode="MAX")]
+        specs = [MinMaxTableSpecification(component="PUMP P1", property="Head", mode="MAX")]
 
         result = extract_component_outputs(None, specs, adapter)  # type: ignore[arg-type]
 
@@ -153,8 +158,8 @@ class TestExtractComponentOutputs(unittest.TestCase):
             series={("PUMP P1", "Head"): np.array([1.0, 2.0])},
         )
         specs = [
-            ExportTableSpecification(component="PUMP P1", property="Head", mode="MAX"),
-            TimePlotSpecification(component="PUMP P1", property="Head"),
+            MinMaxTableSpecification(component="PUMP P1", property="Head", mode="MAX"),
+            TimeSeriesPlotSpecification(component="PUMP P1", property="Head"),
         ]
 
         result = extract_component_outputs(None, specs, adapter)  # type: ignore[arg-type]
@@ -289,12 +294,22 @@ class TestExtractAll(unittest.TestCase):
             pipe_profiles={"PIPE P1": np.array([[0.0, 0.0], [100.0, 110.0], [0.0, 10.0]])},
         )
         scenario = ScenarioSpecification(
-            meta=ScenarioMeta.model_validate({"Number": 1, "Include": True, "Name": "case_001"}),
-            post_processing=PostProcessingConfig(
-                tables=[ExportTableSpecification(component="PUMP P1", property="Head", mode="MAX")],
-                routes=[
-                    RoutePlotSpecification(route_id="Route A", property="Pressure", title="Route A")
-                ],
+            number=1,
+            include=True,
+            name="case_001",
+            post_processing=PostProcessingConfiguration(
+                tables=TablePostProcessingConfiguration(
+                    minmax=[
+                        MinMaxTableSpecification(component="PUMP P1", property="Head", mode="MAX")
+                    ]
+                ),
+                figures=FigurePostProcessingConfiguration(
+                    routes=[
+                        RoutePlotSpecification(
+                            route_id="Route A", property="Pressure", title="Route A"
+                        )
+                    ]
+                ),
             ),
         )
 

@@ -104,27 +104,18 @@ def _apply_parameters(
     plan: CasePlan,
     journal: CaseJournal,
 ) -> None:
-    """Apply global overrides and scenario-specific parameter changes."""
-    logger.info(
-        "Case %s: Applying %d global overrides",
-        plan.case_id,
-        len(plan.model_spec.global_overrides),
-    )
-    for change in plan.model_spec.global_overrides:
-        adapter.apply(model, change)
-
+    """Apply scenario-specific parameter changes."""
     logger.info(
         "Case %s: Applying %d scenario parameters",
         plan.case_id,
-        len(plan.scenario.parameters),
+        len(plan.scenario.parameter_changes),
     )
-    for change in plan.scenario.parameters:
+    for change in plan.scenario.parameter_changes:
         adapter.apply(model, change)
 
     journal.event(
         "params_applied",
-        global_count=len(plan.model_spec.global_overrides),
-        scenario_count=len(plan.scenario.parameters),
+        scenario_count=len(plan.scenario.parameter_changes),
     )
 
 
@@ -249,7 +240,7 @@ def _execute_case(plan: CasePlan, journal: CaseJournal) -> CaseResult:
         scenario_model_path = adapter.prepare_scenario_model(
             plan.model_spec.model_path,
             plan.case_dir,
-            plan.scenario.meta.name,
+            plan.scenario.name,
             reuse_existing_data=plan.model_spec.reuse_existing_data,
         )
         logger.info("Case %s: Model prepared at %s", plan.case_id, scenario_model_path)
@@ -295,11 +286,12 @@ def _execute_case(plan: CasePlan, journal: CaseJournal) -> CaseResult:
             plan.case_id,
             plan.workflow_name,
         )
-        theme = get_theme(plan.scenario.post_processing.theme)
+        theme = get_theme("default")
         postprocessing_ctx = CaseContext(
             cache=cache,
             scenario=plan.scenario,
             case_dir=plan.case_dir,
+            analysis_metadata=plan.analysis_metadata,
             theme=theme,
         )
         with journal:

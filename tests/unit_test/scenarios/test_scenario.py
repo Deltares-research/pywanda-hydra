@@ -33,7 +33,7 @@ class TestScenarioLoading(unittest.TestCase):
         # Assert
         self.assertIsInstance(scenarios, list)
         self.assertIsInstance(scenarios[0], ScenarioSpecification)
-        included = sum(1 for s in scenarios if s.meta.include)
+        included = sum(1 for s in scenarios if s.include)
         self.assertEqual(included, 105)
         self.assertGreaterEqual(len(scenarios), included)
 
@@ -62,7 +62,7 @@ class TestScenarioLoading(unittest.TestCase):
         self.assertEqual(document.source_path, workbook)
         self.assertEqual(document.analysis_metadata.analysis_description, "My analysis")
         self.assertEqual(len(document.scenarios), 2)
-        self.assertEqual(sum(1 for s in document.scenarios if s.meta.include), 1)
+        self.assertEqual(sum(1 for s in document.scenarios if s.include), 1)
 
     def test_include_filtering_happens_in_case_plan_builder(self) -> None:
         """Execution selection point keeps only included scenarios."""

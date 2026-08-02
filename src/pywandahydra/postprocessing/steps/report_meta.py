@@ -11,23 +11,27 @@ from ..plotting.renderers.report_page import ReportMeta
 
 def build_report_meta(ctx: CaseContext) -> ReportMeta:
     """Create report metadata from scenario and analysis metadata."""
-    scen_meta = ctx.scenario.meta
-    analysis_meta = ctx.scenario.analysis_meta
+    scenario = ctx.scenario
+    report = scenario.post_processing.report
+    analysis_meta = ctx.analysis_metadata
 
-    report_date = _format_date(scen_meta.date)
+    report_date = _format_date(report.date)
 
-    appendix = (scen_meta.appendix or "").strip()
+    appendix = (report.appendix or "").strip()
     if appendix:
-        base_figure_id = f"{appendix}.{int(scen_meta.number):03d}"
+        base_figure_id = f"{appendix}.{int(scenario.number):03d}"
     else:
         base_figure_id = f"{ctx.case_dir.name}_"
 
-    chapter = f"Chapter {scen_meta.chapter}" if scen_meta.chapter is not None else ""
+    chapter = f"Chapter {report.chapter}" if report.chapter is not None else ""
+
+    extra = scenario.extra_columns.get("Extra")
+    scenario_description = report.description or (str(extra) if extra else "")
 
     return ReportMeta(
-        case_name=scen_meta.name,
+        case_name=scenario.name,
         analysis_description=analysis_meta.analysis_description or "",
-        scenario_description=scen_meta.description or scen_meta.extra or "",
+        scenario_description=scenario_description,
         chapter=chapter,
         project_number=str(analysis_meta.project_number or ""),
         figure_id=base_figure_id,

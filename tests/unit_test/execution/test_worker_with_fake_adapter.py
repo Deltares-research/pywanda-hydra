@@ -8,7 +8,7 @@ from unittest.mock import patch
 from pywandahydra.config.models import ModelSpecification
 from pywandahydra.execution.case_plan import CasePlan
 from pywandahydra.execution.worker import run_one_case
-from pywandahydra.scenarios.schema import ScenarioMeta, ScenarioSpecification
+from pywandahydra.scenarios.schema import ScenarioSpecification
 from unit_test.wanda.fakes import FakeWandaModelAccess
 
 
@@ -28,13 +28,9 @@ class TestWorkerWithFakeAdapter(unittest.TestCase):
                 run_unsteady=True,
             )
             scenario = ScenarioSpecification(
-                meta=ScenarioMeta.model_validate(
-                    {
-                        "Number": 1,
-                        "Include": True,
-                        "Name": "case_fake",
-                    }
-                )
+                number=1,
+                include=True,
+                name="case_fake",
             )
             plan = CasePlan(
                 case_id="case_fake",

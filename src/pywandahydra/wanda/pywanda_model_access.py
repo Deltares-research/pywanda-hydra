@@ -11,7 +11,7 @@ import numpy as np
 import pywanda
 
 from ..config.models import ModelSpecification
-from ..scenarios.schema import ParameterChange
+from ..scenarios.schema import ModelParameterChange
 from .item_lookup import get_item, resolve_items
 from .model_files import prepare_scenario_model
 from .parameter_application import apply_parameter_change, to_si_units
@@ -46,7 +46,7 @@ class PywandaModelAccess:
             scenario_name,
         )
 
-    def apply(self, handle: pywanda.WandaModel, change: ParameterChange) -> None:
+    def apply(self, handle: pywanda.WandaModel, change: ModelParameterChange) -> None:
         apply_parameter_change(handle, change)
 
     def save_input(self, handle: pywanda.WandaModel) -> None:

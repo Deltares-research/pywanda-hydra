@@ -7,7 +7,7 @@ from pathlib import Path
 
 from pywandahydra.config.models import ModelSpecification, RunContext
 from pywandahydra.execution.artifacts import create_run_directories, write_run_log
-from pywandahydra.scenarios.schema import ScenarioMeta, ScenarioSpecification
+from pywandahydra.scenarios.schema import ScenarioSpecification
 
 
 class TestCreateRunDirectories(unittest.TestCase):
@@ -72,9 +72,7 @@ class TestWriteRunLog(unittest.TestCase):
                 wanda_bin=Path(r"c:\wanda\bin"),
                 base_model_name="base_model",
             )
-            scenario = ScenarioSpecification(
-                meta=ScenarioMeta.model_validate({"Number": 1, "Include": True, "Name": "case_001"})
-            )
+            scenario = ScenarioSpecification(number=1, include=True, name="case_001")
 
             write_run_log(
                 context_object=ctx,
@@ -91,7 +89,7 @@ class TestWriteRunLog(unittest.TestCase):
             self.assertEqual(data["run_context"]["run_id"], "run_001")
             self.assertEqual(data["model_specification"]["base_model_name"], "base_model")
             self.assertEqual(len(data["scenarios"]), 1)
-            self.assertEqual(data["scenarios"][0]["meta"]["name"], "case_001")
+            self.assertEqual(data["scenarios"][0]["name"], "case_001")
 
 
 if __name__ == "__main__":

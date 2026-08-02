@@ -7,7 +7,7 @@ from typing import Any
 import pywanda
 
 from ..disuse import parse_disuse_value
-from ..scenarios.schema import ParameterChange
+from ..scenarios.schema import ModelParameterChange
 from .item_lookup import get_item, resolve_items
 
 
@@ -28,7 +28,7 @@ def to_si_units(value: Any, prop: Any) -> Any:
     return value * float(prop.get_unit_factor())
 
 
-def apply_parameter_change(model: pywanda.WandaModel, change: ParameterChange) -> None:
+def apply_parameter_change(model: pywanda.WandaModel, change: ModelParameterChange) -> None:
     """Apply a parameter change to a Wanda model."""
     try:
         if change.component.lower() == "general":

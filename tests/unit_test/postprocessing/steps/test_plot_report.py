@@ -13,17 +13,19 @@ from pywandahydra.postprocessing.core.context import CaseContext
 from pywandahydra.postprocessing.io.cache import ParquetCache
 from pywandahydra.postprocessing.steps.plot_report import PlotReportStep
 from pywandahydra.scenarios.schema import (
-    PostProcessingConfig,
+    FigurePostProcessingConfiguration,
+    PostProcessingConfiguration,
     RoutePlotSpecification,
-    ScenarioMeta,
     ScenarioSpecification,
-    TimePlotSpecification,
+    TimeSeriesPlotSpecification,
 )
 
 
-def _make_ctx(tmp_path: Path, post_processing: PostProcessingConfig) -> CaseContext:
+def _make_ctx(tmp_path: Path, post_processing: PostProcessingConfiguration) -> CaseContext:
     scenario = ScenarioSpecification(
-        meta=ScenarioMeta.model_validate({"Number": 1, "Include": True, "Name": "case_001"}),
+        number=1,
+        include=True,
+        name="case_001",
         post_processing=post_processing,
     )
     return CaseContext(cache=ParquetCache(tmp_path), scenario=scenario, case_dir=tmp_path)
@@ -33,14 +35,16 @@ class TestPlotReportStepApplicable(unittest.TestCase):
     def test_not_applicable_when_no_routes_or_time_plots(self) -> None:
         step = PlotReportStep()
         with tempfile.TemporaryDirectory() as tmp_dir:
-            ctx = _make_ctx(Path(tmp_dir), PostProcessingConfig())
+            ctx = _make_ctx(Path(tmp_dir), PostProcessingConfiguration())
 
             self.assertFalse(step.applicable(ctx))
 
     def test_applicable_when_routes_present(self) -> None:
         step = PlotReportStep()
-        pp = PostProcessingConfig(
-            routes=[RoutePlotSpecification(route_id="Route A", property="Pressure", title="t")]
+        pp = PostProcessingConfiguration(
+            figures=FigurePostProcessingConfiguration(
+                routes=[RoutePlotSpecification(route_id="Route A", property="Pressure", title="t")]
+            )
         )
         with tempfile.TemporaryDirectory() as tmp_dir:
             ctx = _make_ctx(Path(tmp_dir), pp)
@@ -49,31 +53,26 @@ class TestPlotReportStepApplicable(unittest.TestCase):
 
     def test_applicable_when_time_plots_present(self) -> None:
         step = PlotReportStep()
-        pp = PostProcessingConfig(
-            time_plots=[TimePlotSpecification(component="PUMP P1", property="Head", title="t")]
+        pp = PostProcessingConfiguration(
+            figures=FigurePostProcessingConfiguration(
+                time_series=[
+                    TimeSeriesPlotSpecification(component="PUMP P1", property="Head", title="t")
+                ]
+            )
         )
         with tempfile.TemporaryDirectory() as tmp_dir:
             ctx = _make_ctx(Path(tmp_dir), pp)
 
             self.assertTrue(step.applicable(ctx))
 
-    def test_not_applicable_when_step_disabled_via_enabled_steps(self) -> None:
-        step = PlotReportStep()
-        pp = PostProcessingConfig(
-            routes=[RoutePlotSpecification(route_id="Route A", property="Pressure", title="t")],
-            enabled_steps=["some_other_step"],
-        )
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            ctx = _make_ctx(Path(tmp_dir), pp)
-
-            self.assertFalse(step.applicable(ctx))
-
 
 class TestPlotReportStepRun(unittest.TestCase):
     def test_run_writes_pdf_when_figures_rendered(self) -> None:
         step = PlotReportStep()
-        pp = PostProcessingConfig(
-            routes=[RoutePlotSpecification(route_id="Route A", property="Pressure", title="t")]
+        pp = PostProcessingConfiguration(
+            figures=FigurePostProcessingConfiguration(
+                routes=[RoutePlotSpecification(route_id="Route A", property="Pressure", title="t")]
+            )
         )
         with tempfile.TemporaryDirectory() as tmp_dir:
             ctx = _make_ctx(Path(tmp_dir), pp)
@@ -92,8 +91,10 @@ class TestPlotReportStepRun(unittest.TestCase):
 
     def test_run_no_figures_does_not_write_pdf(self) -> None:
         step = PlotReportStep()
-        pp = PostProcessingConfig(
-            routes=[RoutePlotSpecification(route_id="Route A", property="Pressure", title="t")]
+        pp = PostProcessingConfiguration(
+            figures=FigurePostProcessingConfiguration(
+                routes=[RoutePlotSpecification(route_id="Route A", property="Pressure", title="t")]
+            )
         )
         with tempfile.TemporaryDirectory() as tmp_dir:
             ctx = _make_ctx(Path(tmp_dir), pp)
