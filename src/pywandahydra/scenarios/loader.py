@@ -5,9 +5,12 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Protocol
 
+from .excel.loader import load_excel_document
+from .excel.validation import check_xls_structure
 from .models.document import ScenarioDocument, ScenarioWarning
-from .sources.xls import check_xls_structure, load_excel_document
+from .models.scenario import ScenarioSpecification
 
 
 @dataclass(frozen=True)
@@ -49,7 +52,17 @@ _STRUCTURE_CHECKERS = {
     ".xlsm": check_xls_structure,
 }
 
-_DocumentLoader = Callable[[Path | str, ScenarioLoadOptions], ScenarioDocument]
+
+class _DocumentLoader(Protocol):
+    def __call__(
+        self,
+        path: Path | str,
+        opts: ScenarioLoadOptions,
+        *,
+        strict: bool,
+    ) -> ScenarioDocument: ...
+
+
 _StructureChecker = Callable[[Path | str, ScenarioLoadOptions], list[ScenarioWarning]]
 
 
@@ -84,12 +97,25 @@ def load_scenario_document(
     path: Path | str,
     *,
     options: ScenarioLoadOptions | None = None,
+    strict: bool | None = None,
 ) -> ScenarioDocument:
     """Load a scenario workbook into a typed ``ScenarioDocument`` aggregate."""
     opts = options or ScenarioLoadOptions()
+    strict_mode = opts.strict_validation if strict is None else strict
     p = _normalize_path(path)
     loader = _resolve_loader(p)
-    return loader(p, opts)
+    return loader(p, opts, strict=strict_mode)
+
+
+def load_scenarios(
+    path: Path | str,
+    *,
+    options: ScenarioLoadOptions | None = None,
+    strict: bool | None = None,
+) -> list[ScenarioSpecification]:
+    """Load scenarios from a workbook document."""
+    document = load_scenario_document(path, options=options, strict=strict)
+    return list(document.scenarios)
 
 
 def check_scenario_file(

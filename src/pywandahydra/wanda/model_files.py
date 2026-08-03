@@ -48,7 +48,7 @@ def prepare_scenario_model(
             _unlink_stale_file(stale)
         except OSError as e:
             raise RuntimeError(
-                f"Cannot remove stale model file '{stale}' — it appears to be "
+                f"Cannot remove stale model file '{stale}' - it appears to be "
                 "in use by another WANDA session. Close that session (or wait "
                 "for the other run to finish) and retry."
             ) from e

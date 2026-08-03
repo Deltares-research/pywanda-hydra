@@ -1,4 +1,4 @@
-"""Example script demonstrating how to run scenarios using PyWandaHydra.
+﻿"""Example script demonstrating how to run scenarios using PyWandaHydra.
 
 For production use, prefer the CLI::
 
@@ -16,7 +16,7 @@ from pywandahydra.config.loader import RunMetadata
 from pywandahydra.config.models import ModelSpecification, RunContext
 from pywandahydra.execution.artifacts import create_run_directories
 from pywandahydra.execution.runner import run
-from pywandahydra.scenarios.mapper import load_scenarios
+from pywandahydra.scenarios import load_scenarios
 from pywandahydra.wanda.validation import assert_preflight_valid
 
 
@@ -93,3 +93,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

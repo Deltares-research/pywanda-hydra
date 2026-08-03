@@ -1,4 +1,4 @@
-"""Unit tests for edge cases and error branches in scenarios/sources/xls.py."""
+﻿"""Unit tests for edge cases and error branches in scenarios/sources/xls.py."""
 
 from __future__ import annotations
 
@@ -8,16 +8,15 @@ from pathlib import Path
 
 import pandas as pd
 
-from pywandahydra.scenarios.mapper import ScenarioLoadOptions
-from pywandahydra.scenarios.sources.xls import (
+from pywandahydra.scenarios import ScenarioLoadOptions
+from pywandahydra.scenarios.excel.cases import _extract_analysis_meta, _require_columns
+from pywandahydra.scenarios.excel.post_processing import (
     _as_str_or_none,
-    _extract_analysis_meta,
     _float_or_none,
     _is_nan,
     _read_output_sheet,
     _read_rplots_sheet,
     _read_tplots_sheet,
-    _require_columns,
 )
 
 

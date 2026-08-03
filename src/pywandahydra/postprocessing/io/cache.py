@@ -25,12 +25,12 @@ class ParquetCache:
 
     File layout in case_dir/data/::
 
-        components.parquet           — time-series for component outputs
-        routes/                      — one sub-directory per route plot
+        components.parquet           - time-series for component outputs
+        routes/                      - one sub-directory per route plot
             <route_title>/
-                timeseries.parquet   — time × s_location data
-                envelope.parquet     — min/max envelope along s_location
-                profile.parquet      — elevation profile along s_location
+                timeseries.parquet   - time × s_location data
+                envelope.parquet     - min/max envelope along s_location
+                profile.parquet      - elevation profile along s_location
 
     Args:
         case_dir: Path to the case directory.

@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import tempfile
 import unittest
@@ -8,7 +8,7 @@ from unittest.mock import patch
 from pywandahydra.config.models import ModelSpecification, RunContext
 from pywandahydra.execution import runner
 from pywandahydra.execution.journal import CaseJournal
-from pywandahydra.scenarios.schema import ScenarioSpecification
+from pywandahydra.scenarios import ScenarioSpecification
 from unit_test.wanda.fakes import FakeWandaModelAccess
 
 
@@ -164,3 +164,4 @@ class TestRunner(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

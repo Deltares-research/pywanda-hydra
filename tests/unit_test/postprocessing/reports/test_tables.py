@@ -1,4 +1,4 @@
-"""Unit tests for postprocessing.reports.tables."""
+﻿"""Unit tests for postprocessing.reports.tables."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ import pandas as pd
 
 from pywandahydra.postprocessing.io.cache import ParquetCache
 from pywandahydra.postprocessing.reports.tables import aggregate_case_tables, render_summary_table
-from pywandahydra.scenarios.schema import MinMaxTableSpecification
+from pywandahydra.scenarios import MinMaxTableSpecification
 
 
 class TestRenderSummaryTable(unittest.TestCase):
@@ -149,3 +149,4 @@ class TestAggregateCaseTables(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

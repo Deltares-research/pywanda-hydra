@@ -1,4 +1,4 @@
-"""Internal production WANDA model-access implementation using pywanda."""
+﻿"""Internal production WANDA model-access implementation using pywanda."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ import numpy as np
 import pywanda
 
 from ..config.models import ModelSpecification
-from ..scenarios.schema import ModelParameterChange
+from ..scenarios import ModelParameterChange
 from .item_lookup import get_item, resolve_items
 from .model_files import prepare_scenario_model
 from .parameter_application import apply_parameter_change, to_si_units
@@ -191,3 +191,4 @@ class PywandaModelAccess:
             item.get_property("Profile").get_table().get_float_data(),
             dtype=np.float64,
         )
+

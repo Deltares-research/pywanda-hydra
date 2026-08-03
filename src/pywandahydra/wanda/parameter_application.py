@@ -1,4 +1,4 @@
-"""WANDA parameter application and unit conversion helpers."""
+﻿"""WANDA parameter application and unit conversion helpers."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from typing import Any
 import pywanda
 
 from ..disuse import parse_disuse_value
-from ..scenarios.schema import ModelParameterChange
+from ..scenarios import ModelParameterChange
 from .item_lookup import get_item, resolve_items
 
 
@@ -56,3 +56,4 @@ def apply_parameter_change(model: pywanda.WandaModel, change: ModelParameterChan
         raise ParameterApplicationError(
             f"Failed to apply {change.component}.{change.property}={change.value!r}: {e}"
         ) from e
+

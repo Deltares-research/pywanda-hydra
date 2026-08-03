@@ -1,4 +1,4 @@
-"""Unit tests for preflight model validation."""
+﻿"""Unit tests for preflight model validation."""
 
 from __future__ import annotations
 
@@ -10,8 +10,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from pywandahydra.config.models import ModelSpecification
-from pywandahydra.scenarios.models.plot_route import RoutePlotSpecification
-from pywandahydra.scenarios.schema import (
+from pywandahydra.scenarios import (
     FigurePostProcessingConfiguration,
     MinMaxTableSpecification,
     ModelParameterChange,
@@ -20,6 +19,7 @@ from pywandahydra.scenarios.schema import (
     TablePostProcessingConfiguration,
     TimeSeriesPlotSpecification,
 )
+from pywandahydra.scenarios.models.plot_route import RoutePlotSpecification
 from pywandahydra.wanda.api import WandaItemRef
 from pywandahydra.wanda.validation import PreflightValidationError, assert_preflight_valid
 
@@ -269,3 +269,4 @@ class TestPreflightValidationIsolated(unittest.TestCase):
             assert_preflight_valid(model_spec=self.model_spec, scenarios=[scenario], isolated=True)
 
         self.assertIn("MISSING COMP", str(ctx.exception))
+

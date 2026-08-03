@@ -1,6 +1,6 @@
-"""Smoke tests for the pywandahydra CLI commands.
+﻿"""Smoke tests for the pywandahydra CLI commands.
 
-These exercise the typer app via CliRunner without requiring WANDA —
+These exercise the typer app via CliRunner without requiring WANDA â€”
 covering argument parsing, error handling, and output formatting for
 the `run`, `status`, `validate`, and `plot` subcommands.
 """
@@ -19,7 +19,7 @@ from typer.testing import CliRunner
 from pywandahydra.cli.commands import app
 from pywandahydra.execution.journal import CaseJournal
 from pywandahydra.execution.runner import RunResult
-from pywandahydra.scenarios.schema import AnalysisMeta
+from pywandahydra.scenarios import AnalysisMeta
 
 runner = CliRunner()
 
@@ -301,3 +301,4 @@ class TestValidateCommand(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

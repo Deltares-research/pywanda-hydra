@@ -1,4 +1,4 @@
-"""Scenario runner — orchestrates sequential or parallel execution.
+"""Scenario runner - orchestrates sequential or parallel execution.
 
 This module builds CasePlans from scenarios, dispatches them to workers
 (sequentially or via multiprocessing), and aggregates results.
@@ -22,7 +22,7 @@ from ..execution.worker import CaseResult, run_one_case
 from ..postprocessing.core.context import PostProcessingRunContext
 from ..postprocessing.workflows import bootstrap as bootstrap_workflows
 from ..postprocessing.workflows.base import resolve_workflow
-from ..scenarios.schema import ScenarioSpecification
+from ..scenarios import ScenarioSpecification
 
 logger = logging.getLogger(__name__)
 
@@ -201,3 +201,4 @@ def _run_multiprocess(
     # Sort by case_id for deterministic output ordering
     results.sort(key=lambda r: r.get("case_id", ""))
     return results
+

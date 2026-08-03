@@ -153,7 +153,7 @@ def save_table(
             table_path = ext_dir / f"{filename}{ext}"
             df.to_parquet(table_path, index=False, engine="pyarrow", **kwargs)
         else:
-            logger.warning("Unsupported table format: %s — skipping.", ext)
+            logger.warning("Unsupported table format: %s - skipping.", ext)
             continue
 
         saved.append(table_path)

@@ -1,4 +1,4 @@
-"""Unit tests for the pure resolution/conversion logic in wanda.api.
+﻿"""Unit tests for the pure resolution/conversion logic in wanda.api.
 
 These tests use lightweight fake model/component/node objects so that
 the routing and unit-conversion logic can be exercised without a live
@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import unittest
 
-from pywandahydra.scenarios.schema import ModelParameterChange
+from pywandahydra.scenarios import ModelParameterChange
 from pywandahydra.wanda.api import (
     ParameterApplicationError,
     WandaItemRef,
@@ -622,3 +622,4 @@ class TestResolveRoutePipesFallback(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

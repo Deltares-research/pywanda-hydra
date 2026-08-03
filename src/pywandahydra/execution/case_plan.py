@@ -1,4 +1,4 @@
-"""CasePlan — immutable description of everything a worker needs to run one case."""
+"""CasePlan - immutable description of everything a worker needs to run one case."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from ..config.models import ModelSpecification
-from ..scenarios.schema import AnalysisMeta, ScenarioSpecification
+from ..scenarios import AnalysisMeta, ScenarioSpecification
 
 
 @dataclass(frozen=True, slots=True)
@@ -108,3 +108,4 @@ def build_case_plans(
             )
         )
     return plans
+

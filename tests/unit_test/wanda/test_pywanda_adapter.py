@@ -1,4 +1,4 @@
-"""Unit tests for wanda.pywanda_model_access (real pywanda, no simulation run)."""
+﻿"""Unit tests for wanda.pywanda_model_access (real pywanda, no simulation run)."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from pathlib import Path
 import numpy as np
 
 from pywandahydra.config.models import ModelSpecification
-from pywandahydra.scenarios.schema import ModelParameterChange
+from pywandahydra.scenarios import ModelParameterChange
 from pywandahydra.wanda.pywanda_model_access import PywandaModelAccess
 
 # Import shared helper from root conftest
@@ -183,3 +183,4 @@ class TestPywandaModelAccess(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

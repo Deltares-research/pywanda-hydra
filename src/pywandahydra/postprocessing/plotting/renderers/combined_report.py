@@ -1,4 +1,4 @@
-"""Combined report-page renderer for heterogeneous plot specifications.
+﻿"""Combined report-page renderer for heterogeneous plot specifications.
 
 Route and time plot specifications sharing a ``fig`` value are rendered onto
 the same A4 page, with each distinct ``plot`` number becoming one stacked
@@ -17,7 +17,7 @@ import pandas as pd
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 
-from ....scenarios.schema import RoutePlotSpecification, TimeSeriesPlotSpecification
+from ....scenarios import RoutePlotSpecification, TimeSeriesPlotSpecification
 from ...io.cache import ParquetCache
 from ..styles.layout import draw_layout
 from .report_page import ReportMeta, _create_content_axes, _plot_route_series, _to_page_metadata
@@ -179,3 +179,4 @@ def _close_figure(fig: Figure) -> None:
     import matplotlib.pyplot as plt
 
     plt.close(fig)
+

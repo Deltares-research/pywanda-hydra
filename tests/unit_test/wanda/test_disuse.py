@@ -1,9 +1,9 @@
-"""Unit tests for legacy disuse parsing semantics."""
+﻿"""Unit tests for legacy disuse parsing semantics."""
 
 import unittest
 
 from pywandahydra.disuse import parse_disuse_value
-from pywandahydra.scenarios.schema import ModelParameterChange
+from pywandahydra.scenarios import ModelParameterChange
 
 
 class TestDisuseSemantics(unittest.TestCase):
@@ -26,3 +26,4 @@ class TestDisuseSemantics(unittest.TestCase):
     def test_invalid_disuse_value_raises(self) -> None:
         with self.assertRaises(ValueError):
             parse_disuse_value("maybe")
+

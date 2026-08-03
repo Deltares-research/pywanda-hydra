@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import tempfile
 import unittest
@@ -11,7 +11,7 @@ from pywandahydra.config.models import ModelSpecification
 from pywandahydra.execution.case_plan import CasePlan
 from pywandahydra.execution.journal import CaseJournal
 from pywandahydra.execution.worker import run_one_case
-from pywandahydra.scenarios.schema import ScenarioSpecification
+from pywandahydra.scenarios import ScenarioSpecification
 from unit_test.wanda.fakes import FailingWandaModelAccess, FakeWandaModelAccess
 
 
@@ -122,3 +122,4 @@ class TestWorkerFailurePath(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

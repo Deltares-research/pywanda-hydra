@@ -1,4 +1,4 @@
-"""Integration test: E2E disuse via runner using PSFull keyword."""
+﻿"""Integration test: E2E disuse via runner using PSFull keyword."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ import pytest
 
 from pywandahydra.config.models import ModelSpecification, RunContext
 from pywandahydra.execution import runner
-from pywandahydra.scenarios.schema import ModelParameterChange, ScenarioSpecification
+from pywandahydra.scenarios import ModelParameterChange, ScenarioSpecification
 from pywandahydra.wanda.api import find_items_with_keyword, get_item
 from pywandahydra.wanda.session import wanda_session
 
@@ -74,3 +74,4 @@ class TestDisusePSFullKeyword(unittest.TestCase):
 
         with wanda_session(spec=self.model_spec, model_path=model_path) as model:
             self._assert_psfull_disused(model, disused=False)
+

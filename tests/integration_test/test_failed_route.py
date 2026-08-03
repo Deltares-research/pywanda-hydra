@@ -1,4 +1,4 @@
-"""Evaluate failed route scenarios.
+﻿"""Evaluate failed route scenarios.
 
 Create runner that evaluates ./tests/integration_test/data/network.wdi with the following routes:
 - Route A: valid
@@ -16,7 +16,7 @@ import pytest
 from pywandahydra.config.models import ModelSpecification, RunContext
 from pywandahydra.execution import runner
 from pywandahydra.postprocessing.io.cache import ParquetCache
-from pywandahydra.scenarios.schema import (
+from pywandahydra.scenarios import (
     FigurePostProcessingConfiguration,
     PostProcessingConfiguration,
     RoutePlotSpecification,
@@ -74,3 +74,4 @@ class TestFailedRoute(unittest.TestCase):
 
         self.assertIn("RouteA_Pressure", cached_routes)
         self.assertNotIn("InvalidRoute_Pressure", cached_routes)
+

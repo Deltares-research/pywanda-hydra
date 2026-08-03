@@ -1,4 +1,4 @@
-"""Unit tests for structural preflight checks in scenarios/sources/xls.py."""
+﻿"""Unit tests for structural preflight checks in scenarios/sources/xls.py."""
 
 from __future__ import annotations
 
@@ -8,12 +8,12 @@ from pathlib import Path
 
 import pandas as pd
 
-from pywandahydra.scenarios.mapper import (
+from pywandahydra.scenarios import (
     ScenarioLoadOptions,
     assert_scenario_file_valid,
     check_scenario_file,
 )
-from pywandahydra.scenarios.sources.xls import check_xls_structure
+from pywandahydra.scenarios.excel.validation import check_xls_structure
 
 _VALID_CASES = pd.DataFrame(
     [

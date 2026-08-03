@@ -1,4 +1,4 @@
-"""Configuration package — models and loader."""
+"""Configuration package - models and loader."""
 
 from .loader import (
     ExecutionConfig,

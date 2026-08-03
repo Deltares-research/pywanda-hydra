@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import json
 import tempfile
@@ -7,7 +7,7 @@ from pathlib import Path
 
 from pywandahydra.config.models import ModelSpecification, RunContext
 from pywandahydra.execution.artifacts import create_run_directories, write_run_log
-from pywandahydra.scenarios.schema import ScenarioSpecification
+from pywandahydra.scenarios import ScenarioSpecification
 
 
 class TestCreateRunDirectories(unittest.TestCase):
@@ -94,3 +94,4 @@ class TestWriteRunLog(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import tempfile
 import unittest
@@ -8,7 +8,7 @@ from unittest.mock import patch
 from pywandahydra.config.models import ModelSpecification
 from pywandahydra.execution.case_plan import CasePlan
 from pywandahydra.execution.worker import run_one_case
-from pywandahydra.scenarios.schema import ScenarioSpecification
+from pywandahydra.scenarios import ScenarioSpecification
 from unit_test.wanda.fakes import FakeWandaModelAccess
 
 
@@ -58,3 +58,4 @@ class TestWorkerWithFakeAdapter(unittest.TestCase):
             self.assertTrue(result["success"])
             self.assertEqual(result["case_id"], "case_fake")
             self.assertEqual(result["scenario_dir"], str(plan.case_dir))
+
