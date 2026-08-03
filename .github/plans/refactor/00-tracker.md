@@ -1,6 +1,6 @@
 # Refactor v2 implementation tracker
 
-**Updated:** 2026-07-29
+**Updated:** 2026-08-03
 **Target:** the package structure in [`architecture-target.md`](architecture-target.md)
 **Execution rules:** [`README.md`](README.md)
 **Validation gates:** [`validation.md`](validation.md)
@@ -13,22 +13,20 @@ Older A-J plans are superseded. Do not implement workflow discriminated unions,
 ## Current baseline
 
 - Repository default branch: `master` at `8b34cf7` when the v2 work began.
-- Slice 01 implementation: `7ba3206` on `refactor-v2/01-cleanup`.
-- Active branch: `refactor-v2/02-remove-plugins`.
-- Active pull request: [#30 - Slice 02: Remove external extension/plugin machinery](https://github.com/Deltares-research/pywanda-hydra/pull/30).
-- Slice 02 implementation and local merge gates are complete; user merge approval is pending.
+- Integration branch: `refactor`, containing merged Slices 01 through 06.
+- Slice 07 is implemented locally and under review.
 
 ## Status
 
 | Slice | Plan | Branch | Depends on | Risk | Status |
 |---|---|---|---|---|---|
-| 01 | [`01-cleanup.md`](01-cleanup.md) | `refactor-v2/01-cleanup` | baseline | low | implemented at `7ba3206`; stacked prerequisite |
-| 02 | [`02-remove-plugins.md`](02-remove-plugins.md) | `refactor-v2/02-remove-plugins` | 01 | medium | in review; local merge gate passed |
-| 03 | [`03-wanda-model-access.md`](03-wanda-model-access.md) | `refactor-v2/03-wanda-model-access` | 02 | high | pending |
-| 04 | [`04-scenario-document.md`](04-scenario-document.md) | `refactor-v2/04-scenario-document` | 02 | medium | pending; may develop with 03 |
-| 05 | [`05-scenario-models.md`](05-scenario-models.md) | `refactor-v2/05-scenario-models` | 03, 04 | high | pending |
-| 06 | [`06-excel-loader.md`](06-excel-loader.md) | `refactor-v2/06-excel-loader` | 05 | medium | pending |
-| 07 | [`07-config-run-api.md`](07-config-run-api.md) | `refactor-v2/07-config-run-api` | 03, 04, 05, 06 | high | pending |
+| 01 | [`01-cleanup.md`](01-cleanup.md) | `refactor-v2/01-cleanup` | baseline | low | merged into `refactor` |
+| 02 | [`02-remove-plugins.md`](02-remove-plugins.md) | `refactor-v2/02-remove-plugins` | 01 | medium | merged into `refactor` |
+| 03 | [`03-wanda-model-access.md`](03-wanda-model-access.md) | `refactor-v2/03-wanda-model-access` | 02 | high | merged into `refactor` |
+| 04 | [`04-scenario-document.md`](04-scenario-document.md) | `refactor-v2/04-scenario-document` | 02 | medium | merged into `refactor` |
+| 05 | [`05-scenario-models.md`](05-scenario-models.md) | `refactor-v2/05-scenario-models` | 03, 04 | high | merged into `refactor` |
+| 06 | [`06-excel-loader.md`](06-excel-loader.md) | `refactor-v2/06-excel-loader` | 05 | medium | merged into `refactor` |
+| 07 | [`07-config-run-api.md`](07-config-run-api.md) | `refactor` | 03, 04, 05, 06 | high | in review; focused checks passed |
 | 08 | [`08-results-foundation.md`](08-results-foundation.md) | `refactor-v2/08-results` | 07 | high | pending |
 | 09A | [`09a-result-extraction.md`](09a-result-extraction.md) | `refactor-v2/09a-extraction` | 03, 05, 08 | high | pending |
 | 09B | [`09b-tables.md`](09b-tables.md) | `refactor-v2/09b-tables` | 09A | medium | pending; parallel window with 09C |

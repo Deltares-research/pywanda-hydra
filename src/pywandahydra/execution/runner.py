@@ -14,7 +14,6 @@ from pathlib import Path
 from typing import Any
 
 from ..app_logging import setup_logging
-from ..config.models import ModelSpecification, RunContext
 from ..execution.artifacts import create_run_directories, write_run_log
 from ..execution.case_plan import CasePlan, build_case_plans
 from ..execution.journal import CaseJournal, resume_decision
@@ -23,6 +22,7 @@ from ..postprocessing.core.context import PostProcessingRunContext
 from ..postprocessing.workflows import bootstrap as bootstrap_workflows
 from ..postprocessing.workflows.base import resolve_workflow
 from ..scenarios import ScenarioSpecification
+from .legacy import ModelSpecification, RunContext
 
 logger = logging.getLogger(__name__)
 
@@ -201,4 +201,3 @@ def _run_multiprocess(
     # Sort by case_id for deterministic output ordering
     results.sort(key=lambda r: r.get("case_id", ""))
     return results
-

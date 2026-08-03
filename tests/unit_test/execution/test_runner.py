@@ -5,9 +5,9 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from pywandahydra.config.models import ModelSpecification, RunContext
 from pywandahydra.execution import runner
 from pywandahydra.execution.journal import CaseJournal
+from pywandahydra.execution.legacy import ModelSpecification, RunContext
 from pywandahydra.scenarios import ScenarioSpecification
 from unit_test.wanda.fakes import FakeWandaModelAccess
 
@@ -164,4 +164,3 @@ class TestRunner(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

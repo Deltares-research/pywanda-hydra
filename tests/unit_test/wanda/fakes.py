@@ -6,7 +6,7 @@ from typing import Any
 
 import numpy as np
 
-from pywandahydra.config.models import ModelSpecification
+from pywandahydra.execution.legacy import ModelSpecification
 from pywandahydra.scenarios import ModelParameterChange
 
 ModelHandle = Any
@@ -122,4 +122,3 @@ class FailingWandaModelAccess(FakeWandaModelAccess):
 # Backward-compatible aliases for older test names.
 FakeWandaAdapter = FakeWandaModelAccess
 FailingWandaAdapter = FailingWandaModelAccess
-

@@ -7,8 +7,8 @@ import shutil
 from pathlib import Path
 from typing import Any
 
-from ..config.models import ModelSpecification, RunContext
 from ..scenarios import ScenarioSpecification
+from .legacy import ModelSpecification, RunContext
 
 
 def create_run_directories(
@@ -79,4 +79,3 @@ def write_run_log(
     )
     with log_path.open("w", encoding="utf-8") as log_file:
         json.dump(log_data, log_file, indent=4, default=str)
-

@@ -8,8 +8,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from ..config.models import ModelSpecification
 from ..scenarios import AnalysisMeta, ScenarioSpecification
+from .legacy import ModelSpecification
 
 
 @dataclass(frozen=True, slots=True)
@@ -108,4 +108,3 @@ def build_case_plans(
             )
         )
     return plans
-

@@ -1,10 +1,10 @@
-"""Configuration package - models and loader."""
+"""Authored run configuration parsing and models."""
 
-from .loader import (
-    ExecutionConfig,
-    RunConfig,
-    RunMetadata,
-    WorkflowSpec,  # noqa: F401
-    load_run_config,
+from .loader import load_run_config
+from .models import (
+    ExecutionConfiguration,
+    ModelConfiguration,
+    OutputConfiguration,
+    RunConfiguration,
+    SimulationConfiguration,
 )
-from .models import ModelSpecification, RunContext  # noqa: F401

@@ -9,8 +9,8 @@ from multiprocessing import get_context
 from multiprocessing.connection import Connection
 from typing import Any, cast
 
-from ..config.models import ModelSpecification
 from ..disuse import parse_disuse_value
+from ..execution.legacy import ModelSpecification
 from ..scenarios import ScenarioSpecification
 from .item_lookup import get_item, resolve_items
 from .session import wanda_session
@@ -288,4 +288,3 @@ def assert_preflight_valid(
             f"{issue.component}.{issue.property_name} -> {issue.message}"
         )
     raise PreflightValidationError("\n".join(lines))
-
