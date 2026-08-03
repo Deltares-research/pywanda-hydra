@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from pywandahydra.config.models import ModelSpecification, RunContext
 from pywandahydra.execution import runner
+from pywandahydra.execution.legacy import ModelSpecification, RunContext
 from pywandahydra.scenarios import ModelParameterChange, ScenarioSpecification
 from pywandahydra.wanda.api import find_items_with_keyword, get_item
 from pywandahydra.wanda.session import wanda_session

@@ -6,7 +6,6 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from pywandahydra.config.loader import ExecutionConfig
 from pywandahydra.postprocessing.core.context import CaseContext, PostProcessingRunContext
 from pywandahydra.postprocessing.io.cache import ParquetCache
 from pywandahydra.postprocessing.workflows import bootstrap
@@ -15,11 +14,6 @@ from pywandahydra.scenarios import ScenarioSpecification
 
 
 class TestWorkflowConfig(unittest.TestCase):
-    def test_execution_config_accepts_bare_workflow_string(self) -> None:
-        cfg = ExecutionConfig.model_validate({"workflow": "default"})
-        self.assertEqual(cfg.workflow.name, "default")
-        self.assertEqual(cfg.workflow.params, {})
-
     def test_resolve_workflow_rejects_unknown(self) -> None:
         bootstrap()
         with self.assertRaises(KeyError):

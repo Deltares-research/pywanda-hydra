@@ -5,9 +5,9 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from pywandahydra.config.models import ModelSpecification
 from pywandahydra.execution.case_plan import CasePlan
 from pywandahydra.execution.journal import CaseJournal, resume_decision
+from pywandahydra.execution.legacy import ModelSpecification
 from pywandahydra.execution.worker import run_one_case
 from pywandahydra.scenarios import ScenarioSpecification
 

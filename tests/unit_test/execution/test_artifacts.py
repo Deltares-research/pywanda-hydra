@@ -5,8 +5,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from pywandahydra.config.models import ModelSpecification, RunContext
 from pywandahydra.execution.artifacts import create_run_directories, write_run_log
+from pywandahydra.execution.legacy import ModelSpecification, RunContext
 from pywandahydra.scenarios import ScenarioSpecification
 
 

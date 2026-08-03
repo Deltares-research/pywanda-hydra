@@ -6,8 +6,8 @@ from pathlib import Path
 
 import pandas as pd
 
-from pywandahydra.config.models import ModelSpecification
 from pywandahydra.execution.case_plan import build_case_plans
+from pywandahydra.execution.legacy import ModelSpecification
 from pywandahydra.scenarios import ScenarioLoadOptions, ScenarioSpecification, load_scenarios
 from pywandahydra.scenarios.excel.post_processing import _read_rplots_sheet, _read_tplots_sheet
 from pywandahydra.scenarios.loader import load_scenario_document
