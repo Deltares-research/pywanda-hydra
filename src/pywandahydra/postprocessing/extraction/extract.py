@@ -1,4 +1,4 @@
-"""Extract time-series and route data from simulated WANDA models.
+﻿"""Extract time-series and route data from simulated WANDA models.
 
 This module provides routines that read the *outputs* and *route_plots*
 specifications stored on a :class:`ScenarioSpecification` and extract
@@ -17,8 +17,8 @@ Typical usage::
     results = extract_all(model, scenario, adapter)
     # results["components"]  -> DataFrame with component time series
     # results["routes"]      -> dict[str, dict[str, DataFrame]] keyed by route title
-    #                           inner keys: "timeseries" (time × s_location)
-    #                                       "envelope"   (s_location × {min, max})
+    #                           inner keys: "timeseries" (time Ã— s_location)
+    #                                       "envelope"   (s_location Ã— {min, max})
 """
 
 from __future__ import annotations
@@ -31,7 +31,7 @@ import numpy as np
 import pandas as pd
 import pywanda
 
-from ...scenarios.schema import (
+from ...scenarios import (
     MinMaxTableSpecification,
     RoutePlotSpecification,
     ScenarioSpecification,
@@ -61,8 +61,8 @@ def extract_component_outputs(
 
     The returned DataFrame has:
 
-    * **index** – simulation time steps (``time [s]``).
-    * **columns** – a :class:`~pandas.MultiIndex` of
+    * **index** â€“ simulation time steps (``time [s]``).
+    * **columns** â€“ a :class:`~pandas.MultiIndex` of
       ``(component, property, s_location)``. For non-pipe components
       ``s_location`` is ``NaN``; for pipes it holds the distance from
       the pipe start in metres.
@@ -95,7 +95,7 @@ def extract_component_outputs(
         item_names = adapter.resolve_output_items(model, spec.component)
         if not item_names:
             logger.warning(
-                "Component '%s' not found in model – skipping.",
+                "Component '%s' not found in model â€“ skipping.",
                 spec.component,
             )
             continue
@@ -177,15 +177,15 @@ def extract_route_outputs(
 
     Each inner result dict contains DataFrames for route rendering:
 
-    * ``"timeseries"`` – index ``time [s]``, columns a three-level
+    * ``"timeseries"`` â€“ index ``time [s]``, columns a three-level
       :class:`~pandas.MultiIndex` ``(component, property, s_location)``.
       ``s_location`` is the *cumulative* distance along the full route in
       metres; pipes traversed in the reverse direction have their s-axis
       and data columns flipped accordingly.
-    * ``"envelope"`` – index ``s_location [m]`` (cumulative along the
+    * ``"envelope"`` â€“ index ``s_location [m]`` (cumulative along the
       route), columns ``["min", "max"]`` derived from
             :meth:`get_extr_min_pipe` / :meth:`get_extr_max_pipe`.
-        * ``"profile"`` – index ``s_location [m]`` (cumulative along the
+        * ``"profile"`` â€“ index ``s_location [m]`` (cumulative along the
             route), column ``"elevation"`` from pipe profile tables.
 
     Parameters
@@ -200,7 +200,7 @@ def extract_route_outputs(
     Returns
     -------
     Dict[str, Dict[str, pd.DataFrame]]
-        Mapping of specification *title* →
+        Mapping of specification *title* â†’
         ``{"timeseries": DataFrame, "envelope": DataFrame,
         "profile": DataFrame}``.
         Empty dict when *specs* is empty.
@@ -220,7 +220,7 @@ def extract_route_outputs(
         route_id = spec.route_id.strip()
         if not route_id:
             logger.warning(
-                "Route spec with title '%s' has an empty route_id – skipping.",
+                "Route spec with title '%s' has an empty route_id â€“ skipping.",
                 spec.title,
             )
             continue
@@ -228,7 +228,7 @@ def extract_route_outputs(
 
         pipes_with_dir = adapter.resolve_route_pipes(model, route_id)
         if not pipes_with_dir:
-            logger.warning("Route identifier '%s' has no pipe components – skipping.", route_id)
+            logger.warning("Route identifier '%s' has no pipe components â€“ skipping.", route_id)
             continue
 
         ts_frames: list[pd.DataFrame] = []
@@ -240,10 +240,10 @@ def extract_route_outputs(
             try:
                 length = adapter.get_pipe_length(model, pipe_name)
             except Exception:
-                logger.debug("Pipe '%s' could not get Length – skipping.", pipe_name)
+                logger.debug("Pipe '%s' could not get Length â€“ skipping.", pipe_name)
                 continue
 
-            # --- Timeseries (time × s_location) ---
+            # --- Timeseries (time Ã— s_location) ---
             try:
                 ts_arr = _normalise_pipe_series(
                     np.asarray(
@@ -272,7 +272,7 @@ def extract_route_outputs(
                 ts_frames.append(df_ts)
             except Exception:
                 logger.debug(
-                    "Pipe '%s' property '%s' has no pipe series – skipping timeseries.",
+                    "Pipe '%s' property '%s' has no pipe series â€“ skipping timeseries.",
                     pipe_name,
                     prop_name,
                 )
@@ -296,12 +296,12 @@ def extract_route_outputs(
                     env_rows.append({"s_location [m]": float(s), "min": mn, "max": mx})
             except Exception:
                 logger.debug(
-                    "Pipe '%s' property '%s' has no min/max series – skipping envelope.",
+                    "Pipe '%s' property '%s' has no min/max series â€“ skipping envelope.",
                     pipe_name,
                     prop_name,
                 )
 
-            # --- Elevation profile (s_location × elevation) ---
+            # --- Elevation profile (s_location Ã— elevation) ---
             try:
                 profile_raw = np.asarray(
                     adapter.get_pipe_profile_table(model, pipe_name), dtype=float
@@ -325,7 +325,7 @@ def extract_route_outputs(
                         )
             except Exception:
                 logger.debug(
-                    "Pipe '%s' has no profile data – skipping elevation profile.",
+                    "Pipe '%s' has no profile data â€“ skipping elevation profile.",
                     pipe_name,
                 )
 
@@ -337,7 +337,12 @@ def extract_route_outputs(
             suffix = 2
             while f"{key}_{suffix}" in seen_keys:
                 suffix += 1
-            logger.warning("Duplicate route result key '%s' – stored as '%s_%d'.", key, key, suffix)
+            logger.warning(
+                "Duplicate route result key '%s' - stored as '%s_%d'.",
+                key,
+                key,
+                suffix,
+            )
             key = f"{key}_{suffix}"
         seen_keys.add(key)
 
@@ -431,3 +436,4 @@ def extract_all(
             adapter,
         ),
     }
+

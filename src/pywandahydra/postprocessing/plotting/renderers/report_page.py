@@ -1,4 +1,4 @@
-"""Report-style route page renderer."""
+﻿"""Report-style route page renderer."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ import pandas as pd
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 
-from ....scenarios.schema import RoutePlotSpecification
+from ....scenarios import RoutePlotSpecification
 from ..styles.layout import PageMetadata
 from .common import apply_axis_spec
 from .theme import PlotTheme
@@ -278,3 +278,4 @@ def _parse_report_date(value: str) -> datetime | None:
         except ValueError:
             continue
     return None
+

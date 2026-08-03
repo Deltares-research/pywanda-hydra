@@ -1,4 +1,4 @@
-"""Example script demonstrating how to run PyWandaHydra from a YAML config.
+﻿"""Example script demonstrating how to run PyWandaHydra from a YAML config.
 
 For production use, prefer the CLI::
 
@@ -26,7 +26,7 @@ from pywandahydra.config.loader import (
 )
 from pywandahydra.execution.artifacts import create_run_directories
 from pywandahydra.execution.runner import run
-from pywandahydra.scenarios.mapper import load_scenarios
+from pywandahydra.scenarios import load_scenarios
 from pywandahydra.wanda.validation import assert_preflight_valid
 
 # Enable console logging to see all pywandahydra messages, in developer mode.
@@ -138,3 +138,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

@@ -1,4 +1,4 @@
-"""Unit tests for run configuration loading and validation."""
+﻿"""Unit tests for run configuration loading and validation."""
 
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ from pywandahydra.config.loader import (
     load_run_config,
     validate_run_paths,
 )
-from pywandahydra.scenarios.schema import ScenarioSpecification
+from pywandahydra.scenarios import ScenarioSpecification
 
 
 def _minimal_config_dict(*, model_path: str, wanda_bin: str, scenario_file: str) -> dict:
@@ -321,3 +321,4 @@ class TestConfigHashAndRunContext(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

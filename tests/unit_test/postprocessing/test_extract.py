@@ -1,4 +1,4 @@
-"""Unit tests for postprocessing.extraction.extract."""
+﻿"""Unit tests for postprocessing.extraction.extract."""
 
 from __future__ import annotations
 
@@ -12,8 +12,7 @@ from pywandahydra.postprocessing.extraction.extract import (
     extract_component_outputs,
     extract_route_outputs,
 )
-from pywandahydra.scenarios.models.plot_route import RoutePlotSpecification
-from pywandahydra.scenarios.schema import (
+from pywandahydra.scenarios import (
     FigurePostProcessingConfiguration,
     MinMaxTableSpecification,
     PostProcessingConfiguration,
@@ -21,6 +20,7 @@ from pywandahydra.scenarios.schema import (
     TablePostProcessingConfiguration,
     TimeSeriesPlotSpecification,
 )
+from pywandahydra.scenarios.models.plot_route import RoutePlotSpecification
 
 
 class _FakeAdapter:
@@ -324,3 +324,4 @@ class TestExtractAll(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

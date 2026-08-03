@@ -1,4 +1,4 @@
-"""Configuration models for PyWANDA Hydra."""
+﻿"""Configuration models for PyWANDA Hydra."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from ..scenarios.schema import AnalysisMeta
+from ..scenarios import AnalysisMeta
 
 
 class ModelSpecification(BaseModel):
@@ -203,3 +203,4 @@ class RunContext(BaseModel):
             The normalized path.
         """
         return Path(str(v).strip()).expanduser()
+

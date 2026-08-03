@@ -1,4 +1,4 @@
-"""Report-style time-plot page renderer.
+﻿"""Report-style time-plot page renderer.
 
 Renders TPlots-sheet specifications into the same A4 report layout used
 for route plots: specifications sharing a ``fig`` value land on one page,
@@ -15,7 +15,7 @@ import numpy as np
 import pandas as pd
 from matplotlib.axes import Axes
 
-from ....scenarios.schema import TimeSeriesPlotSpecification
+from ....scenarios import TimeSeriesPlotSpecification
 from .common import apply_axis_spec, configure_matplotlib_defaults
 from .theme import PlotTheme
 
@@ -114,7 +114,7 @@ def _select_columns(
     """Pick the cached columns matching a spec, honoring its ``location``.
 
     Returns ``(column, label)`` pairs. For pipes with multiple s-locations and
-    no requested location, every location is plotted with an ``s=…`` label;
+    no requested location, every location is plotted with an ``s=â€¦`` label;
     a requested location selects the single nearest column.
     """
     if not isinstance(components.columns, pd.MultiIndex):
@@ -152,3 +152,4 @@ def _select_columns(
         else:
             out.append((col, spec.component))
     return out
+

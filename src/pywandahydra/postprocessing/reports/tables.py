@@ -1,4 +1,4 @@
-"""Tabular post-processing helpers for per-case and run-level exports."""
+﻿"""Tabular post-processing helpers for per-case and run-level exports."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from typing import Any
 
 import pandas as pd
 
-from ...scenarios.schema import MinMaxTableSpecification
+from ...scenarios import MinMaxTableSpecification
 from ..io.cache import ParquetCache
 from ..io.export import save_table
 
@@ -90,3 +90,4 @@ def aggregate_case_tables(
     result = pd.concat(frames, ignore_index=True)
     save_table(result, output_dir, f"aggregated_table_{run_id}")
     return result
+

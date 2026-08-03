@@ -1,4 +1,4 @@
-"""CLI commands for pywandahydra — run, status, validate, plot."""
+﻿"""CLI commands for pywandahydra â€” run, status, validate, plot."""
 
 from __future__ import annotations
 
@@ -267,7 +267,7 @@ def plot(
     for case_dir in case_dirs:
         cache = ParquetCache(case_dir)
         if not cache.exists():
-            typer.echo(f"  {case_dir.name}: no cached data — skipping")
+            typer.echo(f"  {case_dir.name}: no cached data â€” skipping")
             continue
 
         figures_dir = case_dir / "figures"
@@ -289,15 +289,15 @@ def plot(
 
             pp_data = _json.loads(pp_json.read_text(encoding="utf-8"))
             for spec_data in pp_data.get("route_plots", []):
-                from ..scenarios.schema import RoutePlotSpecification
+                from ..scenarios import RoutePlotSpecification
 
                 spec = RoutePlotSpecification.model_validate(spec_data)
                 render_route_plot(spec, cache, output_dir=figures_dir, export_props=export_props)
         else:
             # Render all available routes from cache
             for route_title in cache.list_routes():
+                from ..scenarios import RoutePlotSpecification
                 from ..scenarios.models.plot_axis import AxisSpecification
-                from ..scenarios.schema import RoutePlotSpecification
 
                 spec = RoutePlotSpecification(
                     route_id=route_title,
@@ -309,3 +309,4 @@ def plot(
                 render_route_plot(spec, cache, output_dir=figures_dir, export_props=export_props)
 
     typer.echo("Plotting complete.")
+

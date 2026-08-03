@@ -1,4 +1,4 @@
-"""Single route plot renderer."""
+﻿"""Single route plot renderer."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.figure import Figure
 
-from ....scenarios.schema import RoutePlotSpecification
+from ....scenarios import RoutePlotSpecification
 from ...io.cache import ParquetCache
 from ...io.export import savefig
 from .common import apply_axis_spec, configure_matplotlib_defaults
@@ -70,3 +70,4 @@ def render_route_plot(
         savefig(fig, output_dir, safe_name, export_props=export_props, close=True)
 
     return fig
+

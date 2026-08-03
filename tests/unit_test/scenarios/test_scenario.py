@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import tempfile
 import unittest
@@ -8,10 +8,9 @@ import pandas as pd
 
 from pywandahydra.config.models import ModelSpecification
 from pywandahydra.execution.case_plan import build_case_plans
+from pywandahydra.scenarios import ScenarioLoadOptions, ScenarioSpecification, load_scenarios
+from pywandahydra.scenarios.excel.post_processing import _read_rplots_sheet, _read_tplots_sheet
 from pywandahydra.scenarios.loader import load_scenario_document
-from pywandahydra.scenarios.mapper import ScenarioLoadOptions, load_scenarios
-from pywandahydra.scenarios.schema import ScenarioSpecification
-from pywandahydra.scenarios.sources.xls import _read_rplots_sheet, _read_tplots_sheet
 
 
 class TestScenarioLoading(unittest.TestCase):
@@ -204,3 +203,4 @@ class TestScenarioLoading(unittest.TestCase):
         self.assertEqual(specs[0].color, "#336699")
         self.assertEqual(specs[0].style, "--")
         self.assertEqual(specs[0].marker, "o")
+

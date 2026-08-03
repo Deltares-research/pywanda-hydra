@@ -1,4 +1,4 @@
-"""Unit tests for postprocessing.plotting.renderers.combined_report."""
+﻿"""Unit tests for postprocessing.plotting.renderers.combined_report."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from pywandahydra.postprocessing.plotting.renderers.combined_report import (
 )
 from pywandahydra.postprocessing.plotting.renderers.report_page import ReportMeta  # noqa: E402
 from pywandahydra.postprocessing.plotting.renderers.theme import PlotTheme  # noqa: E402
-from pywandahydra.scenarios.schema import (  # noqa: E402
+from pywandahydra.scenarios import (  # noqa: E402
     RoutePlotSpecification,
     TimeSeriesPlotSpecification,
 )
@@ -226,3 +226,4 @@ class TestRenderCombinedReportPages(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

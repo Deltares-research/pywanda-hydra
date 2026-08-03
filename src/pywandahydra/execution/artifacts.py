@@ -1,4 +1,4 @@
-"""Execution artifacts management."""
+﻿"""Execution artifacts management."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from ..config.models import ModelSpecification, RunContext
-from ..scenarios.schema import ScenarioSpecification
+from ..scenarios import ScenarioSpecification
 
 
 def create_run_directories(
@@ -79,3 +79,4 @@ def write_run_log(
     )
     with log_path.open("w", encoding="utf-8") as log_file:
         json.dump(log_data, log_file, indent=4, default=str)
+

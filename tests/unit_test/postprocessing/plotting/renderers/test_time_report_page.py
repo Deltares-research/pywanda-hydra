@@ -1,4 +1,4 @@
-"""Unit tests for postprocessing.plotting.renderers.time_report_page."""
+﻿"""Unit tests for postprocessing.plotting.renderers.time_report_page."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from pywandahydra.postprocessing.plotting.renderers.time_report_page import (  #
     _select_columns,
     _warn_duplicate_axis_definitions,
 )
-from pywandahydra.scenarios.schema import TimeSeriesPlotSpecification  # noqa: E402
+from pywandahydra.scenarios import TimeSeriesPlotSpecification  # noqa: E402
 
 
 def _make_components() -> pd.DataFrame:
@@ -174,3 +174,4 @@ class TestPlotTimeSeriesGroup(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import tempfile
 import unittest
@@ -11,7 +11,7 @@ from pywandahydra.postprocessing.core.context import CaseContext, PostProcessing
 from pywandahydra.postprocessing.io.cache import ParquetCache
 from pywandahydra.postprocessing.workflows import bootstrap
 from pywandahydra.postprocessing.workflows.base import resolve_workflow
-from pywandahydra.scenarios.schema import ScenarioSpecification
+from pywandahydra.scenarios import ScenarioSpecification
 
 
 class TestWorkflowConfig(unittest.TestCase):
@@ -65,3 +65,4 @@ class TestWorkflowConfig(unittest.TestCase):
                 [s.name for s in workflow.run_steps(post_processing_run_ctx)],
                 ["aggregate_tables"],
             )
+

@@ -1,4 +1,4 @@
-"""Unit tests for postprocessing.steps.plot_report.PlotReportStep."""
+﻿"""Unit tests for postprocessing.steps.plot_report.PlotReportStep."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 from pywandahydra.postprocessing.core.context import CaseContext
 from pywandahydra.postprocessing.io.cache import ParquetCache
 from pywandahydra.postprocessing.steps.plot_report import PlotReportStep
-from pywandahydra.scenarios.schema import (
+from pywandahydra.scenarios import (
     FigurePostProcessingConfiguration,
     PostProcessingConfiguration,
     RoutePlotSpecification,
@@ -111,3 +111,4 @@ class TestPlotReportStepRun(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

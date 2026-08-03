@@ -1,4 +1,4 @@
-"""Context objects shared by post-processing case and run steps."""
+﻿"""Context objects shared by post-processing case and run steps."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from ...scenarios.schema import AnalysisMeta, ScenarioSpecification
+from ...scenarios import AnalysisMeta, ScenarioSpecification
 from ..io.cache import ParquetCache
 from ..io.export import DEFAULT_TABLE_EXPORT_PROPS, build_figure_export_props
 from ..plotting.renderers.theme import PlotTheme
@@ -37,3 +37,4 @@ class PostProcessingRunContext:
     run_root: Path
     run_id: str
     case_results: tuple[Mapping[str, Any], ...]
+

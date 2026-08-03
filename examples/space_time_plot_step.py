@@ -1,6 +1,6 @@
-"""Example: Space-time plot CaseStep.
+﻿"""Example: Space-time plot CaseStep.
 
-Reads the route timeseries from the standard Parquet cache (time × s-location)
+Reads the route timeseries from the standard Parquet cache (time Ã— s-location)
 and renders a 2-D pcolormesh figure per case showing a hydraulic property as a
 function of both position along the route and simulation time.
 
@@ -21,7 +21,7 @@ Two optional parameters let you narrow or override this:
 ``route_titles``
     Explicit list of route titles (the cache key, e.g.
     ``"PS-1 to Plant - Pressure"``).  When set, ``properties`` is ignored
-    and only these titles are plotted — regardless of what is in the scenario.
+    and only these titles are plotted â€” regardless of what is in the scenario.
     Useful when running the step directly from Python or when you want a
     fixed set of plots independent of the XLS.
 
@@ -116,7 +116,7 @@ from pywandahydra.postprocessing.plotting.renderers.report_page import (
 from pywandahydra.postprocessing.plotting.renderers.theme import PlotTheme
 from pywandahydra.postprocessing.plotting.styles.layout import draw_layout
 from pywandahydra.postprocessing.steps.report_meta import build_report_meta
-from pywandahydra.scenarios.schema import ScenarioSpecification
+from pywandahydra.scenarios import ScenarioSpecification
 
 logger = logging.getLogger(__name__)
 
@@ -268,7 +268,7 @@ class SpaceTimePlotStep(CaseStep):
 
     Route selection (in order of priority):
 
-    1. ``route_titles`` — explicit list; skips scenario lookup entirely.
+    1. ``route_titles`` â€” explicit list; skips scenario lookup entirely.
     2. ``properties`` filter applied to ``ctx.scenario.post_processing.routes``.
     3. All routes in the scenario (default, both params omitted).
     """
@@ -302,7 +302,7 @@ class SpaceTimePlotStep(CaseStep):
         vcenter: float | None = Field(
             default=None,
             description=(
-                "When set, centres the colormap on this value using TwoSlopeNorm — "
+                "When set, centres the colormap on this value using TwoSlopeNorm â€” "
                 "vmin and vmax need not be symmetric. Set to 0 for pressure plots."
             ),
         )
@@ -334,7 +334,7 @@ class SpaceTimePlotStep(CaseStep):
         titles = self._resolve_titles(ctx)
         if not titles:
             logger.warning(
-                "No routes to plot for case '%s' – check route_titles / properties params "
+                "No routes to plot for case '%s' â€“ check route_titles / properties params "
                 "and the scenario RPlots sheet.",
                 ctx.case_dir.name,
             )
@@ -363,7 +363,7 @@ class SpaceTimePlotStep(CaseStep):
         ts = route_data.get("timeseries")
         if ts is None or ts.empty:
             logger.warning(
-                "No timeseries data for route '%s' in case '%s' – skipping.",
+                "No timeseries data for route '%s' in case '%s' â€“ skipping.",
                 title,
                 ctx.case_dir.name,
             )
@@ -429,7 +429,7 @@ class SpaceTimePlotStep(CaseStep):
 
             ax.set_xlabel("s-distance (m)")
             ax.set_ylabel("Time (s)")
-            ax.set_title(f"{title} — {ctx.scenario.name}", fontsize=_THEME.axis_title_size)
+            ax.set_title(f"{title} â€” {ctx.scenario.name}", fontsize=_THEME.axis_title_size)
             ax.autoscale(tight=True, axis="x")
             _annotate_pipe_boundaries_mesh(ax, route_data, _THEME)
 
@@ -497,3 +497,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

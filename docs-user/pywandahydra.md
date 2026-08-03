@@ -54,13 +54,11 @@ graph LR
 
 **`ModelParameterChange`** — A `(component, property, value)` change. The special property `"disuse"` normalises legacy string/numeric values automatically via `parse_disuse_value`.
 
-**`load_scenarios`** — Loads a scenario file by auto-detecting its extension and dispatching to the registered `ScenarioSource`. Returns a list of `ScenarioSpecification`.
+**`load_scenarios`** — Loads a scenario file by auto-detecting its extension and returning the document's scenario list.
 
-**`ScenarioSource`** — Protocol implemented by the bundled scenario loading backends.
+**`load_scenario_document`** — Loads the workbook into a `ScenarioDocument` with analysis metadata, scenarios, and typed warnings.
 
-**`XlsScenarioSource`** — Built-in source for `.xls`, `.xlsx`, and `.xlsm` files. Reads the `Cases`, `Output`, `Rplots`, and `Tplots` sheets.
-
-**`ScenarioLoadOptions`** — Dataclass controlling sheet names, header row positions, NaN-skip behaviour, and strict-validation mode for the XLS source.
+**`ScenarioLoadOptions`** — Dataclass controlling sheet names, header row positions, NaN-skip behaviour, and strict-validation mode for Excel parsing.
 
 ### Execution layer
 
@@ -173,15 +171,12 @@ There are no `pywandahydra.*` plugin entry-point groups or runtime registration 
 | `build_run_context` | function | Creates a `RunContext` from a `RunConfig`, computing the output root directory. |
 | `config_hash` | function | Returns a deterministic `sha256:…` hash of a `RunConfig` for resume-mode comparison. |
 | `find_items_with_keyword` | function | Searches all components, nodes, and signal lines in a model for a keyword, returning `WandaItemRef` list. |
-| `get_source_for_extension` | function | Returns the bundled `ScenarioSource` class registered for a file extension; raises `ValueError` if unsupported. |
 | `get_workflow_class` | function | Looks up a bundled `PostProcessingWorkflow` class by name. |
-| `list_source_extensions` | function | Returns a sorted list of all registered scenario file extensions. |
 | `list_workflows` | function | Returns a sorted list of bundled workflow names. |
 | `load_run_config` | function | Parses a YAML or JSON file into a validated `RunConfig`. |
-| `load_scenarios` | function | Loads a scenario file via the appropriate registered `ScenarioSource`. |
+| `load_scenarios` | function | Loads scenarios from an Excel workbook document. |
 | `main` | function | CLI entry point; invokes the Typer `app`. |
 | `parse_disuse_value` | function | Normalises legacy disuse values (strings, ints, floats) to the boolean expected by WANDA. |
-| `register_source` | function | Internal decorator used to register a bundled `ScenarioSource`. |
 | `register_workflow` | function | Internal helper used to register a bundled `PostProcessingWorkflow`. |
 | `resolve_items` | function | Resolves a component identifier to `WandaItemRef` objects via exact match, then keyword fallback. |
 | `resolve_route_pipes` | function | Returns `(pipe_name, direction)` tuples for all pipes on a named route. |
@@ -208,7 +203,8 @@ There are no `pywandahydra.*` plugin entry-point groups or runtime registration 
 | `ScenarioSpecification` | class | Pydantic model for one complete scenario: flat identity, parameter changes, and post-processing specs. |
 | `WandaItemRef` | class | Frozen dataclass identifying one item in a WANDA model by name and type (`component`, `node`, or `signal_line`). |
 | `WorkflowSpec` | class | Pydantic model pairing a workflow name with its parameter dict. |
-| `XlsScenarioSource` | class | Built-in `ScenarioSource` for `.xls`, `.xlsx`, and `.xlsm` workbooks. |
+| `ScenarioDocument` | class | Pydantic model containing analysis metadata, parsed scenarios, source path, and typed warnings. |
+| `ScenarioValidationError` | class | ValueError subclass that aggregates parser warnings when strict parsing is enabled. |
 
 ### Protocols / interfaces
 
@@ -217,7 +213,6 @@ There are no `pywandahydra.*` plugin entry-point groups or runtime registration 
 | `CaseStep` | protocol | Per-scenario post-processing step: implement `applicable(ctx)` and `run(ctx)`. |
 | `PostProcessingWorkflow` | protocol | Interface implemented by bundled workflows that return `CaseStep` and `RunStep` lists. |
 | `RunStep` | protocol | Run-level post-processing step: implement `run(ctx)`. |
-| `ScenarioSource` | protocol | Interface implemented by bundled scenario loaders. |
 
 ### Types / literals
 

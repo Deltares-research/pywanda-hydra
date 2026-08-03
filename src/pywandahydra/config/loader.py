@@ -1,4 +1,4 @@
-"""Run configuration loader and top-level config model.
+﻿"""Run configuration loader and top-level config model.
 
 Loads a run configuration from a YAML file and validates it into a
 structured Pydantic model. The config defines model specification,
@@ -20,7 +20,7 @@ from typing import Any
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from ..scenarios.schema import ScenarioSpecification
+from ..scenarios import ScenarioSpecification
 from .models import ModelSpecification, RunContext
 
 # ---------------------------------------------------------------------------
@@ -291,3 +291,4 @@ def config_hash(config: RunConfig) -> str:
     raw = config.model_dump(mode="json")
     serialized = json.dumps(raw, sort_keys=True, default=str)
     return "sha256:" + hashlib.sha256(serialized.encode()).hexdigest()
+

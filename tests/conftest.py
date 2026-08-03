@@ -1,4 +1,4 @@
-"""Shared pytest fixtures for the test suite."""
+﻿"""Shared pytest fixtures for the test suite."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from pywandahydra.scenarios.schema import ScenarioSpecification
+from pywandahydra.scenarios import ScenarioSpecification
 
 DATA_DIR = Path(__file__).parent / "data"
 
@@ -64,3 +64,4 @@ def make_scenario() -> Callable[..., ScenarioSpecification]:
         return ScenarioSpecification(number=number, include=include, name=name)
 
     return _factory
+

@@ -19,6 +19,7 @@ class ScenarioWarning:
     message: str
     row: int | None = None
     column: str | None = None
+    expected_shape: str | None = None
 
 
 class ScenarioDocument(BaseModel):

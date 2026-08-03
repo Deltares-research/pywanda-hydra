@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import tempfile
 import unittest
@@ -9,7 +9,7 @@ from pywandahydra.config.models import ModelSpecification
 from pywandahydra.execution.case_plan import CasePlan
 from pywandahydra.execution.journal import CaseJournal, resume_decision
 from pywandahydra.execution.worker import run_one_case
-from pywandahydra.scenarios.schema import ScenarioSpecification
+from pywandahydra.scenarios import ScenarioSpecification
 
 
 class TestResumePolicy(unittest.TestCase):
@@ -132,3 +132,4 @@ class TestResumePolicy(unittest.TestCase):
             plan_after = self._build_plan(root_dir=tmp_path, reuse_existing_data=True)
 
             self.assertNotEqual(plan_before.config_hash, plan_after.config_hash)
+

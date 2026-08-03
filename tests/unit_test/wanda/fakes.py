@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from contextlib import contextmanager
 from pathlib import Path
@@ -7,7 +7,7 @@ from typing import Any
 import numpy as np
 
 from pywandahydra.config.models import ModelSpecification
-from pywandahydra.scenarios.schema import ModelParameterChange
+from pywandahydra.scenarios import ModelParameterChange
 
 ModelHandle = Any
 
@@ -122,3 +122,4 @@ class FailingWandaModelAccess(FakeWandaModelAccess):
 # Backward-compatible aliases for older test names.
 FakeWandaAdapter = FakeWandaModelAccess
 FailingWandaAdapter = FailingWandaModelAccess
+

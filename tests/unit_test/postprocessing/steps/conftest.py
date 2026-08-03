@@ -1,4 +1,4 @@
-"""Shared pytest fixtures for postprocessing step tests."""
+﻿"""Shared pytest fixtures for postprocessing step tests."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import pytest
 
 from pywandahydra.postprocessing.core.context import CaseContext
 from pywandahydra.postprocessing.io.cache import ParquetCache
-from pywandahydra.scenarios.schema import (
+from pywandahydra.scenarios import (
     AnalysisMeta,
     PostProcessingConfiguration,
     ReportConfiguration,
@@ -49,3 +49,4 @@ def make_report_ctx(tmp_path):
         )
 
     return _factory
+

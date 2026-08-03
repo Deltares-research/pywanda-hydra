@@ -1,4 +1,4 @@
-"""Pre-run validation against an open WANDA model."""
+﻿"""Pre-run validation against an open WANDA model."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from typing import Any, cast
 
 from ..config.models import ModelSpecification
 from ..disuse import parse_disuse_value
-from ..scenarios.schema import ScenarioSpecification
+from ..scenarios import ScenarioSpecification
 from .item_lookup import get_item, resolve_items
 from .session import wanda_session
 
@@ -288,3 +288,4 @@ def assert_preflight_valid(
             f"{issue.component}.{issue.property_name} -> {issue.message}"
         )
     raise PreflightValidationError("\n".join(lines))
+

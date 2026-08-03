@@ -1,4 +1,4 @@
-"""Unit tests for wanda.api module."""
+﻿"""Unit tests for wanda.api module."""
 
 # Import shared helper from root conftest
 import sys
@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 
 from pywandahydra.config.models import ModelSpecification
-from pywandahydra.scenarios.schema import ModelParameterChange
+from pywandahydra.scenarios import ModelParameterChange
 from pywandahydra.wanda.api import (
     WandaItemRef,
     apply_parameter_change,
@@ -155,3 +155,4 @@ class TestWandaAPI(unittest.TestCase):
                 get_item(model, unknown_ref)
 
             self.assertEqual(str(context.exception), "Unknown item type: UNKNOWN")
+
