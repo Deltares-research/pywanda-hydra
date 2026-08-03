@@ -50,7 +50,7 @@ class PlotReportStep:
             theme = PlotTheme()
             figures = render_combined_report_pages(
                 specs,
-                ctx.cache,
+                ctx.store,
                 report_meta_base=meta,
                 theme=theme,
             )

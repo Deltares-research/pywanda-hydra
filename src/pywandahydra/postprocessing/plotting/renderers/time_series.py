@@ -13,8 +13,8 @@ from matplotlib.figure import Figure
 
 from pywandahydra.scenarios.models.plot_axis import AxisSpecification
 
-from ...io.cache import ParquetCache
-from ...io.export import savefig
+from ....results import ParquetResultStore
+from ...figures.export import savefig
 from .common import apply_axis_spec, configure_matplotlib_defaults
 from .theme import PlotTheme
 
@@ -26,7 +26,7 @@ configure_matplotlib_defaults()
 def render_time_series_plot(
     components: list[str],
     property_name: str,
-    cache: ParquetCache,
+    store: ParquetResultStore,
     *,
     title: str | None = None,
     x_axis: AxisSpecification | None = None,
@@ -36,11 +36,12 @@ def render_time_series_plot(
     export_props: dict[str, dict[str, Any]] | None = None,
     theme: PlotTheme | None = None,
 ) -> Figure | None:
-    """Render a time-series plot from cached component data."""
+    """Render a time-series plot from durable component data."""
     if theme is None:
         theme = PlotTheme()
 
-    df = cache.read_components()
+    data = store.read()
+    df = data.components.data if data else pd.DataFrame()
     if df.empty:
         logger.warning("No cached component data - skipping time series render.")
         return None

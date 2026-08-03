@@ -9,9 +9,15 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from pywandahydra.postprocessing.io.cache import ParquetCache  # noqa: E402
 from pywandahydra.postprocessing.plotting.renderers.combined_report import (
     render_combined_report_pages,  # noqa: E402
+)
+from pywandahydra.results import (  # noqa: E402
+    ComponentTimeSeries,
+    ExtractedSimulationData,
+    ParquetResultStore,
+    RouteData,
+    RouteIdentity,
 )
 from pywandahydra.postprocessing.plotting.renderers.report_page import ReportMeta  # noqa: E402
 from pywandahydra.postprocessing.plotting.renderers.theme import PlotTheme  # noqa: E402
@@ -32,26 +38,30 @@ BASE_META = ReportMeta(
 )
 
 
-def _write_route_cache(cache: ParquetCache, title: str) -> None:
-    extracted = {
-        "components": pd.DataFrame(),
-        "routes": {
-            title: {
-                "envelope": pd.DataFrame(
-                    {"min": [1.0, 2.0], "max": [3.0, 4.0]},
-                    index=pd.Index([0.0, 10.0], name="s_location [m]"),
-                ),
-                "profile": pd.DataFrame(
-                    {"elevation": [100.0, 110.0]},
-                    index=pd.Index([0.0, 10.0], name="s_location [m]"),
-                ),
-            }
-        },
-    }
-    cache.write(extracted)
+def _write_route_cache(store: ParquetResultStore, title: str) -> None:
+    existing = store.read()
+    route_id, property_name = title.rsplit("_", maxsplit=1)
+    routes = dict(existing.routes) if existing else {}
+    routes[RouteIdentity(route_id, property_name)] = RouteData(
+        envelope=pd.DataFrame(
+            {"min": [1.0, 2.0], "max": [3.0, 4.0]},
+            index=pd.Index([0.0, 10.0], name="s_location [m]"),
+        ),
+        profile=pd.DataFrame(
+            {"elevation": [100.0, 110.0]},
+            index=pd.Index([0.0, 10.0], name="s_location [m]"),
+        ),
+    )
+    store.write(
+        ExtractedSimulationData(
+            components=existing.components if existing else ComponentTimeSeries(pd.DataFrame()),
+            routes=routes,
+        ),
+        fingerprint="test",
+    )
 
 
-def _write_components_cache(cache: ParquetCache) -> None:
+def _write_components_cache(store: ParquetResultStore) -> None:
     columns = pd.MultiIndex.from_tuples(
         [("PUMP P1", "Head", float("nan"))],
         names=["component", "property", "s_location"],
@@ -59,13 +69,19 @@ def _write_components_cache(cache: ParquetCache) -> None:
     components = pd.DataFrame(
         [[1.0], [2.0]], columns=columns, index=pd.Index([0.0, 1.0], name="time [s]")
     )
-    cache.write({"components": components, "routes": {}})
+    existing = store.read()
+    store.write(
+        ExtractedSimulationData(
+            components=ComponentTimeSeries(components), routes=existing.routes if existing else {}
+        ),
+        fingerprint="test",
+    )
 
 
 class TestRenderCombinedReportPages(unittest.TestCase):
     def setUp(self) -> None:
         self.tmp_dir = tempfile.TemporaryDirectory()
-        self.cache = ParquetCache(Path(self.tmp_dir.name))
+        self.cache = ParquetResultStore(Path(self.tmp_dir.name))
         self.theme = PlotTheme()
         self._figures: list = []
 

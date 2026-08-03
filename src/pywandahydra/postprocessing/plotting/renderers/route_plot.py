@@ -10,9 +10,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.figure import Figure
 
+from ....results import ParquetResultStore, RouteIdentity
 from ....scenarios import RoutePlotSpecification
-from ...io.cache import ParquetCache
-from ...io.export import savefig
+from ...figures.export import savefig
 from .common import apply_axis_spec, configure_matplotlib_defaults
 from .theme import PlotTheme
 
@@ -23,20 +23,21 @@ configure_matplotlib_defaults()
 
 def render_route_plot(
     spec: RoutePlotSpecification,
-    cache: ParquetCache,
+    store: ParquetResultStore,
     *,
     output_dir: Path | None = None,
     filename: str | None = None,
     export_props: dict[str, dict[str, Any]] | None = None,
     theme: PlotTheme | None = None,
 ) -> Figure | None:
-    """Render a route plot from cached data."""
+    """Render a route plot from durable result data."""
     if theme is None:
         theme = PlotTheme()
 
     title = spec.title or f"{spec.route_id}_{spec.property}"
-    route_data = cache.read_route(title)
-    envelope = route_data.get("envelope")
+    data = store.read()
+    route_data = data.routes.get(RouteIdentity(spec.route_id, spec.property)) if data else None
+    envelope = route_data.envelope if route_data else None
     if envelope is None or envelope.empty:
         logger.warning("No cached envelope for route '%s' - skipping render.", title)
         return None

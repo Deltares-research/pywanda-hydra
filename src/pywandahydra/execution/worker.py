@@ -23,12 +23,12 @@ from ..execution.case_plan import CasePlan
 from ..execution.journal import CaseJournal, _now_iso, resume_decision
 from ..postprocessing.core.context import CaseContext
 from ..postprocessing.core.pipeline import run_postprocessing
-from ..postprocessing.extraction.extract import extract_all
-from ..postprocessing.io.cache import ParquetCache
 from ..postprocessing.plotting.theme_registry import get_theme
 from ..postprocessing.workflows import bootstrap as bootstrap_workflows
+from ..results import ParquetResultStore
 from ..wanda.model_access import WandaModelAccess
 from ..wanda.pywanda_model_access import PywandaModelAccess
+from .result_extraction import extract_simulation_data, requirements_from_scenario
 
 logger = logging.getLogger(__name__)
 
@@ -265,20 +265,25 @@ def _execute_case(plan: CasePlan, journal: CaseJournal) -> CaseResult:
 
             # --- Extract results while model is open (single pass) ---
             logger.info("Case %s: Extracting results...", plan.case_id)
-            extracted = extract_all(model, plan.scenario, adapter)
+            extracted = extract_simulation_data(
+                model,
+                adapter,
+                requirements_from_scenario(plan.scenario),
+            )
             logger.info("Case %s: Extraction completed", plan.case_id)
             journal.event(
                 "extracted",
-                has_components=not extracted["components"].empty,
-                n_routes=len(extracted["routes"]),
+                has_components=not extracted.components.data.empty,
+                n_routes=len(extracted.routes),
             )
 
         # --- Persist extracted data to Parquet ---
-        logger.info("Case %s: WANDA session closed, writing cache...", plan.case_id)
-        cache = ParquetCache(plan.case_dir)
-        artefacts = cache.write(extracted)
-        logger.info("Case %s: Cache written with %d artefacts", plan.case_id, len(artefacts))
-        journal.event("cached", artefacts=artefacts)
+        logger.info("Case %s: WANDA session closed, writing results...", plan.case_id)
+        store = ParquetResultStore(plan.case_dir / "results")
+        inventory = store.write(extracted, fingerprint=plan.config_hash)
+        artefacts = {"results": "results"}
+        logger.info("Case %s: Results written", plan.case_id)
+        journal.event("results_stored", inventory=inventory)
 
         # --- Post-processing: run workflow-driven steps ---
         logger.info(
@@ -288,7 +293,7 @@ def _execute_case(plan: CasePlan, journal: CaseJournal) -> CaseResult:
         )
         theme = get_theme("default")
         postprocessing_ctx = CaseContext(
-            cache=cache,
+            store=store,
             scenario=plan.scenario,
             case_dir=plan.case_dir,
             analysis_metadata=plan.analysis_metadata,
