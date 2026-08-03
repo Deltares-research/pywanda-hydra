@@ -7,17 +7,18 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from ...results import ParquetResultStore
 from ...scenarios import AnalysisMeta, ScenarioSpecification
-from ..io.cache import ParquetCache
-from ..io.export import DEFAULT_TABLE_EXPORT_PROPS, build_figure_export_props
+from ..figures.export import build_figure_export_props
 from ..plotting.renderers.theme import PlotTheme
+from ..tables.export import DEFAULT_TABLE_EXPORT_PROPS
 
 
 @dataclass
 class CaseContext:
     """Context passed to per-case post-processing steps."""
 
-    cache: ParquetCache
+    store: ParquetResultStore
     scenario: ScenarioSpecification
     case_dir: Path
     analysis_metadata: AnalysisMeta = field(default_factory=AnalysisMeta)

@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from pywandahydra.postprocessing.core.context import CaseContext
-from pywandahydra.postprocessing.io.cache import ParquetCache
+from pywandahydra.results import ParquetResultStore
 from pywandahydra.scenarios import (
     AnalysisMeta,
     PostProcessingConfiguration,
@@ -42,7 +42,7 @@ def make_report_ctx(tmp_path):
             extra_columns=extra_columns,
         )
         return CaseContext(
-            cache=ParquetCache(tmp_path),
+            store=ParquetResultStore(tmp_path / "results"),
             scenario=scenario,
             analysis_metadata=AnalysisMeta.model_validate(analysis_overrides or {}),
             case_dir=tmp_path,

@@ -144,9 +144,9 @@ def plot(
     ),
     fmt: str = typer.Option("png", "--format", "-f", help="Output format (png, pdf, svg)."),
 ) -> None:
-    """Render plots from cached extraction data (no WANDA required)."""
-    from ..postprocessing.io.cache import ParquetCache
+    """Render plots from durable result data (no WANDA required)."""
     from ..postprocessing.plotting.renderers.route_plot import render_route_plot
+    from ..results import ParquetResultStore
 
     scenarios_dir = run_dir / "scenarios"
     if not scenarios_dir.exists():
@@ -162,16 +162,16 @@ def plot(
         case_dirs = sorted(d for d in scenarios_dir.iterdir() if d.is_dir())
 
     for case_dir in case_dirs:
-        cache = ParquetCache(case_dir)
-        if not cache.exists():
-            typer.echo(f"  {case_dir.name}: no cached data - skipping")
+        store = ParquetResultStore(case_dir / "results")
+        if not store.is_complete():
+            typer.echo(f"  {case_dir.name}: no complete result data - skipping")
             continue
 
         figures_dir = case_dir / "figures"
         typer.echo(f"  {case_dir.name}: rendering plots...")
 
         # Build export props from requested format
-        from ..postprocessing.io.export import build_figure_export_props
+        from ..postprocessing.figures.export import build_figure_export_props
 
         export_props = build_figure_export_props(
             include_pdf=(fmt == "pdf"),
@@ -189,20 +189,23 @@ def plot(
                 from ..scenarios import RoutePlotSpecification
 
                 spec = RoutePlotSpecification.model_validate(spec_data)
-                render_route_plot(spec, cache, output_dir=figures_dir, export_props=export_props)
+                render_route_plot(spec, store, output_dir=figures_dir, export_props=export_props)
         else:
-            # Render all available routes from cache
-            for route_title in cache.list_routes():
+            inventory = store.inventory()
+            route_identities = sorted(
+                {item.route for item in inventory.route_products} if inventory else set()
+            )
+            for identity in route_identities:
                 from ..scenarios import RoutePlotSpecification
                 from ..scenarios.models.plot_axis import AxisSpecification
 
                 spec = RoutePlotSpecification(
-                    route_id=route_title,
-                    property="",
-                    title=route_title,
+                    route_id=identity.route_id,
+                    property=identity.property,
+                    title=f"{identity.route_id}_{identity.property}",
                     x_axis=AxisSpecification(label="Distance [m]"),
                     y_axis=AxisSpecification(label=""),
                 )
-                render_route_plot(spec, cache, output_dir=figures_dir, export_props=export_props)
+                render_route_plot(spec, store, output_dir=figures_dir, export_props=export_props)
 
     typer.echo("Plotting complete.")

@@ -67,9 +67,7 @@ class ParquetResultStore:
         files: dict[str, str] = metadata["files"]
         components_path = self.directory / _COMPONENTS_FILE
         components = ComponentTimeSeries(
-            _read_components(components_path)
-            if _COMPONENTS_FILE in files
-            else pd.DataFrame()
+            _read_components(components_path) if _COMPONENTS_FILE in files else pd.DataFrame()
         )
         routes: dict[RouteIdentity, RouteData] = {}
         for item in metadata["routes"]:
@@ -214,9 +212,7 @@ def _inventory_from_json(value: dict[str, Any]) -> ResultInventory:
             for item in value["components"]
         ),
         route_products=frozenset(
-            RouteProductIdentity(
-                RouteIdentity(item["route_id"], item["property"]), item["product"]
-            )
+            RouteProductIdentity(RouteIdentity(item["route_id"], item["property"]), item["product"])
             for item in value["route_products"]
         ),
     )

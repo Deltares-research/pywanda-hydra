@@ -32,7 +32,7 @@ class SummaryTableStep:
         """Render the summary table to the case directory."""
         render_summary_table(
             ctx.scenario.post_processing.tables.minmax,
-            ctx.cache,
+            ctx.store,
             output_dir=ctx.case_dir,
             export_props=ctx.export_table_props,
         )

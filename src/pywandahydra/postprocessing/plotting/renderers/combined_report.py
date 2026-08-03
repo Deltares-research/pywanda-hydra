@@ -17,8 +17,8 @@ import pandas as pd
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 
+from ....results import ExtractedSimulationData, ParquetResultStore, RouteIdentity
 from ....scenarios import RoutePlotSpecification, TimeSeriesPlotSpecification
-from ...io.cache import ParquetCache
 from ..styles.layout import draw_layout
 from .report_page import ReportMeta, _create_content_axes, _plot_route_series, _to_page_metadata
 from .theme import PlotTheme
@@ -33,7 +33,7 @@ PlotSpec = RoutePlotSpecification | TimeSeriesPlotSpecification
 class PanelContext:
     """Shared resources available to panel renderers."""
 
-    cache: ParquetCache
+    data: ExtractedSimulationData
     components: pd.DataFrame
     theme: PlotTheme
 
@@ -42,12 +42,22 @@ def _render_route_panel(ax: Axes, specs: list[PlotSpec], ctx: PanelContext) -> b
     spec = specs[0]
     assert isinstance(spec, RoutePlotSpecification)
     title = spec.title or f"{spec.route_id}_{spec.property}"
-    route_data = ctx.cache.read_route(title)
-    envelope = route_data.get("envelope")
-    if envelope is None or envelope.empty:
+    route_data = ctx.data.routes.get(RouteIdentity(spec.route_id, spec.property))
+    if route_data is None or route_data.envelope is None or route_data.envelope.empty:
         logger.warning("No cached envelope for route '%s' - skipping render.", title)
         return False
-    _plot_route_series(ax, spec, envelope, route_data, ctx.theme)
+    envelope = route_data.envelope
+    _plot_route_series(
+        ax,
+        spec,
+        envelope,
+        {
+            "timeseries": route_data.timeseries,
+            "envelope": route_data.envelope,
+            "profile": route_data.profile,
+        },
+        ctx.theme,
+    )
     return True
 
 
@@ -78,7 +88,7 @@ PANEL_RENDERERS: dict[type, PanelRenderer] = {
 
 def render_combined_report_pages(
     specs: list[PlotSpec],
-    cache: ParquetCache,
+    store: ParquetResultStore,
     *,
     report_meta_base: ReportMeta,
     theme: PlotTheme | None = None,
@@ -89,13 +99,15 @@ def render_combined_report_pages(
 
     theme = theme or PlotTheme()
 
-    components = pd.DataFrame()
-    if any(isinstance(s, TimeSeriesPlotSpecification) for s in specs):
-        components = cache.read_components()
-        if components.empty:
-            logger.warning("No cached component data - time plots will be skipped.")
+    data = store.read()
+    if data is None:
+        logger.warning("No complete result data - report plots will be skipped.")
+        return []
+    components = data.components.data
+    if any(isinstance(s, TimeSeriesPlotSpecification) for s in specs) and components.empty:
+        logger.warning("No component data - time plots will be skipped.")
 
-    ctx = PanelContext(cache=cache, components=components, theme=theme)
+    ctx = PanelContext(data=data, components=components, theme=theme)
 
     grouped: dict[str, list[PlotSpec]] = {}
     for i, spec in enumerate(specs, start=1):

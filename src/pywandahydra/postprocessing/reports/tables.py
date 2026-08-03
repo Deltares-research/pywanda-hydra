@@ -8,22 +8,23 @@ from typing import Any
 
 import pandas as pd
 
+from ...results import ParquetResultStore
 from ...scenarios import MinMaxTableSpecification
-from ..io.cache import ParquetCache
-from ..io.export import save_table
+from ..tables.export import save_table
 
 logger = logging.getLogger(__name__)
 
 
 def render_summary_table(
     specs: list[MinMaxTableSpecification],
-    cache: ParquetCache,
+    store: ParquetResultStore,
     *,
     output_dir: Path | None = None,
     export_props: dict[str, dict[str, Any]] | None = None,
 ) -> pd.DataFrame:
-    """Render a summary table from cached component data."""
-    df = cache.read_components()
+    """Render a summary table from durable component data."""
+    data = store.read()
+    df = data.components.data if data else pd.DataFrame()
     if df.empty:
         return pd.DataFrame(columns=["component", "property", "mode", "value"])
 

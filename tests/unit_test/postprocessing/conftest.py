@@ -9,7 +9,7 @@ matplotlib.use("Agg")  # must be set before any test file imports matplotlib.pyp
 import pytest
 
 from pywandahydra.postprocessing.core.context import CaseContext
-from pywandahydra.postprocessing.io.cache import ParquetCache
+from pywandahydra.results import ParquetResultStore
 from pywandahydra.scenarios import (
     PostProcessingConfiguration,
     ReportConfiguration,
@@ -18,8 +18,8 @@ from pywandahydra.scenarios import (
 
 
 @pytest.fixture
-def parquet_cache(tmp_path) -> ParquetCache:
-    return ParquetCache(tmp_path)
+def result_store(tmp_path) -> ParquetResultStore:
+    return ParquetResultStore(tmp_path / "results")
 
 
 @pytest.fixture
@@ -40,7 +40,7 @@ def make_case_ctx(tmp_path):
             if k not in {"Number", "Include", "Name"} and k not in report_keys
         }
         return CaseContext(
-            cache=ParquetCache(tmp_path),
+            store=ParquetResultStore(tmp_path / "results"),
             scenario=ScenarioSpecification(
                 number=meta_dict["Number"],
                 include=meta_dict["Include"],

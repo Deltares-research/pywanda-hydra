@@ -9,21 +9,22 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 from pywandahydra.postprocessing.plotting.renderers.time_series import render_time_series_plot
+from pywandahydra.results import ComponentTimeSeries, ExtractedSimulationData
 from pywandahydra.scenarios.models.plot_axis import AxisSpecification
 
 
 class TestRenderTimeSeriesPlot(unittest.TestCase):
-    def _make_cache(self, df: pd.DataFrame) -> MagicMock:
-        cache = MagicMock()
-        cache.read_components.return_value = df
-        return cache
+    def _make_store(self, df: pd.DataFrame) -> MagicMock:
+        store = MagicMock()
+        store.read.return_value = ExtractedSimulationData(components=ComponentTimeSeries(df))
+        return store
 
     def test_returns_none_for_empty_cache(self) -> None:
         # Arrange
-        cache = self._make_cache(pd.DataFrame())
+        store = self._make_store(pd.DataFrame())
 
         # Act
-        fig = render_time_series_plot(["Pipe1"], "Discharge", cache)
+        fig = render_time_series_plot(["Pipe1"], "Discharge", store)
 
         # Assert
         self.assertIsNone(fig)
@@ -35,10 +36,10 @@ class TestRenderTimeSeriesPlot(unittest.TestCase):
             names=["component", "property", "s_location"],
         )
         df = pd.DataFrame({columns[0]: [1.0, 2.0, 3.0]}, index=[0, 1, 2])
-        cache = self._make_cache(df)
+        store = self._make_store(df)
 
         # Act
-        fig = render_time_series_plot(["Pipe1"], "Discharge", cache)
+        fig = render_time_series_plot(["Pipe1"], "Discharge", store)
 
         # Assert
         self.assertIsNone(fig)
@@ -50,10 +51,10 @@ class TestRenderTimeSeriesPlot(unittest.TestCase):
             names=["component", "property", "s_location"],
         )
         df = pd.DataFrame({columns[0]: [1.0, 2.0, 3.0]}, index=[0.0, 1.0, 2.0])
-        cache = self._make_cache(df)
+        store = self._make_store(df)
 
         # Act
-        fig = render_time_series_plot(["Pipe1"], "Discharge", cache)
+        fig = render_time_series_plot(["Pipe1"], "Discharge", store)
 
         # Assert
         self.assertIsNotNone(fig)
@@ -74,10 +75,10 @@ class TestRenderTimeSeriesPlot(unittest.TestCase):
             names=["component", "property", "s_location"],
         )
         df = pd.DataFrame({columns[0]: [1.0, 2.0, 3.0]}, index=[0.0, 1.0, 2.0])
-        cache = self._make_cache(df)
+        store = self._make_store(df)
 
         # Act
-        fig = render_time_series_plot(["Pipe1"], "Discharge", cache)
+        fig = render_time_series_plot(["Pipe1"], "Discharge", store)
 
         # Assert
         ax = fig.axes[0]  # type: ignore[union-attr]
@@ -90,10 +91,10 @@ class TestRenderTimeSeriesPlot(unittest.TestCase):
     def test_renders_flat_columns(self) -> None:
         # Arrange
         df = pd.DataFrame({"Pipe1|Discharge": [1.0, 2.0, 3.0]}, index=[0.0, 1.0, 2.0])
-        cache = self._make_cache(df)
+        store = self._make_store(df)
 
         # Act
-        fig = render_time_series_plot(["Pipe1"], "Discharge", cache)
+        fig = render_time_series_plot(["Pipe1"], "Discharge", store)
 
         # Assert
         ax = fig.axes[0]  # type: ignore[union-attr]
@@ -107,7 +108,7 @@ class TestRenderTimeSeriesPlot(unittest.TestCase):
     def test_applies_axis_specs_and_custom_title(self) -> None:
         # Arrange
         df = pd.DataFrame({"Pipe1|Discharge": [1.0, 2.0, 3.0]}, index=[0.0, 1.0, 2.0])
-        cache = self._make_cache(df)
+        store = self._make_store(df)
         x_axis = AxisSpecification(label="Time [h]")
         y_axis = AxisSpecification(label="Discharge [m3/s]")
 
@@ -115,7 +116,7 @@ class TestRenderTimeSeriesPlot(unittest.TestCase):
         fig = render_time_series_plot(
             ["Pipe1"],
             "Discharge",
-            cache,
+            store,
             title="Custom title",
             x_axis=x_axis,
             y_axis=y_axis,
@@ -135,14 +136,14 @@ class TestRenderTimeSeriesPlot(unittest.TestCase):
         from pathlib import Path
 
         df = pd.DataFrame({"Pipe1|Discharge": [1.0, 2.0, 3.0]}, index=[0.0, 1.0, 2.0])
-        cache = self._make_cache(df)
+        store = self._make_store(df)
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             # Act
             fig = render_time_series_plot(
                 ["Pipe1"],
                 "Discharge",
-                cache,
+                store,
                 output_dir=Path(tmp_dir),
                 filename="my_plot",
             )
