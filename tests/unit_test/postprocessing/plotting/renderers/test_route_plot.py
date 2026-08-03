@@ -9,15 +9,24 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 from pywandahydra.postprocessing.plotting.renderers.route_plot import render_route_plot
+from pywandahydra.results import ExtractedSimulationData, RouteData, RouteIdentity
 from pywandahydra.scenarios.models.plot_axis import AxisSpecification
 from pywandahydra.scenarios.models.plot_route import RoutePlotSpecification
 
 
 class TestRenderRoutePlot(unittest.TestCase):
-    def _make_cache(self, route_data: dict) -> MagicMock:
-        cache = MagicMock()
-        cache.read_route.return_value = route_data
-        return cache
+    def _make_store(self, route_data: dict) -> MagicMock:
+        store = MagicMock()
+        store.read.return_value = ExtractedSimulationData(
+            routes={
+                RouteIdentity("Pipe1", "Discharge"): RouteData(
+                    envelope=route_data.get("envelope")
+                )
+            }
+            if route_data
+            else {}
+        )
+        return store
 
     def _make_spec(self, **overrides) -> RoutePlotSpecification:
         kwargs = dict(route_id="Pipe1", property="Discharge")
@@ -26,22 +35,22 @@ class TestRenderRoutePlot(unittest.TestCase):
 
     def test_returns_none_when_no_envelope(self) -> None:
         # Arrange
-        cache = self._make_cache({})
+        store = self._make_store({})
         spec = self._make_spec()
 
         # Act
-        fig = render_route_plot(spec, cache)
+        fig = render_route_plot(spec, store)
 
         # Assert
         self.assertIsNone(fig)
 
     def test_returns_none_when_envelope_empty(self) -> None:
         # Arrange
-        cache = self._make_cache({"envelope": pd.DataFrame()})
+        store = self._make_store({"envelope": pd.DataFrame()})
         spec = self._make_spec()
 
         # Act
-        fig = render_route_plot(spec, cache)
+        fig = render_route_plot(spec, store)
 
         # Assert
         self.assertIsNone(fig)
@@ -52,11 +61,11 @@ class TestRenderRoutePlot(unittest.TestCase):
             {"min": [1.0, 2.0, 3.0], "max": [4.0, 5.0, 6.0]},
             index=pd.Index([20.0, 0.0, 10.0], name="s_location [m]"),
         )
-        cache = self._make_cache({"envelope": envelope})
+        store = self._make_store({"envelope": envelope})
         spec = self._make_spec()
 
         # Act
-        fig = render_route_plot(spec, cache)
+        fig = render_route_plot(spec, store)
 
         # Assert
         self.assertIsNotNone(fig)
@@ -89,11 +98,11 @@ class TestRenderRoutePlot(unittest.TestCase):
             {"min": [1.0, 2.0, 3.0]},
             index=pd.Index([0.0, 10.0, 20.0], name="s_location [m]"),
         )
-        cache = self._make_cache({"envelope": envelope})
+        store = self._make_store({"envelope": envelope})
         spec = self._make_spec()
 
         # Act
-        fig = render_route_plot(spec, cache)
+        fig = render_route_plot(spec, store)
 
         # Assert
         ax = fig.axes[0]  # type: ignore[union-attr]
@@ -111,7 +120,7 @@ class TestRenderRoutePlot(unittest.TestCase):
             {"min": [1.0, 2.0], "max": [3.0, 4.0]},
             index=pd.Index([0.0, 10.0], name="s_location [m]"),
         )
-        cache = self._make_cache({"envelope": envelope})
+        store = self._make_store({"envelope": envelope})
         spec = self._make_spec(
             title="Custom Title",
             x_axis=AxisSpecification(label="Distance [m]"),
@@ -119,7 +128,7 @@ class TestRenderRoutePlot(unittest.TestCase):
         )
 
         # Act
-        fig = render_route_plot(spec, cache)
+        fig = render_route_plot(spec, store)
 
         # Assert
         ax = fig.axes[0]  # type: ignore[union-attr]
@@ -138,12 +147,12 @@ class TestRenderRoutePlot(unittest.TestCase):
             {"min": [1.0, 2.0], "max": [3.0, 4.0]},
             index=pd.Index([0.0, 10.0], name="s_location [m]"),
         )
-        cache = self._make_cache({"envelope": envelope})
+        store = self._make_store({"envelope": envelope})
         spec = self._make_spec()
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             # Act
-            fig = render_route_plot(spec, cache, output_dir=Path(tmp_dir), filename="route_fig")
+            fig = render_route_plot(spec, store, output_dir=Path(tmp_dir), filename="route_fig")
 
             # Assert
             self.assertTrue((Path(tmp_dir) / "route_fig.pdf").exists())

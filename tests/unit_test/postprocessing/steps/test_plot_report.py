@@ -1,4 +1,4 @@
-﻿"""Unit tests for postprocessing.steps.plot_report.PlotReportStep."""
+"""Unit tests for postprocessing.steps.plot_report.PlotReportStep."""
 
 from __future__ import annotations
 
@@ -10,8 +10,8 @@ from unittest import mock
 import matplotlib.pyplot as plt
 
 from pywandahydra.postprocessing.core.context import CaseContext
-from pywandahydra.postprocessing.io.cache import ParquetCache
 from pywandahydra.postprocessing.steps.plot_report import PlotReportStep
+from pywandahydra.results import ParquetResultStore
 from pywandahydra.scenarios import (
     FigurePostProcessingConfiguration,
     PostProcessingConfiguration,
@@ -28,7 +28,9 @@ def _make_ctx(tmp_path: Path, post_processing: PostProcessingConfiguration) -> C
         name="case_001",
         post_processing=post_processing,
     )
-    return CaseContext(cache=ParquetCache(tmp_path), scenario=scenario, case_dir=tmp_path)
+    return CaseContext(
+        store=ParquetResultStore(tmp_path / "results"), scenario=scenario, case_dir=tmp_path
+    )
 
 
 class TestPlotReportStepApplicable(unittest.TestCase):
@@ -111,4 +113,3 @@ class TestPlotReportStepRun(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

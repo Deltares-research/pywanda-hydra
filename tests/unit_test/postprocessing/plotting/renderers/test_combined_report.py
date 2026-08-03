@@ -12,6 +12,8 @@ import pandas as pd
 from pywandahydra.postprocessing.plotting.renderers.combined_report import (
     render_combined_report_pages,  # noqa: E402
 )
+from pywandahydra.postprocessing.plotting.renderers.report_page import ReportMeta  # noqa: E402
+from pywandahydra.postprocessing.plotting.renderers.theme import PlotTheme  # noqa: E402
 from pywandahydra.results import (  # noqa: E402
     ComponentTimeSeries,
     ExtractedSimulationData,
@@ -19,8 +21,6 @@ from pywandahydra.results import (  # noqa: E402
     RouteData,
     RouteIdentity,
 )
-from pywandahydra.postprocessing.plotting.renderers.report_page import ReportMeta  # noqa: E402
-from pywandahydra.postprocessing.plotting.renderers.theme import PlotTheme  # noqa: E402
 from pywandahydra.scenarios import (  # noqa: E402
     RoutePlotSpecification,
     TimeSeriesPlotSpecification,

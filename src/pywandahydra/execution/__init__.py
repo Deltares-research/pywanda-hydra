@@ -9,9 +9,9 @@ __all__ = ["CaseJournal", "CasePlan", "CaseState", "RunResult", "build_case_plan
 
 
 def __getattr__(name: str) -> Any:
-	"""Load the legacy runner only when a caller explicitly requests it."""
-	if name in {"RunResult", "run"}:
-		from .runner import RunResult, run
+    """Load the legacy runner only when a caller explicitly requests it."""
+    if name in {"RunResult", "run"}:
+        from .runner import RunResult, run
 
-		return {"RunResult": RunResult, "run": run}[name]
-	raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+        return {"RunResult": RunResult, "run": run}[name]
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

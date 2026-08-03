@@ -7,9 +7,9 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from pywandahydra.postprocessing.core.context import CaseContext, PostProcessingRunContext
-from pywandahydra.postprocessing.io.cache import ParquetCache
 from pywandahydra.postprocessing.workflows import bootstrap
 from pywandahydra.postprocessing.workflows.base import resolve_workflow
+from pywandahydra.results import ParquetResultStore
 from pywandahydra.scenarios import ScenarioSpecification
 
 
@@ -38,7 +38,7 @@ class TestWorkflowConfig(unittest.TestCase):
                 name="case_001",
             )
             case_ctx = CaseContext(
-                cache=ParquetCache(case_dir),
+                store=ParquetResultStore(case_dir / "results"),
                 scenario=scenario,
                 case_dir=case_dir,
             )
@@ -59,4 +59,3 @@ class TestWorkflowConfig(unittest.TestCase):
                 [s.name for s in workflow.run_steps(post_processing_run_ctx)],
                 ["aggregate_tables"],
             )
-

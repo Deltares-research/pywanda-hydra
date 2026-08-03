@@ -1,4 +1,4 @@
-﻿"""Unit tests for postprocessing.reports.tables."""
+"""Unit tests for postprocessing.reports.tables."""
 
 from __future__ import annotations
 
@@ -8,15 +8,15 @@ from pathlib import Path
 
 import pandas as pd
 
-from pywandahydra.postprocessing.io.cache import ParquetCache
 from pywandahydra.postprocessing.reports.tables import aggregate_case_tables, render_summary_table
+from pywandahydra.results import ComponentTimeSeries, ExtractedSimulationData, ParquetResultStore
 from pywandahydra.scenarios import MinMaxTableSpecification
 
 
 class TestRenderSummaryTable(unittest.TestCase):
     def test_empty_cache_returns_empty_dataframe_with_columns(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
-            cache = ParquetCache(Path(tmp_dir))
+            cache = ParquetResultStore(Path(tmp_dir) / "results")
             specs = [MinMaxTableSpecification(component="PUMP P1", property="Head", mode="MAX")]
 
             result = render_summary_table(specs, cache)
@@ -26,13 +26,16 @@ class TestRenderSummaryTable(unittest.TestCase):
 
     def test_multiindex_columns_max_mode(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
-            cache = ParquetCache(Path(tmp_dir))
+            cache = ParquetResultStore(Path(tmp_dir) / "results")
             columns = pd.MultiIndex.from_tuples(
                 [("PUMP P1", "Head", float("nan")), ("PIPE P1", "Pressure", 10.0)],
                 names=["component", "property", "s_location"],
             )
             components = pd.DataFrame([[1.0, 2.0], [3.0, 4.0]], columns=columns, index=[0.0, 1.0])
-            cache.write({"components": components, "routes": {}})
+            cache.write(
+                ExtractedSimulationData(components=ComponentTimeSeries(components)),
+                fingerprint="test",
+            )
 
             specs = [MinMaxTableSpecification(component="PUMP P1", property="Head", mode="MAX")]
 
@@ -47,13 +50,16 @@ class TestRenderSummaryTable(unittest.TestCase):
 
     def test_multiindex_columns_min_mode(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
-            cache = ParquetCache(Path(tmp_dir))
+            cache = ParquetResultStore(Path(tmp_dir) / "results")
             columns = pd.MultiIndex.from_tuples(
                 [("PUMP P1", "Head", float("nan"))],
                 names=["component", "property", "s_location"],
             )
             components = pd.DataFrame([[1.0], [3.0]], columns=columns, index=[0.0, 1.0])
-            cache.write({"components": components, "routes": {}})
+            cache.write(
+                ExtractedSimulationData(components=ComponentTimeSeries(components)),
+                fingerprint="test",
+            )
 
             specs = [MinMaxTableSpecification(component="PUMP P1", property="Head", mode="MIN")]
 
@@ -63,13 +69,16 @@ class TestRenderSummaryTable(unittest.TestCase):
 
     def test_multiindex_no_matching_columns_skipped(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
-            cache = ParquetCache(Path(tmp_dir))
+            cache = ParquetResultStore(Path(tmp_dir) / "results")
             columns = pd.MultiIndex.from_tuples(
                 [("PUMP P1", "Head", float("nan"))],
                 names=["component", "property", "s_location"],
             )
             components = pd.DataFrame([[1.0], [3.0]], columns=columns, index=[0.0, 1.0])
-            cache.write({"components": components, "routes": {}})
+            cache.write(
+                ExtractedSimulationData(components=ComponentTimeSeries(components)),
+                fingerprint="test",
+            )
 
             specs = [MinMaxTableSpecification(component="MISSING", property="Flow", mode="MAX")]
 
@@ -83,13 +92,16 @@ class TestRenderSummaryTable(unittest.TestCase):
             cache_dir = tmp_path / "cache"
             output_dir = tmp_path / "out"
 
-            cache = ParquetCache(cache_dir)
+            cache = ParquetResultStore(cache_dir / "results")
             columns = pd.MultiIndex.from_tuples(
                 [("PUMP P1", "Head", float("nan"))],
                 names=["component", "property", "s_location"],
             )
             components = pd.DataFrame([[1.0], [3.0]], columns=columns, index=[0.0, 1.0])
-            cache.write({"components": components, "routes": {}})
+            cache.write(
+                ExtractedSimulationData(components=ComponentTimeSeries(components)),
+                fingerprint="test",
+            )
 
             specs = [MinMaxTableSpecification(component="PUMP P1", property="Head", mode="MAX")]
 
@@ -149,4 +161,3 @@ class TestAggregateCaseTables(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
