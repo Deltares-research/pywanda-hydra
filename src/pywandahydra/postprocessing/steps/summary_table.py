@@ -7,7 +7,7 @@ import logging
 from pydantic import BaseModel, ConfigDict
 
 from ..core.context import CaseContext
-from ..reports.tables import render_summary_table
+from ..tables.case_minmax import write_case_minmax_table
 
 logger = logging.getLogger(__name__)
 
@@ -29,11 +29,11 @@ class SummaryTableStep:
         return len(pp.tables.minmax) > 0
 
     def run(self, ctx: CaseContext) -> None:
-        """Render the summary table to the case directory."""
-        render_summary_table(
+        """Write the summary table to the case directory."""
+        write_case_minmax_table(
             ctx.scenario.post_processing.tables.minmax,
             ctx.store,
-            output_dir=ctx.case_dir,
+            ctx.case_dir,
             export_props=ctx.export_table_props,
         )
 
