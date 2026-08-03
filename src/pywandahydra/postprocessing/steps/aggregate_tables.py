@@ -5,7 +5,7 @@ from __future__ import annotations
 from pydantic import BaseModel, ConfigDict
 
 from ..core.context import PostProcessingRunContext
-from ..reports.tables import aggregate_case_tables
+from ..tables.run_minmax import write_run_minmax_table
 
 
 class AggregateTablesStep:
@@ -20,4 +20,4 @@ class AggregateTablesStep:
     def run(self, ctx: PostProcessingRunContext) -> None:
         scenarios_dir = ctx.run_root / "scenarios"
         tables_dir = ctx.run_root / "tables"
-        aggregate_case_tables(scenarios_dir, tables_dir, run_id=ctx.run_id)
+        write_run_minmax_table(scenarios_dir, tables_dir, run_id=ctx.run_id)

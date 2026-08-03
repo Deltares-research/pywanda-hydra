@@ -15,7 +15,7 @@ Older A-J plans are superseded. Do not implement workflow discriminated unions,
 - Repository default branch: `master` at `8b34cf7` when the v2 work began.
 - Integration branch: `refactor`, containing merged Slices 01 through 06.
 - Slices 07 and 08 are merged into `refactor`.
-- Slice 09A is active on `refactor-v2/09a-extraction`.
+- Slice 09A is merged into `refactor`.
 
 ## Status
 
@@ -29,8 +29,8 @@ Older A-J plans are superseded. Do not implement workflow discriminated unions,
 | 06 | [`06-excel-loader.md`](06-excel-loader.md) | `refactor-v2/06-excel-loader` | 05 | medium | merged into `refactor` |
 | 07 | [`07-config-run-api.md`](07-config-run-api.md) | `refactor-v2/07-config-run-api` | 03, 04, 05, 06 | high | merged into `refactor` |
 | 08 | [`08-results-foundation.md`](08-results-foundation.md) | `refactor-v2/08-results` | 07 | high | merged into `refactor` |
-| 09A | [`09a-result-extraction.md`](09a-result-extraction.md) | `refactor-v2/09a-extraction` | 03, 05, 08 | high | active |
-| 09B | [`09b-tables.md`](09b-tables.md) | `refactor-v2/09b-tables` | 09A | medium | pending; parallel window with 09C |
+| 09A | [`09a-result-extraction.md`](09a-result-extraction.md) | `refactor-v2/09a-extraction` | 03, 05, 08 | high | merged into `refactor` |
+| 09B | [`09b-tables.md`](09b-tables.md) | `refactor-v2/09b-tables` | 09A | medium | in review; parallel window with 09C |
 | 09C | [`09c-figures.md`](09c-figures.md) | `refactor-v2/09c-figures` | 09A | high | pending; parallel window with 09B |
 | 10 | [`10-postprocessing-pipeline.md`](10-postprocessing-pipeline.md) | `refactor-v2/10-postprocessing-pipeline` | 09B, 09C | high | pending |
 | 11 | [`11-status-recovery.md`](11-status-recovery.md) | `refactor-v2/11-status-recovery` | 08, 10 | high | pending |
