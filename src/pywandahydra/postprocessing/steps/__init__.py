@@ -1,4 +1,4 @@
-"""Post-processing steps — pluggable submodules for the pipeline.
+"""Post-processing steps - pluggable submodules for the pipeline.
 
 Each module in this package implements one post-processing step.
 """

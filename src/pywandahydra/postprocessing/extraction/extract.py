@@ -1,4 +1,4 @@
-﻿"""Extract time-series and route data from simulated WANDA models.
+"""Extract time-series and route data from simulated WANDA models.
 
 This module provides routines that read the *outputs* and *route_plots*
 specifications stored on a :class:`ScenarioSpecification` and extract
@@ -17,8 +17,8 @@ Typical usage::
     results = extract_all(model, scenario, adapter)
     # results["components"]  -> DataFrame with component time series
     # results["routes"]      -> dict[str, dict[str, DataFrame]] keyed by route title
-    #                           inner keys: "timeseries" (time Ã— s_location)
-    #                                       "envelope"   (s_location Ã— {min, max})
+    #                           inner keys: "timeseries" (time Ã- s_location)
+    #                                       "envelope"   (s_location Ã- {min, max})
 """
 
 from __future__ import annotations
@@ -243,7 +243,7 @@ def extract_route_outputs(
                 logger.debug("Pipe '%s' could not get Length â€“ skipping.", pipe_name)
                 continue
 
-            # --- Timeseries (time Ã— s_location) ---
+            # --- Timeseries (time Ã- s_location) ---
             try:
                 ts_arr = _normalise_pipe_series(
                     np.asarray(
@@ -301,7 +301,7 @@ def extract_route_outputs(
                     prop_name,
                 )
 
-            # --- Elevation profile (s_location Ã— elevation) ---
+            # --- Elevation profile (s_location Ã- elevation) ---
             try:
                 profile_raw = np.asarray(
                     adapter.get_pipe_profile_table(model, pipe_name), dtype=float
@@ -436,4 +436,3 @@ def extract_all(
             adapter,
         ),
     }
-

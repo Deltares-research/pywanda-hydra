@@ -52,6 +52,7 @@ _STRUCTURE_CHECKERS = {
     ".xlsm": check_xls_structure,
 }
 
+
 class _DocumentLoader(Protocol):
     def __call__(
         self,

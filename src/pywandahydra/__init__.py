@@ -1,4 +1,4 @@
-"""pywandahydra — Scenario runner for the pywanda package."""
+"""pywandahydra - Scenario runner for the pywanda package."""
 
 import logging
 from pathlib import Path

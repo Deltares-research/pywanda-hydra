@@ -1,4 +1,4 @@
-"""Worker module — executes a single scenario case.
+"""Worker module - executes a single scenario case.
 
 Responsible for:
 - Creating the per-case directory
@@ -57,7 +57,7 @@ def _build_model_access() -> WandaModelAccess:
 def run_one_case(plan: CasePlan) -> CaseResult:
     """Execute a single case according to its CasePlan.
 
-    This is the atomic unit of work dispatched by the runner — either
+    This is the atomic unit of work dispatched by the runner - either
     sequentially or via multiprocessing.
 
     Args:
@@ -74,7 +74,7 @@ def run_one_case(plan: CasePlan) -> CaseResult:
     bootstrap_workflows()
 
     # Hold the case lock for the entire execution so two processes can never
-    # work the same case directory concurrently — a second WANDA session on
+    # work the same case directory concurrently - a second WANDA session on
     # the same model files blocks indefinitely inside pywanda.WandaModel.
     # FileLock is reentrant, so nested `with journal:` transitions still work.
     try:
@@ -82,7 +82,7 @@ def run_one_case(plan: CasePlan) -> CaseResult:
         journal.acquire()
     except Timeout:
         error_msg = (
-            "Case directory is locked by another process — a previous or "
+            "Case directory is locked by another process - a previous or "
             "concurrent run may still be active on this case."
         )
         logger.error("Case %s: %s", plan.case_id, error_msg)
@@ -207,7 +207,7 @@ def _execute_case(plan: CasePlan, journal: CaseJournal) -> CaseResult:
         reuse_existing_data=plan.model_spec.reuse_existing_data,
     )
     if decision == "skip":
-        logger.info("Case %s already completed — skipping.", plan.case_id)
+        logger.info("Case %s already completed - skipping.", plan.case_id)
         return {
             "case_id": plan.case_id,
             "success": True,

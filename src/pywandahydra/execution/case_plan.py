@@ -1,4 +1,4 @@
-﻿"""CasePlan â€” immutable description of everything a worker needs to run one case."""
+"""CasePlan - immutable description of everything a worker needs to run one case."""
 
 from __future__ import annotations
 

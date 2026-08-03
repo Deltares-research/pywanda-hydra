@@ -1,4 +1,4 @@
-"""Per-case journal — atomic state file + append-only event log.
+"""Per-case journal - atomic state file + append-only event log.
 
 Provides concurrency-safe status tracking for each scenario case,
 enabling resume, dashboards, and aggregated reporting.
@@ -76,9 +76,9 @@ class CaseJournal:
 
     File layout in case_dir::
 
-        state.json      — current status (overwritten atomically)
-        events.jsonl    — append-only event log
-        case.lock       — filelock for mutual exclusion
+        state.json      - current status (overwritten atomically)
+        events.jsonl    - append-only event log
+        case.lock       - filelock for mutual exclusion
 
     Args:
         case_dir: Path to the case directory.

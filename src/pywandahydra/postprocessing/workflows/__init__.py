@@ -1,4 +1,4 @@
-"""Post-processing workflows — pluggable analysis strategies.
+"""Post-processing workflows - pluggable analysis strategies.
 
 A workflow defines *which* post-processing steps to run and in what
 order for a given case.

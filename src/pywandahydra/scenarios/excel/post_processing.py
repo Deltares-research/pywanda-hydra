@@ -25,6 +25,8 @@ _RowGetter = Callable[[str], Any]
 
 
 def _is_nan(x: Any) -> bool:
+    """Return ``True`` when a value should be treated as NaN/empty."""
+
     try:
         return bool(pd.isna(x))
     except (TypeError, ValueError):
@@ -32,6 +34,8 @@ def _is_nan(x: Any) -> bool:
 
 
 def _as_str_or_none(x: Any) -> str | None:
+    """Convert a cell value to a stripped string or ``None``."""
+
     if _is_nan(x) or x is None:
         return None
     s = str(x).strip()
@@ -39,6 +43,8 @@ def _as_str_or_none(x: Any) -> str | None:
 
 
 def _float_or_none(val: Any) -> float | None:
+    """Convert a value to ``float``; return ``None`` for missing/unparsable."""
+
     if _is_nan(val) or val is None:
         return None
     try:
@@ -56,6 +62,8 @@ def _add_warning(
     column: str | None = None,
     expected_shape: str | None = None,
 ) -> None:
+    """Append one typed parse warning to a warning sink."""
+
     warnings_list.append(
         ScenarioWarning(
             sheet=sheet,
@@ -73,6 +81,13 @@ def _read_output_sheet(
     *,
     warnings_list: list[ScenarioWarning] | None = None,
 ) -> list[MinMaxTableSpecification]:
+    """Parse the Output sheet into min/max table specifications.
+
+    Missing or malformed rows are emitted as warnings and skipped in lenient
+    mode. In strict mode (with no external warning sink), collected warnings are
+    raised as one ``ScenarioValidationError``.
+    """
+
     if opts.output_sheet is None:
         return []
 
@@ -170,6 +185,13 @@ def _parse_plot_sheet(
     ],
     warnings_list: list[ScenarioWarning] | None = None,
 ) -> list[_SpecT]:
+    """Shared parser for Rplots/Tplots sheet layouts.
+
+    Required keys are resolved case-insensitively. Invalid rows become warnings
+    and are skipped. In strict mode (without an external warning sink), warnings
+    are promoted to one collected error.
+    """
+
     sink = warnings_list if warnings_list is not None else []
 
     try:
@@ -275,6 +297,8 @@ def _read_rplots_sheet(
     *,
     warnings_list: list[ScenarioWarning] | None = None,
 ) -> list[RoutePlotSpecification]:
+    """Parse the Rplots sheet into route-plot specifications."""
+
     if opts.rplots_sheet is None:
         return []
 
@@ -286,6 +310,8 @@ def _read_rplots_sheet(
         x_axis: AxisSpecification,
         y_axis: AxisSpecification,
     ) -> RoutePlotSpecification:
+        """Build one route spec from a normalized row getter."""
+
         return RoutePlotSpecification(
             route_id=comp,
             property=prop,
@@ -313,6 +339,8 @@ def _read_tplots_sheet(
     *,
     warnings_list: list[ScenarioWarning] | None = None,
 ) -> list[TimeSeriesPlotSpecification]:
+    """Parse the Tplots sheet into time-series plot specifications."""
+
     if opts.tplots_sheet is None:
         return []
 
@@ -324,6 +352,8 @@ def _read_tplots_sheet(
         x_axis: AxisSpecification,
         y_axis: AxisSpecification,
     ) -> TimeSeriesPlotSpecification:
+        """Build one time-series spec from a normalized row getter."""
+
         return TimeSeriesPlotSpecification(
             component=comp,
             property=prop,

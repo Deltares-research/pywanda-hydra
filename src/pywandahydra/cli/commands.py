@@ -1,4 +1,4 @@
-﻿"""CLI commands for pywandahydra â€” run, status, validate, plot."""
+"""CLI commands for pywandahydra - run, status, validate, plot."""
 
 from __future__ import annotations
 
@@ -267,7 +267,7 @@ def plot(
     for case_dir in case_dirs:
         cache = ParquetCache(case_dir)
         if not cache.exists():
-            typer.echo(f"  {case_dir.name}: no cached data â€” skipping")
+            typer.echo(f"  {case_dir.name}: no cached data - skipping")
             continue
 
         figures_dir = case_dir / "figures"

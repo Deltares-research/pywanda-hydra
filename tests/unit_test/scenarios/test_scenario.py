@@ -203,4 +203,3 @@ class TestScenarioLoading(unittest.TestCase):
         self.assertEqual(specs[0].color, "#336699")
         self.assertEqual(specs[0].style, "--")
         self.assertEqual(specs[0].marker, "o")
-

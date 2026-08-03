@@ -28,6 +28,27 @@ def load_excel_document(
     *,
     strict: bool = False,
 ) -> ScenarioDocument:
+    """Load a workbook into a ``ScenarioDocument`` using the Excel parsers.
+
+    The cases sheet and optional post-processing sheets are parsed once, warnings
+    are accumulated, and strict mode can promote those warnings to a single
+    ``ScenarioValidationError``.
+
+    Parameters
+    ----------
+    path:
+        Workbook path.
+    opts:
+        Scenario loading options (sheet names, row semantics, strict defaults).
+    strict:
+        When ``True``, collected parser warnings are raised as a single error.
+
+    Returns
+    -------
+    ScenarioDocument
+        Parsed workbook aggregate with metadata, scenarios, source path, and
+        typed warnings.
+    """
     analysis_metadata, case_rows, case_warnings = parse_cases_sheet(path, opts)
 
     parser_warnings: list[ScenarioWarning] = list(case_warnings)

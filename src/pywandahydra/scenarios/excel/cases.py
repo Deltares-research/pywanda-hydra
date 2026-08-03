@@ -23,6 +23,8 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True, slots=True)
 class ParsedCaseRow:
+    """Normalized per-row cases-sheet payload used for scenario construction."""
+
     number: Any
     include: Any
     name: Any
@@ -33,6 +35,8 @@ class ParsedCaseRow:
 
 
 def _require_columns(df: pd.DataFrame, required: set[str], sheet: str) -> None:
+    """Validate that a DataFrame contains all required first-level columns."""
+
     missing = required - set(df.columns.get_level_values(0))
     if missing:
         raise ValueError(f"Missing required columns in '{sheet}': {sorted(missing)}")
@@ -41,7 +45,11 @@ def _require_columns(df: pd.DataFrame, required: set[str], sheet: str) -> None:
 def _extract_analysis_meta(
     input_data: pd.DataFrame, prop_row: int, opts: ScenarioLoadOptions
 ) -> AnalysisMeta:
+    """Extract workbook-level analysis metadata from the cases property row."""
+
     def get_cell(col: str) -> Any:
+        """Read one metadata cell, unwrapping single-value numpy arrays."""
+
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", category=pd.errors.PerformanceWarning)
             value = input_data.loc[:, (col, "")].values[prop_row]
@@ -65,6 +73,8 @@ def _add_warning(
     column: str | None = None,
     expected_shape: str | None = None,
 ) -> None:
+    """Append one typed warning describing a recoverable parse issue."""
+
     warnings_list.append(
         ScenarioWarning(
             sheet=sheet,
@@ -80,6 +90,12 @@ def parse_cases_sheet(
     path: str | Path,
     opts: ScenarioLoadOptions,
 ) -> tuple[AnalysisMeta, list[ParsedCaseRow], list[ScenarioWarning]]:
+    """Parse the ``Cases`` sheet into normalized row payloads and warnings.
+
+    Returns workbook analysis metadata, parsed case rows ready for scenario
+    model construction, and typed warnings for malformed-but-recoverable input.
+    """
+
     input_data = pd.read_excel(
         path,
         opts.cases_sheet,

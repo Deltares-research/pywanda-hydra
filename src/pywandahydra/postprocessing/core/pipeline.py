@@ -1,4 +1,4 @@
-"""Post-processing pipeline — pluggable steps that run after simulation.
+"""Post-processing pipeline - pluggable steps that run after simulation.
 
 Each post-processor is a submodule implementing case/run step protocols.
 The pipeline resolves a workflow and executes its case-level steps.

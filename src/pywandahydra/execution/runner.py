@@ -1,4 +1,4 @@
-﻿"""Scenario runner â€” orchestrates sequential or parallel execution.
+"""Scenario runner - orchestrates sequential or parallel execution.
 
 This module builds CasePlans from scenarios, dispatches them to workers
 (sequentially or via multiprocessing), and aggregates results.

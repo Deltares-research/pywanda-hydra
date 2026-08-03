@@ -22,6 +22,8 @@ class ScenarioValidationError(ValueError):
         *,
         context: str = "scenario document",
     ) -> None:
+        """Build a single readable exception from many typed warnings."""
+
         self.warnings = tuple(warnings)
         lines = [f"{context} has {len(warnings)} validation issue(s):"]
         for issue in warnings:
@@ -43,6 +45,8 @@ def _add_warning(
     column: str | None = None,
     expected_shape: str | None = None,
 ) -> None:
+    """Append one typed workbook-structure warning."""
+
     warnings_list.append(
         ScenarioWarning(
             sheet=sheet,
@@ -55,6 +59,12 @@ def _add_warning(
 
 
 def check_xls_structure(path: str | Path, opts: ScenarioLoadOptions) -> list[ScenarioWarning]:
+    """Collect structural workbook issues without parsing scenario rows.
+
+    This preflight reports missing required sheets/columns and malformed sheet
+    shapes as typed warnings so users can address multiple issues in one pass.
+    """
+
     issues: list[ScenarioWarning] = []
 
     try:
@@ -153,5 +163,7 @@ def check_xls_structure(path: str | Path, opts: ScenarioLoadOptions) -> list[Sce
 
 
 def raise_if_warnings(warnings_list: list[ScenarioWarning], *, strict: bool, context: str) -> None:
+    """Raise one collected validation error when strict mode is enabled."""
+
     if strict and warnings_list:
         raise ScenarioValidationError(warnings_list, context=context)
