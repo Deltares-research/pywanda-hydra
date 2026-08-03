@@ -122,9 +122,7 @@ def test_metadata_is_deterministic_and_uses_stable_route_identity(tmp_path: Path
     first.write(data, fingerprint="fingerprint")
     second.write(data, fingerprint="fingerprint")
 
-    first_metadata = json.loads(
-        (tmp_path / "first" / "inventory.json").read_text(encoding="utf-8")
-    )
+    first_metadata = json.loads((tmp_path / "first" / "inventory.json").read_text(encoding="utf-8"))
     second_metadata = json.loads(
         (tmp_path / "second" / "inventory.json").read_text(encoding="utf-8")
     )

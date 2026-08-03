@@ -28,9 +28,10 @@ class DataRequirements:
 
     def is_satisfied_by(self, inventory: ResultInventory) -> bool:
         """Whether ``inventory`` contains all required raw data."""
-        return not self.missing_from(inventory).components and not self.missing_from(
-            inventory
-        ).route_products
+        return (
+            not self.missing_from(inventory).components
+            and not self.missing_from(inventory).route_products
+        )
 
 
 @dataclass(frozen=True, slots=True)
