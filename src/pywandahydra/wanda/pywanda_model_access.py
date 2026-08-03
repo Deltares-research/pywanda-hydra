@@ -10,7 +10,7 @@ from typing import Any, cast
 import numpy as np
 import pywanda
 
-from ..config.models import ModelSpecification
+from ..execution.legacy import ModelSpecification
 from ..scenarios import ModelParameterChange
 from .item_lookup import get_item, resolve_items
 from .model_files import prepare_scenario_model
@@ -191,4 +191,3 @@ class PywandaModelAccess:
             item.get_property("Profile").get_table().get_float_data(),
             dtype=np.float64,
         )
-

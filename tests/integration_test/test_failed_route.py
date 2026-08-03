@@ -13,8 +13,8 @@ from unittest.mock import patch
 
 import pytest
 
-from pywandahydra.config.models import ModelSpecification, RunContext
 from pywandahydra.execution import runner
+from pywandahydra.execution.legacy import ModelSpecification, RunContext
 from pywandahydra.postprocessing.io.cache import ParquetCache
 from pywandahydra.scenarios import (
     FigurePostProcessingConfiguration,

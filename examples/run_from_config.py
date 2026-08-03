@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import argparse
 import faulthandler
-import json
 import logging
 import os
 import sys
@@ -17,17 +16,7 @@ from importlib.util import find_spec
 from pathlib import Path
 
 from pywandahydra.app_logging import setup_logging
-from pywandahydra.config.loader import (
-    RunMetadata,
-    apply_post_processing_overrides,
-    build_run_context,
-    load_run_config,
-    validate_run_paths,
-)
-from pywandahydra.execution.artifacts import create_run_directories
-from pywandahydra.execution.runner import run
-from pywandahydra.scenarios import load_scenarios
-from pywandahydra.wanda.validation import assert_preflight_valid
+from pywandahydra.run import execute_run, prepare_run
 
 # Enable console logging to see all pywandahydra messages, in developer mode.
 setup_logging(logging.DEBUG)
@@ -78,38 +67,10 @@ def main() -> None:
     args = parser.parse_args()
 
     config_path = args.config.expanduser().resolve()
-    cfg = load_run_config(config_path)
-    validate_run_paths(cfg, config_dir=config_path.parent)
-
-    scenario_path = cfg.scenario_file
-    if not scenario_path.is_absolute():
-        scenario_path = config_path.parent / scenario_path
-
-    scenarios = load_scenarios(path=scenario_path)
-    assert_preflight_valid(model_spec=cfg.model, scenarios=scenarios)
-    apply_post_processing_overrides(cfg, scenarios)
-    ctx = build_run_context(cfg)
-
-    run_root = Path(ctx.root_dir)
-    create_run_directories(ctx, config_path=config_path, scenario_file=scenario_path)
-    run_metadata = RunMetadata()
-    metadata_path = run_root / "run_metadata.json"
-    metadata_path.write_text(
-        json.dumps(run_metadata.model_dump(), indent=2, default=str),
-        encoding="utf-8",
-    )
+    plan = prepare_run(config_path, preflight=True)
 
     try:
-        result = run(
-            model=cfg.model,
-            ctx=ctx,
-            scenarios=scenarios,
-            n_workers=cfg.execution.n_workers,
-            resume=cfg.execution.resume,
-            verbose=cfg.execution.verbose,
-            workflow_name=cfg.execution.workflow.name,
-            workflow_params=cfg.execution.workflow.params,
-        )
+        result = execute_run(plan)
 
         print(
             f"Done: {result.n_success} succeeded, {result.n_failed} failed, "
@@ -125,7 +86,7 @@ def main() -> None:
                     print(f"  {case_result.get('case_id')}: {error_message}")
 
         # Check logs
-        log_dir = Path(ctx.root_dir) / "logs"
+        log_dir = plan.run_dir / "logs"
         if log_dir.exists():
             print(f"\nLogs available at: {log_dir}")
     except Exception as e:
@@ -138,4 +99,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

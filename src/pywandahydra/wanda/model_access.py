@@ -8,7 +8,7 @@ from typing import Any, Protocol, TypeAlias
 
 import numpy as np
 
-from ..config.models import ModelSpecification
+from ..execution.legacy import ModelSpecification
 from ..scenarios import ModelParameterChange
 
 ModelHandle: TypeAlias = Any
@@ -73,4 +73,3 @@ class WandaModelAccess(Protocol):
     ) -> tuple[np.ndarray, np.ndarray]: ...
 
     def get_pipe_profile_table(self, handle: Any, pipe_name: str) -> np.ndarray: ...
-

@@ -5,8 +5,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from pywandahydra.config.models import ModelSpecification
 from pywandahydra.execution.case_plan import CasePlan
+from pywandahydra.execution.legacy import ModelSpecification
 from pywandahydra.execution.worker import run_one_case
 from pywandahydra.scenarios import ScenarioSpecification
 from unit_test.wanda.fakes import FakeWandaModelAccess
