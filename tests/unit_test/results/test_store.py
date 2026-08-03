@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -134,7 +135,13 @@ def test_metadata_is_deterministic_and_uses_stable_route_identity(tmp_path: Path
 
 
 def test_results_package_does_not_import_forbidden_runtime_dependencies() -> None:
-    import pywandahydra.results  # noqa: F401
+    code = (
+        "import pywandahydra.results; import sys; "
+        "forbidden = {'pywanda', 'matplotlib', 'pywandahydra.execution', "
+        "'pywandahydra.postprocessing'}; "
+        "assert not forbidden.intersection(sys.modules)"
+    )
 
-    forbidden = {"pywanda", "matplotlib", "pywandahydra.execution", "pywandahydra.postprocessing"}
-    assert not forbidden.intersection(sys.modules)
+    result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True)
+
+    assert result.returncode == 0, result.stderr
