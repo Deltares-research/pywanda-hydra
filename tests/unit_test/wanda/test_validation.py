@@ -269,4 +269,3 @@ class TestPreflightValidationIsolated(unittest.TestCase):
             assert_preflight_valid(model_spec=self.model_spec, scenarios=[scenario], isolated=True)
 
         self.assertIn("MISSING COMP", str(ctx.exception))
-

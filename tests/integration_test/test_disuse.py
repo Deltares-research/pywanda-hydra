@@ -74,4 +74,3 @@ class TestDisusePSFullKeyword(unittest.TestCase):
 
         with wanda_session(spec=self.model_spec, model_path=model_path) as model:
             self._assert_psfull_disused(model, disused=False)
-

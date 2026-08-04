@@ -132,4 +132,3 @@ class TestResumePolicy(unittest.TestCase):
             plan_after = self._build_plan(root_dir=tmp_path, reuse_existing_data=True)
 
             self.assertNotEqual(plan_before.config_hash, plan_after.config_hash)
-

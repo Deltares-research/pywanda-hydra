@@ -58,4 +58,3 @@ class TestWorkerWithFakeAdapter(unittest.TestCase):
             self.assertTrue(result["success"])
             self.assertEqual(result["case_id"], "case_fake")
             self.assertEqual(result["scenario_dir"], str(plan.case_dir))
-

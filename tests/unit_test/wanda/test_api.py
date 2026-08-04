@@ -155,4 +155,3 @@ class TestWandaAPI(unittest.TestCase):
                 get_item(model, unknown_ref)
 
             self.assertEqual(str(context.exception), "Unknown item type: UNKNOWN")
-

@@ -28,5 +28,47 @@
   "python.testing.pytestArgs": [
     "tests/unit_test",
     "tests/integration_test"
-  ]
+  ],
+  "chat.tools.terminal.autoApprove": {
+    "/^uv run ruff check --fix \\.\\\\src\\\\pywandahydra\\\\scenarios\\\\excel\\\\cases\\.py; uv run ruff check \\.\\\\src\\\\pywandahydra\\\\scenarios; uv run mypy src/pywandahydra/scenarios; uv run python -c \"import pywandahydra\\.scenarios\"$/": {
+      "approve": true,
+      "matchCommandLine": true
+    },
+    "/^uv run pytest -o addopts='' tests/ -q$/": {
+      "approve": true,
+      "matchCommandLine": true
+    },
+    "/^uv run mypy src/pywandahydra$/": {
+      "approve": true,
+      "matchCommandLine": true
+    },
+    "/^uv run ruff check src tests examples$/": {
+      "approve": true,
+      "matchCommandLine": true
+    },
+    "/^uv run ruff check --fix src tests examples$/": {
+      "approve": true,
+      "matchCommandLine": true
+    },
+    "/^uv run ruff check src tests examples; uv run mypy src/pywandahydra$/": {
+      "approve": true,
+      "matchCommandLine": true
+    },
+    "/^uv run pytest -o addopts='' tests/ -q --junit-xml=pytest_report\\.xml$/": {
+      "approve": true,
+      "matchCommandLine": true
+    },
+    "/^uv run ruff check src/pywandahydra -q; uv run mypy src/pywandahydra$/": {
+      "approve": true,
+      "matchCommandLine": true
+    },
+    "/^uv run mypy src/pywandahydra/scenarios$/": {
+      "approve": true,
+      "matchCommandLine": true
+    },
+    "/^uv run ruff check src\\\\pywandahydra\\\\config src\\\\pywandahydra\\\\run\\.py src\\\\pywandahydra\\\\execution\\\\plans\\.py$/": {
+      "approve": true,
+      "matchCommandLine": true
+    }
+  }
 }

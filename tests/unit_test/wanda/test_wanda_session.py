@@ -52,9 +52,7 @@ class TestWandaSession(unittest.TestCase):
             shutil.copy2(self.model_spec.model_path, model_path)
             companion_path = self.model_spec.model_path.with_suffix(".wdx")
             shutil.copy2(companion_path, model_path.with_suffix(".wdx"))
-            spec = self.model_spec.model_copy(
-                update={"model_path": model_path, "upgrade": True}
-            )
+            spec = self.model_spec.model_copy(update={"model_path": model_path, "upgrade": True})
 
             with wanda_session(spec=spec) as model:
                 self.assertIsNotNone(model)
