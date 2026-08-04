@@ -9,13 +9,12 @@ from __future__ import annotations
 
 import unittest
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 
 from pywandahydra.execution import runner
 from pywandahydra.execution.legacy import ModelSpecification, RunContext
-from pywandahydra.postprocessing.io.cache import ParquetCache
+from pywandahydra.results import ParquetResultStore
 from pywandahydra.scenarios import (
     FigurePostProcessingConfiguration,
     PostProcessingConfiguration,
@@ -54,23 +53,20 @@ class TestFailedRoute(unittest.TestCase):
             ),
         )
 
-        with patch(
-            "pywandahydra.execution.worker.run_postprocessing",
-            return_value={"route_plots": True},
-        ):
-            result = runner.run(
-                model=self.model_spec,
-                ctx=ctx,
-                scenarios=[scenario],
-                persist_manifest=False,
-            )
+        result = runner.run(
+            model=self.model_spec,
+            ctx=ctx,
+            scenarios=[scenario],
+            persist_manifest=False,
+        )
 
         self.assertEqual(result.n_success, 1)
         self.assertEqual(result.n_failed, 0)
 
         case_dir = ctx.root_dir / "scenarios" / "scenario_001"
-        cache = ParquetCache(case_dir)
-        cached_routes = cache.list_routes()
+        data = ParquetResultStore(case_dir / "results").read()
+        assert data is not None
+        cached_routes = {f"{route.route_id}_{route.property}" for route in data.routes}
 
         self.assertIn("RouteA_Pressure", cached_routes)
         self.assertNotIn("InvalidRoute_Pressure", cached_routes)

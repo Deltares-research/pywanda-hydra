@@ -1,123 +1,102 @@
-"""Unit tests for postprocessing.core.pipeline.run_postprocessing."""
+"""Unit tests for the fixed post-processing pipeline."""
 
 from __future__ import annotations
 
-from typing import ClassVar
 from unittest import mock
 
-from pywandahydra.postprocessing.core.context import CaseContext
-from pywandahydra.postprocessing.core.pipeline import run_postprocessing
+from pywandahydra.postprocessing.pipeline import (
+    PostProcessingOutcome,
+    process_case_results,
+    process_run_results,
+)
+from pywandahydra.scenarios import (
+    FigurePostProcessingConfiguration,
+    MinMaxTableSpecification,
+    PostProcessingConfiguration,
+    RoutePlotSpecification,
+    ScenarioSpecification,
+)
 
 
-class _FakeStep:
-    """Fake CaseStep that always runs successfully."""
-
-    name: ClassVar[str] = "fake_step"
-
-    def __init__(self) -> None:
-        self.run_called = False
-
-    def applicable(self, ctx: CaseContext) -> bool:
-        del ctx
-        return True
-
-    def run(self, ctx: CaseContext) -> None:
-        del ctx
-        self.run_called = True
-
-
-class _SkippedStep(_FakeStep):
-    name: ClassVar[str] = "skipped_step"
-
-    def applicable(self, ctx: CaseContext) -> bool:
-        del ctx
-        return False
-
-
-class _FailingStep(_FakeStep):
-    name: ClassVar[str] = "failing_step"
-
-    def run(self, ctx: CaseContext) -> None:
-        del ctx
-        self.run_called = True
-        raise RuntimeError("boom")
-
-
-class _FakeWorkflow:
-    """Fake workflow returning a fixed list of case steps."""
-
-    def __init__(self, steps: list[object]) -> None:
-        self._steps = steps
-
-    def case_steps(self, ctx: CaseContext) -> list[object]:
-        del ctx
-        return self._steps
-
-    def run_steps(self, ctx: object) -> list[object]:
-        del ctx
-        return []
-
-
-def test_step_runs_successfully(make_case_ctx) -> None:
+def test_case_pipeline_skips_unconfigured_routines(make_case_ctx) -> None:
     ctx = make_case_ctx()
-    step = _FakeStep()
-    workflow = _FakeWorkflow([step])
 
-    with mock.patch(
-        "pywandahydra.postprocessing.workflows.base.resolve_workflow",
-        return_value=workflow,
-    ):
-        result = run_postprocessing(ctx, workflow_name="fake")
+    outcomes = process_case_results(
+        store=ctx.store,
+        scenario=ctx.scenario,
+        case_dir=ctx.case_dir,
+    )
 
-    assert result == {"fake_step": True}
-    assert step.run_called
+    assert outcomes == (
+        PostProcessingOutcome(
+            "case_minmax_table", "skipped", skip_reason="no MIN/MAX table specifications"
+        ),
+        PostProcessingOutcome("case_figure_pdf", "skipped", skip_reason="no figure specifications"),
+    )
 
 
-def test_step_skipped_when_not_applicable(make_case_ctx) -> None:
+def test_case_pipeline_preserves_order_paths_and_independent_failures(make_case_ctx, tmp_path) -> None:
     ctx = make_case_ctx()
-    step = _SkippedStep()
-    workflow = _FakeWorkflow([step])
+    scenario = ScenarioSpecification(
+        number=1,
+        include=True,
+        name="case_001",
+        post_processing=PostProcessingConfiguration(
+            figures=FigurePostProcessingConfiguration(
+                routes=[RoutePlotSpecification(route_id="route_1", property="Head")]
+            )
+        ),
+    )
+    figure_path = tmp_path / "case_001.pdf"
 
-    with mock.patch(
-        "pywandahydra.postprocessing.workflows.base.resolve_workflow",
-        return_value=workflow,
+    scenario.post_processing.tables.minmax.append(
+        MinMaxTableSpecification(component="PUMP P1", property="Head", mode="MAX")
+    )
+
+    with (
+        mock.patch(
+            "pywandahydra.postprocessing.pipeline.write_case_minmax_table",
+            side_effect=RuntimeError("table failed"),
+        ),
+        mock.patch(
+            "pywandahydra.postprocessing.pipeline.render_case_pdf",
+            return_value=figure_path,
+        ),
     ):
-        result = run_postprocessing(ctx, workflow_name="fake")
+        outcomes = process_case_results(
+            store=ctx.store,
+            scenario=scenario,
+            case_dir=ctx.case_dir,
+        )
 
-    assert result == {"skipped_step": True}
-    assert not step.run_called
-
-
-def test_step_exception_recorded_as_failure(make_case_ctx) -> None:
-    ctx = make_case_ctx()
-    step = _FailingStep()
-    workflow = _FakeWorkflow([step])
-
-    with mock.patch(
-        "pywandahydra.postprocessing.workflows.base.resolve_workflow",
-        return_value=workflow,
-    ):
-        result = run_postprocessing(ctx, workflow_name="fake")
-
-    assert result == {"failing_step": False}
-    assert step.run_called
-
-
-def test_multiple_steps_result_dict_ordering(make_case_ctx) -> None:
-    ctx = make_case_ctx()
-    ok_step = _FakeStep()
-    skip_step = _SkippedStep()
-    fail_step = _FailingStep()
-    workflow = _FakeWorkflow([ok_step, skip_step, fail_step])
-
-    with mock.patch(
-        "pywandahydra.postprocessing.workflows.base.resolve_workflow",
-        return_value=workflow,
-    ):
-        result = run_postprocessing(ctx, workflow_name="fake", workflow_params={"foo": "bar"})
-
-    assert list(result.items()) == [
-        ("fake_step", True),
-        ("skipped_step", True),
-        ("failing_step", False),
+    assert [outcome.routine_name for outcome in outcomes] == [
+        "case_minmax_table",
+        "case_figure_pdf",
     ]
+    assert outcomes[0].status == "failed"
+    assert outcomes[0].error == "RuntimeError: table failed"
+    assert outcomes[1].created_paths == (figure_path,)
+
+
+def test_run_pipeline_captures_failures_and_skips_empty_output(tmp_path) -> None:
+    run_root = tmp_path / "run_001"
+    merged_pdf = run_root / "figures" / "run_001_merged.pdf"
+
+    with (
+        mock.patch(
+            "pywandahydra.postprocessing.pipeline.write_run_minmax_table",
+            side_effect=RuntimeError("table failed"),
+        ),
+        mock.patch(
+            "pywandahydra.postprocessing.pipeline.merge_case_figure_pdfs",
+            return_value=merged_pdf,
+        ),
+    ):
+        outcomes = process_run_results(run_root=run_root, run_id="run_001")
+
+    assert outcomes[0].routine_name == "run_minmax_table"
+    assert outcomes[0].status == "failed"
+    assert outcomes[0].error == "RuntimeError: table failed"
+    assert outcomes[1] == PostProcessingOutcome(
+        "run_figure_pdf", "succeeded", created_paths=(merged_pdf,)
+    )

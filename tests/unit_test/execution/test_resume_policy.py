@@ -98,11 +98,7 @@ class TestResumePolicy(unittest.TestCase):
                     config_hash=plan.config_hash,
                 )
 
-            with patch(
-                "pywandahydra.execution.worker.bootstrap_workflows",
-                return_value=None,
-            ):
-                result = run_one_case(plan)
+            result = run_one_case(plan)
 
             self.assertTrue(result["success"])
             self.assertTrue(result["skipped"])

@@ -39,21 +39,17 @@ class TestWorkerWithFakeAdapter(unittest.TestCase):
                 scenario=scenario,
             )
 
-            with patch(
-                "pywandahydra.execution.worker.bootstrap_workflows",
-                return_value=None,
+            with (
+                patch(
+                    "pywandahydra.execution.worker._build_model_access",
+                    return_value=FakeWandaModelAccess(),
+                ),
+                patch(
+                    "pywandahydra.execution.worker.process_case_results",
+                    return_value=(),
+                ),
             ):
-                with (
-                    patch(
-                        "pywandahydra.execution.worker._build_model_access",
-                        return_value=FakeWandaModelAccess(),
-                    ),
-                    patch(
-                        "pywandahydra.execution.worker.run_postprocessing",
-                        return_value={"summary_table": True},
-                    ),
-                ):
-                    result = run_one_case(plan)
+                result = run_one_case(plan)
 
             self.assertTrue(result["success"])
             self.assertEqual(result["case_id"], "case_fake")

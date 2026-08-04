@@ -42,16 +42,10 @@ class TestWorkerFailurePath(unittest.TestCase):
                 scenario=scenario,
             )
 
-            with (
-                patch(
-                    "pywandahydra.execution.worker.bootstrap_workflows",
-                    return_value=None,
-                ),
-                patch(
+            with patch(
                     "pywandahydra.execution.worker._build_model_access",
                     return_value=FailingWandaModelAccess(),
-                ),
-            ):
+                ):
                 result = run_one_case(plan)
 
             self.assertFalse(result["success"])

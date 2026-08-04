@@ -65,16 +65,16 @@ class TestRunner(unittest.TestCase):
 
             with (
                 patch(
-                    "pywandahydra.execution.worker.bootstrap_workflows",
-                    return_value=None,
-                ),
-                patch(
                     "pywandahydra.execution.worker._build_model_access",
                     return_value=FakeWandaModelAccess(),
                 ),
                 patch(
-                    "pywandahydra.execution.worker.run_postprocessing",
-                    return_value={"summary_table": True},
+                    "pywandahydra.execution.worker.process_case_results",
+                    return_value=(),
+                ),
+                patch(
+                    "pywandahydra.execution.runner.process_run_results",
+                    return_value=(),
                 ),
             ):
                 result = runner.run(
@@ -106,16 +106,16 @@ class TestRunner(unittest.TestCase):
             case_dir = ctx.root_dir / "scenarios" / "case_001"
             with (
                 patch(
-                    "pywandahydra.execution.worker.bootstrap_workflows",
-                    return_value=None,
-                ),
-                patch(
                     "pywandahydra.execution.worker._build_model_access",
                     return_value=FakeWandaModelAccess(),
                 ),
                 patch(
-                    "pywandahydra.execution.worker.run_postprocessing",
-                    return_value={"summary_table": True},
+                    "pywandahydra.execution.worker.process_case_results",
+                    return_value=(),
+                ),
+                patch(
+                    "pywandahydra.execution.runner.process_run_results",
+                    return_value=(),
                 ),
             ):
                 first = runner.run(
@@ -136,16 +136,16 @@ class TestRunner(unittest.TestCase):
 
             with (
                 patch(
-                    "pywandahydra.execution.worker.bootstrap_workflows",
-                    return_value=None,
-                ),
-                patch(
                     "pywandahydra.execution.worker._build_model_access",
                     return_value=FakeWandaModelAccess(),
                 ),
                 patch(
-                    "pywandahydra.execution.worker.run_postprocessing",
-                    return_value={"summary_table": True},
+                    "pywandahydra.execution.worker.process_case_results",
+                    return_value=(),
+                ),
+                patch(
+                    "pywandahydra.execution.runner.process_run_results",
+                    return_value=(),
                 ),
             ):
                 second = runner.run(
