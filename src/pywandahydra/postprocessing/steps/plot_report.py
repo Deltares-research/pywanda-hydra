@@ -2,16 +2,10 @@
 
 from __future__ import annotations
 
-import logging
-
 from pydantic import BaseModel, ConfigDict
 
 from ..core.context import CaseContext
-from ..plotting.renderers.combined_report import PlotSpec, render_combined_report_pages
-from ..plotting.renderers.theme import PlotTheme
-from .report_meta import build_report_meta
-
-logger = logging.getLogger(__name__)
+from ..figures.case_pdf import render_case_pdf
 
 
 class PlotReportStep:
@@ -32,44 +26,4 @@ class PlotReportStep:
 
     def run(self, ctx: CaseContext) -> None:
         """Render all route and time plots to one consolidated per-case PDF."""
-        import matplotlib.pyplot as plt
-        from matplotlib.backends.backend_pdf import PdfPages
-
-        figures_dir = ctx.case_dir / "figures"
-        figures_dir.mkdir(parents=True, exist_ok=True)
-        case_id = ctx.case_dir.name
-        case_pdf = figures_dir / f"{case_id}.pdf"
-
-        specs: list[PlotSpec] = [
-            *ctx.scenario.post_processing.figures.routes,
-            *ctx.scenario.post_processing.figures.time_series,
-        ]
-
-        with plt.ioff():
-            meta = build_report_meta(ctx)
-            theme = PlotTheme()
-            figures = render_combined_report_pages(
-                specs,
-                ctx.store,
-                report_meta_base=meta,
-                theme=theme,
-            )
-
-            if not figures:
-                logger.info(
-                    "No plot figures rendered for case '%s'.",
-                    ctx.case_dir.name,
-                )
-                return
-
-            with PdfPages(case_pdf) as pdf:
-                for fig in figures:
-                    pdf.savefig(fig)
-                    plt.close(fig)
-
-        logger.info(
-            "Rendered %d figure(s) into %s for case '%s'.",
-            len(figures),
-            case_pdf,
-            ctx.case_dir.name,
-        )
+        render_case_pdf(ctx)

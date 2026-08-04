@@ -10,7 +10,7 @@ from typing import Any
 from ...results import ParquetResultStore
 from ...scenarios import AnalysisMeta, ScenarioSpecification
 from ..figures.export import build_figure_export_props
-from ..plotting.renderers.theme import PlotTheme
+from ..figures.theme import PlotTheme
 from ..tables.export import DEFAULT_TABLE_EXPORT_PROPS
 
 
@@ -38,4 +38,3 @@ class PostProcessingRunContext:
     run_root: Path
     run_id: str
     case_results: tuple[Mapping[str, Any], ...]
-

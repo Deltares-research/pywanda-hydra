@@ -8,7 +8,7 @@ from unittest.mock import MagicMock
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from pywandahydra.postprocessing.plotting.renderers.time_series import render_time_series_plot
+from pywandahydra.postprocessing.figures.time_series import render_time_series_plot
 from pywandahydra.results import ComponentTimeSeries, ExtractedSimulationData
 from pywandahydra.scenarios.models.plot_axis import AxisSpecification
 

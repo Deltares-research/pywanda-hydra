@@ -8,7 +8,7 @@ from unittest.mock import MagicMock
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from pywandahydra.postprocessing.plotting.renderers.route_plot import render_route_plot
+from pywandahydra.postprocessing.figures.route import render_route_plot
 from pywandahydra.results import ExtractedSimulationData, RouteData, RouteIdentity
 from pywandahydra.scenarios.models.plot_axis import AxisSpecification
 from pywandahydra.scenarios.models.plot_route import RoutePlotSpecification
@@ -19,9 +19,7 @@ class TestRenderRoutePlot(unittest.TestCase):
         store = MagicMock()
         store.read.return_value = ExtractedSimulationData(
             routes={
-                RouteIdentity("Pipe1", "Discharge"): RouteData(
-                    envelope=route_data.get("envelope")
-                )
+                RouteIdentity("Pipe1", "Discharge"): RouteData(envelope=route_data.get("envelope"))
             }
             if route_data
             else {}
