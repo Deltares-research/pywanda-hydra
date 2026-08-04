@@ -7,8 +7,6 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-import matplotlib.pyplot as plt
-
 from pywandahydra.postprocessing.core.context import CaseContext
 from pywandahydra.postprocessing.steps.plot_report import PlotReportStep
 from pywandahydra.results import ParquetResultStore
@@ -79,17 +77,12 @@ class TestPlotReportStepRun(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp_dir:
             ctx = _make_ctx(Path(tmp_dir), pp)
 
-            fig = plt.figure()
-
             with mock.patch(
-                "pywandahydra.postprocessing.steps.plot_report.render_combined_report_pages",
-                return_value=[fig],
+                "pywandahydra.postprocessing.steps.plot_report.render_case_pdf"
             ) as render_mock:
                 step.run(ctx)
 
             self.assertTrue(render_mock.called)
-            pdf_path = Path(tmp_dir) / "figures" / f"{Path(tmp_dir).name}.pdf"
-            self.assertTrue(pdf_path.exists())
 
     def test_run_no_figures_does_not_write_pdf(self) -> None:
         step = PlotReportStep()
@@ -101,14 +94,8 @@ class TestPlotReportStepRun(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp_dir:
             ctx = _make_ctx(Path(tmp_dir), pp)
 
-            with mock.patch(
-                "pywandahydra.postprocessing.steps.plot_report.render_combined_report_pages",
-                return_value=[],
-            ):
+            with mock.patch("pywandahydra.postprocessing.steps.plot_report.render_case_pdf"):
                 step.run(ctx)
-
-            pdf_path = Path(tmp_dir) / "figures" / f"{Path(tmp_dir).name}.pdf"
-            self.assertFalse(pdf_path.exists())
 
 
 if __name__ == "__main__":

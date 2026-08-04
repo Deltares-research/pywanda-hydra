@@ -9,7 +9,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 from pypdf import PdfReader  # noqa: E402
 
-from pywandahydra.postprocessing.io.pdf_merge import merge_case_figure_pdfs  # noqa: E402
+from pywandahydra.postprocessing.figures.run_pdf import merge_case_figure_pdfs  # noqa: E402
 
 
 def _make_pdf(path: Path) -> None:

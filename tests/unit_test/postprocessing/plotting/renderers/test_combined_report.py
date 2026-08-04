@@ -9,11 +9,9 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from pywandahydra.postprocessing.plotting.renderers.combined_report import (
-    render_combined_report_pages,  # noqa: E402
-)
+from pywandahydra.postprocessing.figures.pdf_pages import render_combined_report_pages  # noqa: E402
+from pywandahydra.postprocessing.figures.theme import PlotTheme  # noqa: E402
 from pywandahydra.postprocessing.plotting.renderers.report_page import ReportMeta  # noqa: E402
-from pywandahydra.postprocessing.plotting.renderers.theme import PlotTheme  # noqa: E402
 from pywandahydra.results import (  # noqa: E402
     ComponentTimeSeries,
     ExtractedSimulationData,
@@ -21,10 +19,7 @@ from pywandahydra.results import (  # noqa: E402
     RouteData,
     RouteIdentity,
 )
-from pywandahydra.scenarios import (  # noqa: E402
-    RoutePlotSpecification,
-    TimeSeriesPlotSpecification,
-)
+from pywandahydra.scenarios import RoutePlotSpecification, TimeSeriesPlotSpecification  # noqa: E402
 
 BASE_META = ReportMeta(
     case_name="case_001",
@@ -183,7 +178,7 @@ class TestRenderCombinedReportPages(unittest.TestCase):
         spec = TimeSeriesPlotSpecification(component="PUMP P1", property="Head", fig="1", plot=1)
 
         with self.assertLogs(
-            "pywandahydra.postprocessing.plotting.renderers.combined_report",
+            "pywandahydra.postprocessing.figures.pdf_pages",
             level="WARNING",
         ):
             figures = render_combined_report_pages(
@@ -242,4 +237,3 @@ class TestRenderCombinedReportPages(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

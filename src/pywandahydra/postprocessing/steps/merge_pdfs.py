@@ -5,7 +5,7 @@ from __future__ import annotations
 from pydantic import BaseModel, ConfigDict
 
 from ..core.context import PostProcessingRunContext
-from ..io.pdf_merge import merge_case_figure_pdfs
+from ..figures.run_pdf import merge_case_figure_pdfs
 
 
 class MergePdfsStep:
