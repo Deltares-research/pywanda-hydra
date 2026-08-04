@@ -6,7 +6,6 @@ import hashlib
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
 
 from ..scenarios import AnalysisMeta, ScenarioSpecification
 from .legacy import ModelSpecification
@@ -26,8 +25,6 @@ class CasePlan:
         model_spec: Model specification (paths, run flags, global overrides).
         scenario: The full scenario specification.
         analysis_metadata: Analysis-level metadata shared by all cases.
-        workflow_name: Post-processing workflow name.
-        workflow_params: Post-processing workflow parameters.
         attempt: Current attempt number (for retries).
         config_hash: SHA-256 hash of the plan for idempotency checks.
     """
@@ -37,8 +34,6 @@ class CasePlan:
     model_spec: ModelSpecification
     scenario: ScenarioSpecification
     analysis_metadata: AnalysisMeta = field(default_factory=AnalysisMeta)
-    workflow_name: str = "default"
-    workflow_params: dict[str, Any] = field(default_factory=dict)
     attempt: int = 1
     config_hash: str = field(default="", repr=False)
 
@@ -55,8 +50,6 @@ class CasePlan:
             "v": 2,
             "model_path": str(self.model_spec.model_path),
             "model_bytes_sha256": model_bytes_hash,
-            "workflow_name": self.workflow_name,
-            "workflow_params": self.workflow_params,
             "run_steady": self.model_spec.run_steady,
             "run_unsteady": self.model_spec.run_unsteady,
             "parameters": [ch.model_dump(mode="json") for ch in self.scenario.parameter_changes],
@@ -70,8 +63,6 @@ def build_case_plans(
     model_spec: ModelSpecification,
     scenarios: list[ScenarioSpecification],
     run_root: Path,
-    workflow_name: str = "default",
-    workflow_params: dict[str, Any] | None = None,
     analysis_metadata: AnalysisMeta | None = None,
 ) -> list[CasePlan]:
     """Build CasePlan objects for all included scenarios.
@@ -80,8 +71,6 @@ def build_case_plans(
         model_spec: The model specification for the run.
         scenarios: All loaded scenarios (filtering by include happens here).
         run_root: Root directory for the run output.
-        workflow_name: Post-processing workflow name.
-        workflow_params: Post-processing workflow parameters.
         analysis_metadata: Analysis-level metadata shared by all cases.
 
     Returns:
@@ -103,8 +92,6 @@ def build_case_plans(
                 model_spec=model_spec,
                 scenario=scenario,
                 analysis_metadata=meta,
-                workflow_name=workflow_name,
-                workflow_params=dict(workflow_params or {}),
             )
         )
     return plans

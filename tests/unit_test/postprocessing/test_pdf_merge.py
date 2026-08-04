@@ -1,4 +1,4 @@
-"""Unit tests for postprocessing.io.pdf_merge."""
+"""Unit tests for postprocessing.figures.run_pdf."""
 
 from __future__ import annotations
 

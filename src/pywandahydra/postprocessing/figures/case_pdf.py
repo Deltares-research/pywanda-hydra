@@ -9,7 +9,8 @@ from typing import Any
 
 from matplotlib.backends.backend_pdf import PdfPages
 
-from ..core.context import CaseContext
+from ...results import ParquetResultStore
+from ...scenarios import AnalysisMeta, ScenarioSpecification
 from ..plotting.renderers.report_page import ReportMeta
 from .pdf_pages import PlotSpec, render_combined_report_pages
 from .theme import PlotTheme
@@ -17,27 +18,33 @@ from .theme import PlotTheme
 logger = logging.getLogger(__name__)
 
 
-def render_case_pdf(ctx: CaseContext) -> Path | None:
+def render_case_pdf(
+    *,
+    store: ParquetResultStore,
+    scenario: ScenarioSpecification,
+    case_dir: Path,
+    analysis_metadata: AnalysisMeta,
+) -> Path | None:
     """Render configured route and time-series figures into the case PDF."""
     import matplotlib.pyplot as plt
 
-    figures_dir = ctx.case_dir / "figures"
+    figures_dir = case_dir / "figures"
     figures_dir.mkdir(parents=True, exist_ok=True)
-    case_pdf = figures_dir / f"{ctx.case_dir.name}.pdf"
+    case_pdf = figures_dir / f"{case_dir.name}.pdf"
     specs: list[PlotSpec] = [
-        *ctx.scenario.post_processing.figures.routes,
-        *ctx.scenario.post_processing.figures.time_series,
+        *scenario.post_processing.figures.routes,
+        *scenario.post_processing.figures.time_series,
     ]
 
     with plt.ioff():
         figures = render_combined_report_pages(
             specs,
-            ctx.store,
-            report_meta_base=build_report_meta(ctx),
+            store,
+            report_meta_base=build_report_meta(scenario, case_dir, analysis_metadata),
             theme=PlotTheme(),
         )
         if not figures:
-            logger.info("No plot figures rendered for case '%s'.", ctx.case_dir.name)
+            logger.info("No plot figures rendered for case '%s'.", case_dir.name)
             return None
         with PdfPages(case_pdf) as pdf:
             for figure in figures:
@@ -48,31 +55,33 @@ def render_case_pdf(ctx: CaseContext) -> Path | None:
         "Rendered %d figure(s) into %s for case '%s'.",
         len(figures),
         case_pdf,
-        ctx.case_dir.name,
+        case_dir.name,
     )
     return case_pdf
 
 
-def build_report_meta(ctx: CaseContext) -> ReportMeta:
+def build_report_meta(
+    scenario: ScenarioSpecification,
+    case_dir: Path,
+    analysis_metadata: AnalysisMeta,
+) -> ReportMeta:
     """Create report metadata from scenario and analysis metadata."""
-    scenario = ctx.scenario
     report = scenario.post_processing.report
-    analysis_meta = ctx.analysis_metadata
     appendix = (report.appendix or "").strip()
     base_figure_id = f"{appendix}.{int(scenario.number):03d}"
     if not appendix:
-        base_figure_id = f"{ctx.case_dir.name}_"
+        base_figure_id = f"{case_dir.name}_"
     chapter = f"Chapter {report.chapter}" if report.chapter is not None else ""
     extra = scenario.extra_columns.get("Extra")
     scenario_description = report.description or (str(extra) if extra else "")
     return ReportMeta(
         case_name=scenario.name,
-        analysis_description=analysis_meta.analysis_description or "",
+        analysis_description=analysis_metadata.analysis_description or "",
         scenario_description=scenario_description,
         chapter=chapter,
-        project_number=str(analysis_meta.project_number or ""),
+        project_number=str(analysis_metadata.project_number or ""),
         figure_id=base_figure_id,
-        wanda_version=analysis_meta.wanda_version or "WANDA",
+        wanda_version=analysis_metadata.wanda_version or "WANDA",
         report_date=_format_date(report.date),
     )
 

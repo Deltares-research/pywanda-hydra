@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import matplotlib
+from types import SimpleNamespace
 
 matplotlib.use("Agg")  # must be set before any test file imports matplotlib.pyplot
 
 import pytest
 
-from pywandahydra.postprocessing.core.context import CaseContext
 from pywandahydra.results import ParquetResultStore
 from pywandahydra.scenarios import (
     PostProcessingConfiguration,
@@ -24,7 +24,7 @@ def result_store(tmp_path) -> ParquetResultStore:
 
 @pytest.fixture
 def make_case_ctx(tmp_path):
-    def _factory(meta_overrides=None) -> CaseContext:
+    def _factory(meta_overrides=None) -> SimpleNamespace:
         meta_dict = {"Number": 1, "Include": True, "Name": "case_001"}
         meta_dict.update(meta_overrides or {})
         report_keys = {"Description", "Appendix", "Chapter", "Date"}
@@ -39,7 +39,7 @@ def make_case_ctx(tmp_path):
             for k, v in meta_dict.items()
             if k not in {"Number", "Include", "Name"} and k not in report_keys
         }
-        return CaseContext(
+        return SimpleNamespace(
             store=ParquetResultStore(tmp_path / "results"),
             scenario=ScenarioSpecification(
                 number=meta_dict["Number"],

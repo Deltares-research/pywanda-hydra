@@ -21,10 +21,7 @@ from filelock import Timeout
 
 from ..execution.case_plan import CasePlan
 from ..execution.journal import CaseJournal, _now_iso, resume_decision
-from ..postprocessing.core.context import CaseContext
-from ..postprocessing.core.pipeline import run_postprocessing
-from ..postprocessing.plotting.theme_registry import get_theme
-from ..postprocessing.workflows import bootstrap as bootstrap_workflows
+from ..postprocessing.pipeline import process_case_results
 from ..results import ParquetResultStore
 from ..wanda.model_access import WandaModelAccess
 from ..wanda.pywanda_model_access import PywandaModelAccess
@@ -67,11 +64,6 @@ def run_one_case(plan: CasePlan) -> CaseResult:
         Dict with keys: case_id, success, error (if failed), scenario_dir.
     """
     journal = CaseJournal(plan.case_dir)
-
-    # Ensure built-in workflows are registered in this process (idempotent,
-    # required under multiprocessing 'spawn' where module-level side effects
-    # do not propagate from the parent process).
-    bootstrap_workflows()
 
     # Hold the case lock for the entire execution so two processes can never
     # work the same case directory concurrently - a second WANDA session on
@@ -285,39 +277,39 @@ def _execute_case(plan: CasePlan, journal: CaseJournal) -> CaseResult:
         logger.info("Case %s: Results written", plan.case_id)
         journal.event("results_stored", inventory=inventory)
 
-        # --- Post-processing: run workflow-driven steps ---
-        logger.info(
-            "Case %s: Starting post-processing (%s)...",
-            plan.case_id,
-            plan.workflow_name,
-        )
-        theme = get_theme("default")
-        postprocessing_ctx = CaseContext(
+        # --- Post-processing ---
+        logger.info("Case %s: Starting post-processing...", plan.case_id)
+        with journal:
+            journal.transition("RUNNING", postprocess_status="RUNNING")
+        postprocessing_outcomes = process_case_results(
             store=store,
             scenario=plan.scenario,
             case_dir=plan.case_dir,
             analysis_metadata=plan.analysis_metadata,
-            theme=theme,
-        )
-        with journal:
-            journal.transition("RUNNING", postprocess_status="RUNNING")
-        postprocessing_results = run_postprocessing(
-            postprocessing_ctx,
-            workflow_name=plan.workflow_name,
-            workflow_params=plan.workflow_params,
         )
         logger.info(
-            "Case %s: Post-processing completed with results: %s",
+            "Case %s: Post-processing completed with outcomes: %s",
             plan.case_id,
-            postprocessing_results,
+            postprocessing_outcomes,
         )
 
-        postprocessing_success = all(postprocessing_results.values())
+        postprocessing_success = all(
+            outcome.status != "failed" for outcome in postprocessing_outcomes
+        )
         postprocessing_status = "DONE" if postprocessing_success else "FAILED"
 
         journal.event(
             "postprocessed",
-            steps={name: ok for name, ok in postprocessing_results.items()},
+            outcomes=[
+                {
+                    "routine_name": outcome.routine_name,
+                    "status": outcome.status,
+                    "skip_reason": outcome.skip_reason,
+                    "error": outcome.error,
+                    "created_paths": [str(path) for path in outcome.created_paths],
+                }
+                for outcome in postprocessing_outcomes
+            ],
         )
 
         return _finalize_success(plan, journal, start_time, artefacts, postprocessing_status)

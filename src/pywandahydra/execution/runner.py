@@ -11,16 +11,13 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from multiprocessing import get_context
 from pathlib import Path
-from typing import Any
 
 from ..app_logging import setup_logging
 from ..execution.artifacts import create_run_directories, write_run_log
 from ..execution.case_plan import CasePlan, build_case_plans
 from ..execution.journal import CaseJournal, resume_decision
 from ..execution.worker import CaseResult, run_one_case
-from ..postprocessing.core.context import PostProcessingRunContext
-from ..postprocessing.workflows import bootstrap as bootstrap_workflows
-from ..postprocessing.workflows.base import resolve_workflow
+from ..postprocessing.pipeline import process_run_results
 from ..scenarios import ScenarioSpecification
 from .legacy import ModelSpecification, RunContext
 
@@ -59,8 +56,6 @@ def run(
     persist_manifest: bool = True,
     resume: bool = False,
     verbose: bool = False,
-    workflow_name: str = "default",
-    workflow_params: dict[str, Any] | None = None,
 ) -> RunResult:
     """Run scenarios with the specified model and context.
 
@@ -77,9 +72,6 @@ def run(
         persist_manifest: Write run-level manifest/log file.
         resume: Skip already-completed cases with matching config hash.
         verbose: Enable detailed logging during execution.
-        workflow_name: Post-processing workflow name.
-        workflow_params: Post-processing workflow parameters.
-
     Returns:
         Aggregated RunResult.
     """
@@ -89,9 +81,6 @@ def run(
     if verbose:
         setup_logging(logging.DEBUG)
         logger.debug("Verbose logging enabled for execution")
-
-    bootstrap_workflows()
-    workflow = resolve_workflow(workflow_name, workflow_params)
 
     # Create run directories and write log manifest
     create_run_directories(ctx)
@@ -107,8 +96,6 @@ def run(
         model,
         list(scenarios),
         run_root,
-        workflow_name=workflow.name,
-        workflow_params=workflow_params,
         analysis_metadata=ctx.analysis_meta,
     )
     if not plans:
@@ -158,16 +145,8 @@ def run(
     n_success = sum(1 for r in results if r.get("success") is True)
     n_failed = sum(1 for r in results if r.get("success") is False)
 
-    post_processing_run_ctx = PostProcessingRunContext(
-        run_root=run_root,
-        run_id=ctx.run_id,
-        case_results=tuple(results),
-    )
-    for step in workflow.run_steps(post_processing_run_ctx):
-        try:
-            step.run(post_processing_run_ctx)
-        except Exception:
-            logger.exception("Run step %r failed", step.name)
+    postprocessing_outcomes = process_run_results(run_root=run_root, run_id=ctx.run_id)
+    logger.info("Run post-processing completed with outcomes: %s", postprocessing_outcomes)
 
     return RunResult(
         run_id=ctx.run_id,
