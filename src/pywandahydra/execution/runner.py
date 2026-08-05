@@ -15,11 +15,11 @@ from pathlib import Path
 from ..app_logging import setup_logging
 from ..execution.artifacts import create_run_directories, write_run_log
 from ..execution.case_plan import CasePlan, build_case_plans
-from ..execution.journal import CaseJournal, resume_decision
 from ..execution.worker import CaseResult, run_one_case
 from ..postprocessing.pipeline import process_run_results
 from ..scenarios import ScenarioSpecification
 from .legacy import ModelSpecification, RunContext
+from .locking import RunLock
 
 logger = logging.getLogger(__name__)
 
@@ -82,14 +82,31 @@ def run(
         setup_logging(logging.DEBUG)
         logger.debug("Verbose logging enabled for execution")
 
-    # Create run directories and write log manifest
+    with RunLock(run_root):
+        return _run_locked(
+            model=model,
+            ctx=ctx,
+            scenarios=scenarios,
+            n_workers=n_workers,
+            persist_manifest=persist_manifest,
+            resume=resume,
+        )
+
+
+def _run_locked(
+    *,
+    model: ModelSpecification,
+    ctx: RunContext,
+    scenarios: Sequence[ScenarioSpecification],
+    n_workers: int,
+    persist_manifest: bool,
+    resume: bool,
+) -> RunResult:
+    """Run orchestration while the caller holds the run lock."""
+    run_root = Path(ctx.root_dir)
     create_run_directories(ctx)
     if persist_manifest:
-        write_run_log(
-            context_object=ctx,
-            model_spec=model,
-            scenarios=list(scenarios),
-        )
+        write_run_log(context_object=ctx, model_spec=model, scenarios=list(scenarios))
 
     # Build case plans for included scenarios
     plans = build_case_plans(
@@ -109,40 +126,18 @@ def run(
             results=[],
         )
 
-    # Filter plans if resume mode is active
-    plans_to_run = plans
-    n_skipped = 0
-    if resume:
-        plans_to_run = []
-        for plan in plans:
-            journal = CaseJournal(plan.case_dir)
-            decision = resume_decision(
-                journal=journal,
-                config_hash=plan.config_hash,
-                reuse_existing_data=plan.model_spec.reuse_existing_data,
-            )
-            if decision == "skip":
-                logger.info("Skipping completed case: %s", plan.case_id)
-                n_skipped += 1
-            elif decision == "rerun":
-                logger.warning(
-                    "Case %s will be re-run because of reuse_existing_data=False.",
-                    plan.case_id,
-                )
-                plans_to_run.append(plan)
-            else:
-                plans_to_run.append(plan)
-
     # Execute
-    use_multiprocessing = n_workers > 1 and len(plans_to_run) > 1
+    use_multiprocessing = n_workers > 1 and len(plans) > 1
 
     if not use_multiprocessing:
-        results = [run_one_case(plan) for plan in plans_to_run]
+        results = [run_one_case(plan) for plan in plans]
     else:
-        results = _run_multiprocess(plans=plans_to_run, n_workers=n_workers)
+        results = _run_multiprocess(plans=plans, n_workers=n_workers)
 
     # Aggregate results
-    n_success = sum(1 for r in results if r.get("success") is True)
+    n_success = sum(
+        1 for result in results if result.get("success") is True and not result.get("skipped")
+    )
     n_failed = sum(1 for r in results if r.get("success") is False)
 
     postprocessing_outcomes = process_run_results(run_root=run_root, run_id=ctx.run_id)
@@ -154,7 +149,7 @@ def run(
         n_selected=len(plans),
         n_success=n_success,
         n_failed=n_failed,
-        n_skipped=n_skipped,
+        n_skipped=sum(1 for result in results if result.get("skipped") is True),
         results=results,
     )
 

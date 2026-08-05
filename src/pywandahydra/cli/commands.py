@@ -71,7 +71,7 @@ def status(
     run_dir: Path = typer.Argument(..., help="Path to the run output directory.", exists=True),
 ) -> None:
     """Show status of all cases in a run directory."""
-    from ..execution.journal import CaseJournal
+    from ..execution.status import CaseStatusStore
 
     scenarios_dir = run_dir / "scenarios"
     if not scenarios_dir.exists():
@@ -88,17 +88,16 @@ def status(
     typer.echo("-" * 90)
 
     for case_dir in case_dirs:
-        journal = CaseJournal(case_dir)
-        state = journal.read_state()
+        state = CaseStatusStore(case_dir).read()
         if state is None:
             typer.echo(f"{case_dir.name:<30} {'UNKNOWN':<12} {'-':<12} {'-':<10}")
             continue
 
         duration = f"{state.duration_s:.1f}s" if state.duration_s else "-"
-        error = (state.error or "")[:40]
+        error = (state.error_summary or "")[:40]
         typer.echo(
-            f"{state.case_id:<30} {state.status:<12} "
-            f"{state.postprocess_status:<12} {duration:<10} {error}"
+            f"{state.case_id:<30} {state.simulation_status:<12} "
+            f"{state.postprocessing_status:<12} {duration:<10} {error}"
         )
 
 

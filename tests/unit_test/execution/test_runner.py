@@ -6,8 +6,8 @@ from pathlib import Path
 from unittest.mock import patch
 
 from pywandahydra.execution import runner
-from pywandahydra.execution.journal import CaseJournal
 from pywandahydra.execution.legacy import ModelSpecification, RunContext
+from pywandahydra.execution.status import CaseStatusStore
 from pywandahydra.scenarios import ScenarioSpecification
 from unit_test.wanda.fakes import FakeWandaModelAccess
 
@@ -126,12 +126,11 @@ class TestRunner(unittest.TestCase):
                 )
             self.assertEqual(first.n_success, 1)
 
-            journal = CaseJournal(case_dir)
-            state = journal.read_state()
+            state = CaseStatusStore(case_dir).read()
             assert state is not None
             self.assertEqual(
-                state.status,
-                "SUCCEEDED",
+                state.simulation_status,
+                "succeeded",
             )
 
             with (
@@ -159,7 +158,8 @@ class TestRunner(unittest.TestCase):
             self.assertEqual(second.n_skipped, 1)
             self.assertEqual(second.n_success, 0)
             self.assertEqual(second.n_failed, 0)
-            self.assertEqual(second.results, [])
+            self.assertEqual(len(second.results), 1)
+            self.assertTrue(second.results[0]["skipped"])
 
 
 if __name__ == "__main__":

@@ -1,33 +1,29 @@
-"""Worker module - executes a single scenario case.
-
-Responsible for:
-- Creating the per-case directory
-- Copying the base model
-- Opening the model via the adapter
-- Applying global overrides and scenario parameters
-- Running steady/unsteady simulations
-- Extracting results and writing to Parquet cache
-- Journaling status transitions (state.json + events.jsonl)
-"""
+"""Worker module - executes one case under a defensive local lock."""
 
 from __future__ import annotations
 
 import logging
-import os
 import time
-from typing import Any, TypedDict
-
-from filelock import Timeout
+from datetime import UTC, datetime
+from typing import Any, Literal, TypedDict
 
 from ..execution.case_plan import CasePlan
-from ..execution.journal import CaseJournal, _now_iso, resume_decision
 from ..postprocessing.pipeline import process_case_results
 from ..results import ParquetResultStore
 from ..wanda.model_access import WandaModelAccess
 from ..wanda.pywanda_model_access import PywandaModelAccess
+from .fingerprints import output_fingerprint, simulation_fingerprint
+from .locking import CaseLock, CaseLockedError, case_log_handler
 from .result_extraction import extract_simulation_data, requirements_from_scenario
+from .run_directory import case_data_directory, recovery_decision
+from .status import CaseStatus, CaseStatusStore, SerializedPostProcessingOutcome
 
 logger = logging.getLogger(__name__)
+
+
+def _now_iso() -> str:
+    """Return the current UTC time in the persisted status format."""
+    return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 class CaseResult(TypedDict, total=False):
@@ -63,38 +59,24 @@ def run_one_case(plan: CasePlan) -> CaseResult:
     Returns:
         Dict with keys: case_id, success, error (if failed), scenario_dir.
     """
-    journal = CaseJournal(plan.case_dir)
-
-    # Hold the case lock for the entire execution so two processes can never
-    # work the same case directory concurrently - a second WANDA session on
-    # the same model files blocks indefinitely inside pywanda.WandaModel.
-    # FileLock is reentrant, so nested `with journal:` transitions still work.
     try:
-        # Only continue if we can acquire the lock.
-        journal.acquire()
-    except Timeout:
-        error_msg = (
-            "Case directory is locked by another process - a previous or "
-            "concurrent run may still be active on this case."
-        )
-        logger.error("Case %s: %s", plan.case_id, error_msg)
+        with CaseLock(plan.case_dir):
+            with case_log_handler(plan.case_dir):
+                return _execute_case(plan)
+    except CaseLockedError as exc:
+        logger.error("Case %s: %s", plan.case_id, exc)
         return {
             "case_id": plan.case_id,
             "success": False,
-            "error": error_msg,
+            "error": str(exc),
             "scenario_dir": str(plan.case_dir),
         }
-    try:
-        return _execute_case(plan, journal)
-    finally:
-        journal.release()
 
 
 def _apply_parameters(
     adapter: WandaModelAccess,
     model: Any,
     plan: CasePlan,
-    journal: CaseJournal,
 ) -> None:
     """Apply scenario-specific parameter changes."""
     logger.info(
@@ -105,24 +87,18 @@ def _apply_parameters(
     for change in plan.scenario.parameter_changes:
         adapter.apply(model, change)
 
-    journal.event(
-        "params_applied",
-        scenario_count=len(plan.scenario.parameter_changes),
-    )
 
 
 def _run_simulations(
     adapter: WandaModelAccess,
     model: Any,
     plan: CasePlan,
-    journal: CaseJournal,
 ) -> None:
     """Run steady and/or unsteady simulations as configured by the model spec."""
     if plan.model_spec.run_steady:
         logger.info("Case %s: Starting steady-state simulation...", plan.case_id)
         adapter.run_steady(model)
         logger.info("Case %s: Steady-state simulation completed", plan.case_id)
-        journal.event("steady_done")
 
     if plan.model_spec.run_unsteady:
         logger.info("Case %s: Checking simulation time", plan.case_id)
@@ -132,26 +108,34 @@ def _run_simulations(
             logger.info("Case %s: Starting unsteady simulation...", plan.case_id)
             adapter.run_unsteady(model)
             logger.info("Case %s: Unsteady simulation completed", plan.case_id)
-            journal.event("unsteady_done")
 
 
 def _finalize_success(
     plan: CasePlan,
-    journal: CaseJournal,
+    status_store: CaseStatusStore,
+    status: CaseStatus,
     start_time: float,
-    artefacts: dict[str, Any],
-    postprocessing_status: str,
+    outcomes: tuple[SerializedPostProcessingOutcome, ...],
 ) -> CaseResult:
-    """Transition the journal to SUCCEEDED and build the success result."""
+    """Persist a successful simulation and current post-processing result."""
     duration = time.perf_counter() - start_time
-    with journal:
-        journal.transition(
-            "SUCCEEDED",
+    postprocessing_status: Literal["succeeded", "failed"] = "succeeded" if all(
+        outcome.status != "failed" for outcome in outcomes
+    ) else "failed"
+    status_store.write(
+        CaseStatus(
+            case_id=plan.case_id,
+            simulation_status="succeeded",
+            postprocessing_status=postprocessing_status,
+            simulation_fingerprint=status.simulation_fingerprint,
+            output_fingerprint=status.output_fingerprint,
+            started_at=status.started_at,
             finished_at=_now_iso(),
             duration_s=round(duration, 2),
-            postprocess_status=postprocessing_status,
-            artefacts=artefacts,
+            postprocessing_outcomes=outcomes,
+            generated_paths=tuple(path for outcome in outcomes for path in outcome.created_paths),
         )
+    )
 
     logger.info("Case %s succeeded in %.1fs", plan.case_id, duration)
     return {
@@ -164,21 +148,27 @@ def _finalize_success(
 
 def _finalize_failure(
     plan: CasePlan,
-    journal: CaseJournal,
+    status_store: CaseStatusStore,
+    status: CaseStatus,
     start_time: float,
     exc: Exception,
 ) -> CaseResult:
-    """Transition the journal to FAILED and build the failure result."""
+    """Persist the latest error without treating lock contention as a failure."""
     duration = time.perf_counter() - start_time
     error_msg = f"{type(exc).__name__}: {exc}"
-    with journal:
-        journal.transition(
-            "FAILED",
+    status_store.write(
+        CaseStatus(
+            case_id=plan.case_id,
+            simulation_status="failed",
+            postprocessing_status="failed",
+            simulation_fingerprint=status.simulation_fingerprint,
+            output_fingerprint=status.output_fingerprint,
+            started_at=status.started_at,
             finished_at=_now_iso(),
             duration_s=round(duration, 2),
-            postprocess_status="FAILED",
-            error=error_msg,
+            error_summary=error_msg,
         )
+    )
     logger.error("Case %s failed: %s", plan.case_id, error_msg, exc_info=True)
     return {
         "case_id": plan.case_id,
@@ -190,13 +180,40 @@ def _finalize_failure(
     }
 
 
-def _execute_case(plan: CasePlan, journal: CaseJournal) -> CaseResult:
-    """Execute the case body. The caller must hold the case lock."""
-    # --- Check idempotency using shared resume policy ---
-    decision = resume_decision(
-        journal=journal,
-        config_hash=plan.config_hash,
-        reuse_existing_data=plan.model_spec.reuse_existing_data,
+def _execute_case(plan: CasePlan) -> CaseResult:
+    """Execute the case body while the caller holds its case lock."""
+    status_store = CaseStatusStore(plan.case_dir)
+    status = status_store.read()
+    simulation = simulation_fingerprint(
+        model_path=plan.model_spec.model_path,
+        upgrade=plan.model_spec.upgrade,
+        wanda_version=None,
+        pywanda_version=None,
+        run_steady=plan.model_spec.run_steady,
+        run_unsteady=plan.model_spec.run_unsteady,
+        parameter_changes=[
+            change.model_dump(mode="json") for change in plan.scenario.parameter_changes
+        ],
+    )
+    output = output_fingerprint(
+        post_processing=plan.scenario.post_processing.model_dump(mode="json"),
+        theme=None,
+        table_formats=(),
+        figure_formats=("pdf",),
+    )
+    store = ParquetResultStore(case_data_directory(plan.case_dir))
+    inventory = store.inventory()
+    outputs_current = status is not None and all(
+        (plan.case_dir / path).is_file() for path in status.generated_paths
+    )
+    decision = recovery_decision(
+        status=status,
+        simulation_fingerprint=simulation,
+        output_fingerprint=output,
+        result_store_complete=store.is_complete(),
+        inventory=inventory,
+        requirements=requirements_from_scenario(plan.scenario),
+        outputs_current=outputs_current,
     )
     if decision == "skip":
         logger.info("Case %s already completed - skipping.", plan.case_id)
@@ -207,17 +224,18 @@ def _execute_case(plan: CasePlan, journal: CaseJournal) -> CaseResult:
             "scenario_dir": str(plan.case_dir),
         }
 
-    # --- Transition: RUNNING ---
-    with journal:
-        journal.transition(
-            "RUNNING",
-            started_at=_now_iso(),
-            worker_pid=os.getpid(),
-            attempt=plan.attempt,
-            config_hash=plan.config_hash,
-        )
-
     start_time = time.perf_counter()
+    current_status = CaseStatus(
+        case_id=plan.case_id,
+        simulation_status="running" if decision == "simulate" else "succeeded",
+        postprocessing_status="running" if decision == "postprocess" else "pending",
+        simulation_fingerprint=simulation,
+        output_fingerprint=output,
+        started_at=_now_iso(),
+    )
+    status_store.write(current_status)
+    if decision == "postprocess":
+        return _postprocess(plan, store, status_store, current_status, start_time)
     logger.info("Case %s: Building model access...", plan.case_id)
     adapter = _build_model_access()
     logger.info("Case %s: Model access ready", plan.case_id)
@@ -236,7 +254,6 @@ def _execute_case(plan: CasePlan, journal: CaseJournal) -> CaseResult:
             reuse_existing_data=plan.model_spec.reuse_existing_data,
         )
         logger.info("Case %s: Model prepared at %s", plan.case_id, scenario_model_path)
-        journal.event("model_prepared", path=scenario_model_path)
 
         # --- Open WANDA session (single open per case) ---
         logger.info("Case %s: Opening WANDA session...", plan.case_id)
@@ -247,13 +264,13 @@ def _execute_case(plan: CasePlan, journal: CaseJournal) -> CaseResult:
         with adapter.session(plan.model_spec, scenario_model_path) as model:
             logger.info("Case %s: WANDA session opened successfully", plan.case_id)
 
-            _apply_parameters(adapter, model, plan, journal)
+            _apply_parameters(adapter, model, plan)
 
             # Save and run
             logger.info("Case %s: Saving model input", plan.case_id)
             adapter.save_input(model)
 
-            _run_simulations(adapter, model, plan, journal)
+            _run_simulations(adapter, model, plan)
 
             # --- Extract results while model is open (single pass) ---
             logger.info("Case %s: Extracting results...", plan.case_id)
@@ -263,56 +280,44 @@ def _execute_case(plan: CasePlan, journal: CaseJournal) -> CaseResult:
                 requirements_from_scenario(plan.scenario),
             )
             logger.info("Case %s: Extraction completed", plan.case_id)
-            journal.event(
-                "extracted",
-                has_components=not extracted.components.data.empty,
-                n_routes=len(extracted.routes),
-            )
 
         # --- Persist extracted data to Parquet ---
         logger.info("Case %s: WANDA session closed, writing results...", plan.case_id)
-        store = ParquetResultStore(plan.case_dir / "results")
-        inventory = store.write(extracted, fingerprint=plan.config_hash)
-        artefacts = {"results": "results"}
+        store = ParquetResultStore(case_data_directory(plan.case_dir))
+        store.write(extracted, fingerprint=simulation)
         logger.info("Case %s: Results written", plan.case_id)
-        journal.event("results_stored", inventory=inventory)
+        return _postprocess(plan, store, status_store, current_status, start_time)
 
-        # --- Post-processing ---
-        logger.info("Case %s: Starting post-processing...", plan.case_id)
-        with journal:
-            journal.transition("RUNNING", postprocess_status="RUNNING")
-        postprocessing_outcomes = process_case_results(
+    except Exception as e:
+        return _finalize_failure(plan, status_store, current_status, start_time, e)
+
+
+def _postprocess(
+    plan: CasePlan,
+    store: ParquetResultStore,
+    status_store: CaseStatusStore,
+    status: CaseStatus,
+    start_time: float,
+) -> CaseResult:
+    try:
+        outcomes = process_case_results(
             store=store,
             scenario=plan.scenario,
             case_dir=plan.case_dir,
             analysis_metadata=plan.analysis_metadata,
         )
-        logger.info(
-            "Case %s: Post-processing completed with outcomes: %s",
-            plan.case_id,
-            postprocessing_outcomes,
+        serialized = tuple(
+            SerializedPostProcessingOutcome(
+                routine_name=outcome.routine_name,
+                status=outcome.status,
+                skip_reason=outcome.skip_reason,
+                error=outcome.error,
+                created_paths=tuple(
+                    str(path.relative_to(plan.case_dir)) for path in outcome.created_paths
+                ),
+            )
+            for outcome in outcomes
         )
-
-        postprocessing_success = all(
-            outcome.status != "failed" for outcome in postprocessing_outcomes
-        )
-        postprocessing_status = "DONE" if postprocessing_success else "FAILED"
-
-        journal.event(
-            "postprocessed",
-            outcomes=[
-                {
-                    "routine_name": outcome.routine_name,
-                    "status": outcome.status,
-                    "skip_reason": outcome.skip_reason,
-                    "error": outcome.error,
-                    "created_paths": [str(path) for path in outcome.created_paths],
-                }
-                for outcome in postprocessing_outcomes
-            ],
-        )
-
-        return _finalize_success(plan, journal, start_time, artefacts, postprocessing_status)
-
-    except Exception as e:
-        return _finalize_failure(plan, journal, start_time, e)
+        return _finalize_success(plan, status_store, status, start_time, serialized)
+    except Exception as exc:
+        return _finalize_failure(plan, status_store, status, start_time, exc)
