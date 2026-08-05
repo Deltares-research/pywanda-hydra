@@ -8,7 +8,7 @@ from pathlib import Path
 
 import numpy as np
 
-from pywandahydra.execution.legacy import ModelSpecification
+from pywandahydra.execution.plans import ModelSpecification
 from pywandahydra.scenarios import ModelParameterChange
 from pywandahydra.wanda.pywanda_model_access import PywandaModelAccess
 

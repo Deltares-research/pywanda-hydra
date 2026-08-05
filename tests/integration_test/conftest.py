@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from pywandahydra.execution.legacy import ModelSpecification
+from pywandahydra.execution.plans import ModelSpecification
 
 sys.path.insert(0, str(Path(__file__).parents[1]))
 from conftest import find_wanda_bin

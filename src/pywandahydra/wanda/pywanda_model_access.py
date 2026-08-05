@@ -10,7 +10,7 @@ from typing import Any, cast
 import numpy as np
 import pywanda
 
-from ..execution.legacy import ModelSpecification
+from ..execution.plans import ModelSpecification
 from ..scenarios import ModelParameterChange
 from .item_lookup import get_item, resolve_items
 from .model_files import prepare_scenario_model

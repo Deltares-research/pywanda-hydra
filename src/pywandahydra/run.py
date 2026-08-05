@@ -2,14 +2,15 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+import json
 from pathlib import Path
-from typing import Any
 
 from .config import ExecutionConfiguration, RunConfiguration, load_run_config
-from .execution.case_plan import build_case_plans
-from .execution.legacy import ModelSpecification
-from .execution.plans import RunPlan
+from .execution.locking import RunLock
+from .execution.outcomes import RunResult
+from .execution.plans import ModelSpecification, RunPlan, build_case_plans
+from .execution.run_cases import run_cases
+from .postprocessing.pipeline import process_run_results
 from .scenarios.loader import load_scenario_document
 from .scenarios.models.document import ScenarioDocument
 
@@ -125,22 +126,38 @@ def validate_run(config_path: Path | str, *, preflight: bool = False) -> RunPlan
     return prepare_run(config_path, preflight=preflight)
 
 
-def execute_run(plan: RunPlan) -> Any:
-    """Execute a prepared plan through the temporary legacy-engine bridge."""
-    from .execution.legacy import RunContext
-    from .execution.runner import run
-
-    context = RunContext(
-        run_id=plan.configuration.run_id,
-        timestamp=datetime.now(UTC).strftime("%Y-%m-%d_%H-%M"),
-        root_dir=plan.run_dir,
-        analysis_meta=plan.scenario_document.analysis_metadata,
-        description=plan.configuration.description,
+def _prepare_run_directory(plan: RunPlan) -> None:
+    for name in ("figures", "logs", "tables", "scenarios"):
+        (plan.run_dir / name).mkdir(parents=True, exist_ok=True)
+    log_path = plan.run_dir / "logs" / "run.json"
+    log_path.write_text(
+        json.dumps(
+            {
+                "configuration": plan.configuration.model_dump(mode="json"),
+                "config_path": str(plan.config_path),
+                "scenarios": [
+                    scenario.model_dump(mode="json")
+                    for scenario in plan.scenario_document.scenarios
+                ],
+            },
+            indent=2,
+            default=str,
+        ),
+        encoding="utf-8",
     )
-    return run(
-        model=_legacy_model(plan),
-        ctx=context,
-        scenarios=list(plan.scenario_document.scenarios),
-        n_workers=plan.configuration.execution.workers,
-        resume=plan.configuration.execution.resume,
+
+
+def execute_run(plan: RunPlan) -> RunResult:
+    """Execute a prepared plan with explicit recovery-aware case actions."""
+    with RunLock(plan.run_dir):
+        _prepare_run_directory(plan)
+        cases = run_cases(plan.cases, plan.configuration.execution.workers)
+        outcomes = process_run_results(
+            run_root=plan.run_dir,
+            run_id=plan.configuration.run_id,
+        )
+    return RunResult(
+        run_id=plan.configuration.run_id,
+        cases=cases,
+        post_processing=outcomes,
     )

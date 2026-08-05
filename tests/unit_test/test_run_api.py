@@ -79,14 +79,21 @@ def test_validate_run_is_wanda_free_by_default(tmp_path: Path) -> None:
     preflight.assert_not_called()
 
 
-def test_execute_run_delegates_to_current_runner(tmp_path: Path) -> None:
+def test_execute_run_dispatches_prepared_cases_and_aggregate_outputs(tmp_path: Path) -> None:
     path = _write_configuration(tmp_path)
     document = _document(tmp_path / "scenarios.xlsx", "case_one")
-    expected = object()
+    expected_cases = ()
+    expected_outputs = ()
 
     with patch("pywandahydra.run.load_scenario_document", return_value=document):
         plan = prepare_run(path)
-    with patch("pywandahydra.execution.runner.run", return_value=expected) as runner:
-        assert execute_run(plan) is expected
+    with (
+        patch("pywandahydra.run.run_cases", return_value=expected_cases) as run_cases,
+        patch("pywandahydra.run.process_run_results", return_value=expected_outputs),
+    ):
+        result = execute_run(plan)
 
-    assert runner.call_args.kwargs["model"].model_path == tmp_path / "model.wdi"
+    assert result.cases == expected_cases
+    assert result.post_processing == expected_outputs
+    assert run_cases.call_args.args == (plan.cases, 1)
+    assert (plan.run_dir / "logs" / "run.json").is_file()

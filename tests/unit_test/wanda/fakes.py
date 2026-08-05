@@ -6,7 +6,7 @@ from typing import Any
 
 import numpy as np
 
-from pywandahydra.execution.legacy import ModelSpecification
+from pywandahydra.execution.plans import ModelSpecification
 from pywandahydra.scenarios import ModelParameterChange
 
 ModelHandle = Any

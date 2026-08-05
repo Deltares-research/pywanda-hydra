@@ -54,8 +54,7 @@ def run(
     # Summary
     typer.echo(
         f"\nRun complete: {result.n_success} succeeded, "
-        f"{result.n_failed} failed, {result.n_skipped} skipped "
-        f"(of {result.n_selected} selected / {result.n_total} total)"
+        f"{result.n_failed} failed, {result.n_skipped} skipped"
     )
     if result.n_failed > 0:
         raise typer.Exit(code=1)

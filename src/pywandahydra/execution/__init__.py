@@ -1,17 +1,16 @@
-"""Execution package - plans, status, locking, runner, and worker."""
+"""Execution plans, orchestration, recovery, and durable status."""
 
-from typing import Any
-
-from .case_plan import CasePlan, build_case_plans
+from .outcomes import CaseResult, RunResult
+from .plans import CasePlan, ModelSpecification, RunPlan, build_case_plans
 from .status import CaseStatus, CaseStatusStore
 
-__all__ = ["CasePlan", "CaseStatus", "CaseStatusStore", "RunResult", "build_case_plans", "run"]
-
-
-def __getattr__(name: str) -> Any:
-    """Load the legacy runner only when a caller explicitly requests it."""
-    if name in {"RunResult", "run"}:
-        from .runner import RunResult, run
-
-        return {"RunResult": RunResult, "run": run}[name]
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+__all__ = [
+    "CasePlan",
+    "CaseResult",
+    "CaseStatus",
+    "CaseStatusStore",
+    "ModelSpecification",
+    "RunPlan",
+    "RunResult",
+    "build_case_plans",
+]
