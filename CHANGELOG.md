@@ -5,6 +5,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Changed
+- Finalized the public application API around `prepare_run`, `execute_run`,
+  `validate_run`, `read_run_status`, and `postprocess_run`. The CLI now exposes
+  the matching `run`, `validate`, `status`, and `postprocess` commands.
+
 ### Removed
 - Installed-package plugin discovery and all `pywandahydra.*` plugin entry-point
   groups. Supported scenario loading and post-processing behavior now ships with

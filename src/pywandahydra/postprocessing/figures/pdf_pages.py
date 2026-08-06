@@ -11,9 +11,8 @@ from matplotlib.figure import Figure
 
 from ...results import ExtractedSimulationData, ParquetResultStore, RouteIdentity
 from ...scenarios import RoutePlotSpecification, TimeSeriesPlotSpecification
-from ..plotting.renderers.report_page import ReportMeta, _create_content_axes, _plot_route_series
-from ..plotting.renderers.time_report_page import _plot_time_series_group
 from .layout import PageMetadata, draw_layout
+from .report import ReportMeta, create_content_axes, plot_route_series, plot_time_series_group
 from .theme import PlotTheme
 
 logger = logging.getLogger(__name__)
@@ -83,7 +82,7 @@ def _render_page(
     draw_layout(figure, _page_metadata(meta, theme))
 
     plotted_any = False
-    content_axes = _create_content_axes(figure, len(panel_groups), theme)
+    content_axes = create_content_axes(figure, len(panel_groups), theme)
     for axes, group in zip(content_axes, panel_groups, strict=False):
         plotted_any |= _render_panel(axes, group, data, components, theme)
     if not plotted_any:
@@ -131,7 +130,7 @@ def _render_panel(
                 first_spec.title or first_spec.route_id,
             )
             return False
-        _plot_route_series(
+        plot_route_series(
             axes,
             first_spec,
             route_data.envelope,
@@ -150,7 +149,7 @@ def _render_panel(
             [(spec.component, spec.property) for spec in time_specs],
         )
         return False
-    return _plot_time_series_group(axes, time_specs, components, theme)
+    return plot_time_series_group(axes, time_specs, components, theme)
 
 
 def _new_figure(theme: PlotTheme) -> Figure:
