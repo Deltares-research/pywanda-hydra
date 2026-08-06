@@ -10,7 +10,7 @@ from multiprocessing.connection import Connection
 from typing import Any, cast
 
 from ..disuse import parse_disuse_value
-from ..execution.legacy import ModelSpecification
+from ..execution.plans import ModelSpecification
 from ..scenarios import ScenarioSpecification
 from .item_lookup import get_item, resolve_items
 from .session import wanda_session

@@ -5,7 +5,7 @@ import sys
 import unittest
 from pathlib import Path
 
-from pywandahydra.execution.legacy import ModelSpecification
+from pywandahydra.execution.plans import ModelSpecification
 from pywandahydra.scenarios import ModelParameterChange
 from pywandahydra.wanda.api import (
     WandaItemRef,

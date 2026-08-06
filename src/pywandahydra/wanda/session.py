@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pywanda
 
-from ..execution.legacy import ModelSpecification
+from ..execution.plans import ModelSpecification
 
 logger = logging.getLogger(__name__)
 

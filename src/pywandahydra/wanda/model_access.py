@@ -8,7 +8,7 @@ from typing import Any, Protocol, TypeAlias
 
 import numpy as np
 
-from ..execution.legacy import ModelSpecification
+from ..execution.plans import ModelSpecification
 from ..scenarios import ModelParameterChange
 
 ModelHandle: TypeAlias = Any

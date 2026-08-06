@@ -9,7 +9,7 @@ from unittest.mock import patch
 from typer.testing import CliRunner
 
 from pywandahydra.cli.commands import app
-from pywandahydra.execution.runner import RunResult
+from pywandahydra.execution.outcomes import CaseResult, RunResult
 
 runner = CliRunner()
 
@@ -18,7 +18,13 @@ def test_run_delegates_to_root_api(tmp_path: Path) -> None:
     config_path = tmp_path / "run.yaml"
     config_path.write_text("run_id: run\n", encoding="utf-8")
     plan = SimpleNamespace(cases=(object(), object()))
-    result = RunResult("run", 2, 2, 2, 0)
+    result = RunResult(
+        "run",
+        (
+            CaseResult("one", "simulate", True),
+            CaseResult("two", "simulate", True),
+        ),
+    )
 
     with (
         patch("pywandahydra.run.prepare_run", return_value=plan) as prepare,

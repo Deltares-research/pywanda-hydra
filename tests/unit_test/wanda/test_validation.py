@@ -9,7 +9,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from unittest.mock import patch
 
-from pywandahydra.execution.legacy import ModelSpecification
+from pywandahydra.execution.plans import ModelSpecification
 from pywandahydra.scenarios import (
     FigurePostProcessingConfiguration,
     MinMaxTableSpecification,

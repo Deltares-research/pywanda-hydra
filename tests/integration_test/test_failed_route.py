@@ -12,8 +12,8 @@ from pathlib import Path
 
 import pytest
 
-from pywandahydra.execution import runner
-from pywandahydra.execution.legacy import ModelSpecification, RunContext
+from pywandahydra.execution.case_execution import simulate_case
+from pywandahydra.execution.plans import CasePlan, ModelSpecification
 from pywandahydra.results import ParquetResultStore
 from pywandahydra.scenarios import (
     FigurePostProcessingConfiguration,
@@ -34,11 +34,7 @@ class TestFailedRoute(unittest.TestCase):
         self.tmp_path = tmp_path
 
     def test_valid_route_extracted_and_invalid_route_skipped(self) -> None:
-        ctx = RunContext(
-            run_id="test_failed_route",
-            timestamp="20260616T000000Z",
-            root_dir=self.tmp_path / "test_failed_route",
-        )
+        run_dir = self.tmp_path / "test_failed_route"
         scenario = ScenarioSpecification(
             number=1,
             include=True,
@@ -53,18 +49,19 @@ class TestFailedRoute(unittest.TestCase):
             ),
         )
 
-        result = runner.run(
-            model=self.model_spec,
-            ctx=ctx,
-            scenarios=[scenario],
-            persist_manifest=False,
+        result = simulate_case(
+            CasePlan(
+                case_id="scenario_001",
+                case_dir=run_dir / "scenarios" / "scenario_001",
+                model_spec=self.model_spec,
+                scenario=scenario,
+            )
         )
 
-        self.assertEqual(result.n_success, 1)
-        self.assertEqual(result.n_failed, 0)
+        self.assertTrue(result.success)
 
-        case_dir = ctx.root_dir / "scenarios" / "scenario_001"
-        data = ParquetResultStore(case_dir / "results").read()
+        case_dir = run_dir / "scenarios" / "scenario_001"
+        data = ParquetResultStore(case_dir / "data").read()
         assert data is not None
         cached_routes = {f"{route.route_id}_{route.property}" for route in data.routes}
 
