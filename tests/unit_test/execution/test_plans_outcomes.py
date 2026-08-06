@@ -4,8 +4,7 @@ import pickle
 from pathlib import Path
 
 from pywandahydra.execution.outcomes import CaseResult, RunResult
-from pywandahydra.execution.plans import CasePlan
-from pywandahydra.execution.plans import ModelSpecification
+from pywandahydra.execution.plans import CasePlan, ModelSpecification
 from pywandahydra.scenarios import ScenarioSpecification
 
 

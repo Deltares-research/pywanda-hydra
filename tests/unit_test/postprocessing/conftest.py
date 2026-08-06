@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-import matplotlib
 from types import SimpleNamespace
+
+import matplotlib
 
 matplotlib.use("Agg")  # must be set before any test file imports matplotlib.pyplot
 

@@ -67,4 +67,3 @@ class TestFailedRoute(unittest.TestCase):
 
         self.assertIn("RouteA_Pressure", cached_routes)
         self.assertNotIn("InvalidRoute_Pressure", cached_routes)
-

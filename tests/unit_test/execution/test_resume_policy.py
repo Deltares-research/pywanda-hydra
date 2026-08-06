@@ -142,9 +142,7 @@ def test_recovery_simulates_when_inventory_is_insufficient() -> None:
         postprocessing_status="succeeded",
         output_fingerprint="output",
     )
-    requirements = DataRequirements(
-        components=frozenset({ComponentIdentity("pipe", "pressure")})
-    )
+    requirements = DataRequirements(components=frozenset({ComponentIdentity("pipe", "pressure")}))
 
     assert (
         recovery_decision(
