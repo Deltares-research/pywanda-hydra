@@ -115,16 +115,16 @@ def validate(
     from ..run import validate_run
 
     try:
-        plan = validate_run(config)
+        report = validate_run(config)
     except (ValueError, FileNotFoundError) as e:
         typer.echo(f"Config INVALID: {e}", err=True)
         raise typer.Exit(code=1) from None
     typer.echo(
-        f"Config OK: run_id={plan.configuration.run_id}, "
-        f"workers={plan.configuration.execution.workers}"
+        f"Config OK: run_id={report.plan.configuration.run_id}, "
+        f"workers={report.plan.configuration.execution.workers}"
     )
     typer.echo(
-        f"Scenarios OK: {len(plan.scenario_document.scenarios)} total, {len(plan.cases)} included"
+        f"Scenarios OK: {len(report.plan.scenario_document.scenarios)} total, {len(report.plan.cases)} included"
     )
     typer.echo("Validation passed.")
 
