@@ -3,14 +3,21 @@
 from __future__ import annotations
 
 from pathlib import Path
-from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
 import yaml
 
-from pywandahydra.run import execute_run, prepare_run, validate_run
+from pywandahydra.results.manifest import RunManifest, SourceFile, sha256_file, write_manifest
+from pywandahydra.run import (
+    execute_run,
+    postprocess_run,
+    prepare_run,
+    read_run_status,
+    validate_run,
+)
 from pywandahydra.scenarios import AnalysisMeta, ScenarioSpecification
+from pywandahydra.scenarios.models.document import ScenarioDocument
 
 
 def _write_configuration(tmp_path: Path) -> Path:
@@ -35,12 +42,16 @@ def _write_configuration(tmp_path: Path) -> Path:
     return path
 
 
-def _document(path: Path, *names: str) -> SimpleNamespace:
+def _document(path: Path, *names: str) -> ScenarioDocument:
     scenarios = tuple(
         ScenarioSpecification(number=index, include=True, name=name)
         for index, name in enumerate(names, 1)
     )
-    return SimpleNamespace(scenarios=scenarios, analysis_metadata=AnalysisMeta(), source_path=path)
+    return ScenarioDocument(
+        scenarios=scenarios,
+        analysis_metadata=AnalysisMeta(),
+        source_path=path,
+    )
 
 
 def test_prepare_run_resolves_paths_without_writing(tmp_path: Path) -> None:
@@ -96,4 +107,26 @@ def test_execute_run_dispatches_prepared_cases_and_aggregate_outputs(tmp_path: P
     assert result.cases == expected_cases
     assert result.post_processing == expected_outputs
     assert run_cases.call_args.args == (plan.cases, 1)
-    assert (plan.run_dir / "logs" / "run.json").is_file()
+    assert (plan.run_dir / "run_manifest.json").is_file()
+    assert not (plan.run_dir / "logs" / "run.json").exists()
+
+
+def test_offline_postprocessing_requires_committed_simulation_data(tmp_path: Path) -> None:
+    path = _write_configuration(tmp_path)
+    document = _document(tmp_path / "scenarios.xlsx", "case_one")
+    with patch("pywandahydra.run.load_scenario_document", return_value=document):
+        plan = prepare_run(path)
+    write_manifest(
+        RunManifest.create(
+            configuration=plan.configuration,
+            scenario_document=document,
+            run_dir=plan.run_dir,
+            sources=(SourceFile(name="configuration/run.yaml", sha256=sha256_file(path)),),
+        )
+    )
+
+    status = read_run_status(plan.run_dir)
+    assert status.run_id == "run_001"
+    assert status.cases == (None,)
+    with pytest.raises(ValueError, match="resume or simulate it first"):
+        postprocess_run(plan.run_dir)

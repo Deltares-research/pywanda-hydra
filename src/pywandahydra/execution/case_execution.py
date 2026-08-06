@@ -147,11 +147,15 @@ def postprocess_case(
     """Process committed case data under its lock without opening WANDA."""
     started = time.perf_counter()
     status_store = CaseStatusStore(plan.case_dir)
-    simulation = simulation_identity(plan)
     output = output_identity(plan)
     try:
         with CaseLock(plan.case_dir), case_log_handler(plan.case_dir):
             current = status_store.read()
+            simulation = (
+                current.simulation_fingerprint
+                if current and current.simulation_fingerprint
+                else simulation_identity(plan)
+            )
             status_store.write(
                 CaseStatus(
                     case_id=plan.case_id,

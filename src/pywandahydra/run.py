@@ -1,18 +1,42 @@
-"""Public run preparation, validation, and execution API."""
+"""Public run preparation, validation, execution, and offline results API."""
 
 from __future__ import annotations
 
-import json
+import shutil
+from dataclasses import dataclass
 from pathlib import Path
 
 from .config import ExecutionConfiguration, RunConfiguration, load_run_config
+from .execution.case_execution import postprocess_case
 from .execution.locking import RunLock
 from .execution.outcomes import RunResult
-from .execution.plans import ModelSpecification, RunPlan, build_case_plans
+from .execution.plans import CasePlan, ModelSpecification, RunPlan, build_case_plans
+from .execution.result_extraction import requirements_from_scenario
 from .execution.run_cases import run_cases
+from .execution.run_directory import case_data_directory
+from .execution.status import CaseStatus, CaseStatusStore
 from .postprocessing.pipeline import process_run_results
+from .results import ParquetResultStore
+from .results.manifest import RunManifest, SourceFile, read_manifest, sha256_file, write_manifest
+from .scenarios import ScenarioSpecification
 from .scenarios.loader import load_scenario_document
 from .scenarios.models.document import ScenarioDocument
+
+
+@dataclass(frozen=True, slots=True)
+class ValidationReport:
+    """Validated run inputs, including the side-effect-free execution plan."""
+
+    plan: RunPlan
+
+
+@dataclass(frozen=True, slots=True)
+class RunStatus:
+    """Offline view of one manifest and the current status of its cases."""
+
+    run_id: str
+    run_dir: Path
+    cases: tuple[CaseStatus | None, ...]
 
 
 def _resolve(path: Path, base_dir: Path) -> Path:
@@ -121,30 +145,40 @@ def _legacy_model_stub(
     )
 
 
-def validate_run(config_path: Path | str, *, preflight: bool = False) -> RunPlan:
+def validate_run(config_path: Path | str, *, preflight: bool = False) -> ValidationReport:
     """Validate and prepare a configuration, optionally checking WANDA inputs."""
-    return prepare_run(config_path, preflight=preflight)
+    return ValidationReport(prepare_run(config_path, preflight=preflight))
 
 
 def _prepare_run_directory(plan: RunPlan) -> None:
-    for name in ("figures", "logs", "tables", "scenarios"):
+    for name in ("figures", "inputs", "tables", "scenarios"):
         (plan.run_dir / name).mkdir(parents=True, exist_ok=True)
-    log_path = plan.run_dir / "logs" / "run.json"
-    log_path.write_text(
-        json.dumps(
-            {
-                "configuration": plan.configuration.model_dump(mode="json"),
-                "config_path": str(plan.config_path),
-                "scenarios": [
-                    scenario.model_dump(mode="json")
-                    for scenario in plan.scenario_document.scenarios
-                ],
-            },
-            indent=2,
-            default=str,
-        ),
-        encoding="utf-8",
+    sources = _copy_authored_inputs(plan)
+    write_manifest(
+        RunManifest.create(
+            configuration=plan.configuration,
+            scenario_document=plan.scenario_document,
+            run_dir=plan.run_dir,
+            sources=sources,
+        )
     )
+
+
+def _copy_authored_inputs(plan: RunPlan) -> tuple[SourceFile, ...]:
+    inputs = plan.run_dir / "inputs"
+    source_paths = (
+        ("configuration", plan.config_path),
+        ("scenarios", plan.scenario_document.source_path),
+        ("model", plan.model_path),
+    )
+    sources: list[SourceFile] = []
+    for category, source_path in source_paths:
+        name = f"{category}/{source_path.name}"
+        destination = inputs / name
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source_path, destination)
+        sources.append(SourceFile(name=name, sha256=sha256_file(source_path)))
+    return tuple(sources)
 
 
 def execute_run(plan: RunPlan) -> RunResult:
@@ -161,3 +195,80 @@ def execute_run(plan: RunPlan) -> RunResult:
         cases=cases,
         post_processing=outcomes,
     )
+
+
+def read_run_status(run_dir: Path | str) -> RunStatus:
+    """Read one run's manifest and case statuses without opening WANDA."""
+    manifest = read_manifest(Path(run_dir))
+    statuses = tuple(
+        CaseStatusStore(manifest.run_dir / "scenarios" / scenario.name).read()
+        for scenario in manifest.scenario_document.scenarios
+        if scenario.include
+    )
+    return RunStatus(manifest.configuration.run_id, manifest.run_dir, statuses)
+
+
+def postprocess_run(run_dir: Path | str, *, case_ids: set[str] | None = None) -> RunResult:
+    """Regenerate configured outputs from committed results without simulating."""
+    manifest = read_manifest(Path(run_dir))
+    selected = tuple(
+        scenario
+        for scenario in manifest.scenario_document.scenarios
+        if scenario.include and (case_ids is None or scenario.name in case_ids)
+    )
+    unknown = (case_ids or set()) - {scenario.name for scenario in selected}
+    if unknown:
+        raise ValueError(f"Unknown or excluded case IDs: {sorted(unknown)}")
+    plans = _offline_case_plans(manifest, selected)
+    _require_offline_stores(plans)
+    with RunLock(manifest.run_dir):
+        cases = tuple(postprocess_case(plan) for plan in plans)
+        outcomes = process_run_results(
+            run_root=manifest.run_dir,
+            run_id=manifest.configuration.run_id,
+        )
+    return RunResult(manifest.configuration.run_id, cases, outcomes)
+
+
+def _offline_model_specification(manifest: RunManifest) -> ModelSpecification:
+    """Build a placeholder model specification that offline post-processing never opens."""
+    return ModelSpecification(
+        model_path=manifest.run_dir / "inputs" / "model" / manifest.configuration.model.path.name,
+        wanda_bin=manifest.run_dir / "inputs",
+        base_model_name=manifest.configuration.model.path.stem,
+        upgrade=manifest.configuration.model.upgrade,
+        run_steady=manifest.configuration.simulation.steady,
+        run_unsteady=manifest.configuration.simulation.unsteady,
+    )
+
+
+def _offline_case_plans(
+    manifest: RunManifest, scenarios: tuple[ScenarioSpecification, ...]
+) -> tuple[CasePlan, ...]:
+    model_specification = _offline_model_specification(manifest)
+    return tuple(
+        CasePlan(
+            case_id=scenario.name,
+            case_dir=manifest.run_dir / "scenarios" / scenario.name,
+            model_spec=model_specification,
+            scenario=scenario,
+            analysis_metadata=manifest.scenario_document.analysis_metadata,
+            config_hash="manifest-v1",
+        )
+        for scenario in scenarios
+    )
+
+
+def _require_offline_stores(plans: tuple[CasePlan, ...]) -> None:
+    for plan in plans:
+        status = CaseStatusStore(plan.case_dir).read()
+        store = ParquetResultStore(case_data_directory(plan.case_dir))
+        if status is None or status.simulation_status != "succeeded":
+            raise ValueError(
+                f"Case {plan.case_id} has no successful simulation; resume or simulate it first."
+            )
+        inventory = store.inventory()
+        if inventory is None or not inventory.satisfies(requirements_from_scenario(plan.scenario)):
+            raise ValueError(
+                f"Case {plan.case_id} has incomplete result data; resume or simulate it first."
+            )
