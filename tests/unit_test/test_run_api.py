@@ -8,8 +8,12 @@ from unittest.mock import patch
 import pytest
 import yaml
 
-from pywandahydra.results import SourceFile, sha256_file, write_manifest
-from pywandahydra.results.manifest import RunManifest
+from pywandahydra.results.manifest import (
+    RunManifest,
+    SourceFile,
+    sha256_file,
+    write_manifest,
+)
 from pywandahydra.run import (
     execute_run,
     postprocess_run,

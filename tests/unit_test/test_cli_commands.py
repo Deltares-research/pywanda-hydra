@@ -47,7 +47,9 @@ def test_validate_delegates_to_root_api(tmp_path: Path) -> None:
         cases=(object(),),
     )
 
-    with patch("pywandahydra.run.validate_run", return_value=plan) as validate:
+    with patch(
+        "pywandahydra.run.validate_run", return_value=SimpleNamespace(plan=plan)
+    ) as validate:
         invocation = runner.invoke(app, ["validate", str(config_path)])
 
     assert invocation.exit_code == 0
