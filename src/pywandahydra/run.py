@@ -17,13 +17,7 @@ from .execution.run_directory import case_data_directory
 from .execution.status import CaseStatus, CaseStatusStore
 from .postprocessing.pipeline import process_run_results
 from .results import ParquetResultStore
-from .results.manifest import (
-    RunManifest,
-    SourceFile,
-    read_manifest,
-    sha256_file,
-    write_manifest,
-)
+from .results.manifest import RunManifest, SourceFile, read_manifest, sha256_file, write_manifest
 from .scenarios import ScenarioSpecification
 from .scenarios.loader import load_scenario_document
 from .scenarios.models.document import ScenarioDocument
@@ -214,9 +208,7 @@ def read_run_status(run_dir: Path | str) -> RunStatus:
     return RunStatus(manifest.configuration.run_id, manifest.run_dir, statuses)
 
 
-def postprocess_run(
-    run_dir: Path | str, *, case_ids: set[str] | None = None
-) -> RunResult:
+def postprocess_run(run_dir: Path | str, *, case_ids: set[str] | None = None) -> RunResult:
     """Regenerate configured outputs from committed results without simulating."""
     manifest = read_manifest(Path(run_dir))
     selected = tuple(

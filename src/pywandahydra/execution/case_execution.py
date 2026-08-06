@@ -152,7 +152,9 @@ def postprocess_case(
         with CaseLock(plan.case_dir), case_log_handler(plan.case_dir):
             current = status_store.read()
             simulation = (
-                current.simulation_fingerprint if current and current.simulation_fingerprint else simulation_identity(plan)
+                current.simulation_fingerprint
+                if current and current.simulation_fingerprint
+                else simulation_identity(plan)
             )
             status_store.write(
                 CaseStatus(

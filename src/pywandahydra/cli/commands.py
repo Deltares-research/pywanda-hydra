@@ -124,7 +124,8 @@ def validate(
         f"workers={report.plan.configuration.execution.workers}"
     )
     typer.echo(
-        f"Scenarios OK: {len(report.plan.scenario_document.scenarios)} total, {len(report.plan.cases)} included"
+        f"Scenarios OK: {len(report.plan.scenario_document.scenarios)} total,"
+        + f" {len(report.plan.cases)} included"
     )
     typer.echo("Validation passed.")
 

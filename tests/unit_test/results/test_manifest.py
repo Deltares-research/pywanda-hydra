@@ -7,10 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from pywandahydra.config.models import (
-    ModelConfiguration,
-    RunConfiguration,
-)
+from pywandahydra.config.models import ModelConfiguration, RunConfiguration
 from pywandahydra.results.manifest import (
     ManifestVersionError,
     RunManifest,
