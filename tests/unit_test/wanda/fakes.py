@@ -25,13 +25,9 @@ class FakeWandaModelAccess:
         base_model_path: Path,
         scenario_dir: Path,
         scenario_name: str,
-        *,
-        reuse_existing_data: bool,
     ) -> Path:
         scenario_dir.mkdir(parents=True, exist_ok=True)
         target = scenario_dir / f"{base_model_path.stem}_{scenario_name}.wdi"
-        if reuse_existing_data and target.exists():
-            return target
         target.write_bytes(base_model_path.read_bytes())
         return target
 

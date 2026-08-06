@@ -67,7 +67,6 @@ def _legacy_model(plan: RunPlan) -> ModelSpecification:
     return ModelSpecification(
         model_path=plan.model_path,
         wanda_bin=plan.wanda_bin,
-        base_model_name=plan.model_path.stem,
         upgrade=plan.configuration.model.upgrade,
         run_steady=plan.configuration.simulation.steady,
         run_unsteady=plan.configuration.simulation.unsteady,
@@ -138,7 +137,6 @@ def _legacy_model_stub(
     return ModelSpecification(
         model_path=model_path,
         wanda_bin=wanda_bin,
-        base_model_name=model_path.stem,
         upgrade=configuration.model.upgrade,
         run_steady=configuration.simulation.steady,
         run_unsteady=configuration.simulation.unsteady,
@@ -235,7 +233,6 @@ def _offline_model_specification(manifest: RunManifest) -> ModelSpecification:
     return ModelSpecification(
         model_path=manifest.run_dir / "inputs" / "model" / manifest.configuration.model.path.name,
         wanda_bin=manifest.run_dir / "inputs",
-        base_model_name=manifest.configuration.model.path.stem,
         upgrade=manifest.configuration.model.upgrade,
         run_steady=manifest.configuration.simulation.steady,
         run_unsteady=manifest.configuration.simulation.unsteady,

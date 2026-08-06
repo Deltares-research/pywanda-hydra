@@ -21,8 +21,6 @@ class ModelSpecification(BaseModel):
 
     model_path: Path
     wanda_bin: Path
-    base_model_name: str
-    reuse_existing_data: bool = False
     upgrade: bool = False
     run_steady: bool = True
     run_unsteady: bool = False

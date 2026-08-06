@@ -26,10 +26,8 @@ class TestWandaSession(unittest.TestCase):
         self.model_spec = ModelSpecification(
             model_path=Path(__file__).parents[2] / "data" / "wanda" / "base_model.wdi",
             wanda_bin=wanda_bin,
-            base_model_name="base_model",
             run_steady=False,
             run_unsteady=False,
-            reuse_existing_data=False,
         )
 
     def test_wanda_session_context_manager(self):

@@ -28,8 +28,6 @@ class WandaModelAccess(Protocol):
         base_model_path: Path,
         scenario_dir: Path,
         scenario_name: str,
-        *,
-        reuse_existing_data: bool,
     ) -> Path: ...
 
     def apply(self, handle: Any, change: ModelParameterChange) -> None: ...

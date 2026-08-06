@@ -36,10 +36,7 @@ class PywandaModelAccess:
         base_model_path: Path,
         scenario_dir: Path,
         scenario_name: str,
-        *,
-        reuse_existing_data: bool,
     ) -> Path:
-        del reuse_existing_data
         return prepare_scenario_model(
             base_model_path,
             scenario_dir,
