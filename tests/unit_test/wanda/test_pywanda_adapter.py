@@ -28,10 +28,8 @@ class TestPywandaModelAccess(unittest.TestCase):
         self.model_spec = ModelSpecification(
             model_path=base_dir / "base_model.wdi",
             wanda_bin=wanda_bin,
-            base_model_name="base_model",
             run_steady=False,
             run_unsteady=False,
-            reuse_existing_data=False,
         )
 
         self.scenario_name = f"test_scenario_adapter_{self._testMethodName}"
@@ -41,7 +39,6 @@ class TestPywandaModelAccess(unittest.TestCase):
             self.model_spec.model_path,
             self.scenario_dir,
             self.scenario_name,
-            reuse_existing_data=False,
         )
 
     def tearDown(self) -> None:

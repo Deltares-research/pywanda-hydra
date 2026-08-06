@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 from typer.testing import CliRunner
 
-from pywandahydra.cli.commands import app
+from pywandahydra.cli import app
 from pywandahydra.execution.outcomes import CaseResult, RunResult
 
 runner = CliRunner()
@@ -29,7 +29,7 @@ def test_run_delegates_to_root_api(tmp_path: Path) -> None:
     with (
         patch("pywandahydra.run.prepare_run", return_value=plan) as prepare,
         patch("pywandahydra.run.execute_run", return_value=result),
-        patch("pywandahydra.cli.commands.faulthandler.enable"),
+        patch("pywandahydra.cli.faulthandler.enable"),
     ):
         invocation = runner.invoke(app, ["run", str(config_path), "--workers", "2", "--resume"])
 
@@ -55,3 +55,12 @@ def test_validate_delegates_to_root_api(tmp_path: Path) -> None:
     assert invocation.exit_code == 0
     validate.assert_called_once_with(config_path)
     assert "Validation passed." in invocation.output
+
+
+def test_cli_exposes_only_final_commands() -> None:
+    invocation = runner.invoke(app, ["--help"])
+
+    assert invocation.exit_code == 0
+    for command in ("run", "validate", "status", "postprocess"):
+        assert command in invocation.output
+    assert "plot" not in invocation.output

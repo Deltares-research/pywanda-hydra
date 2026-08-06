@@ -136,7 +136,7 @@ extend-ignore = [
 
 [tool.ruff.lint.extend-per-file-ignores]
 "__init__.py" = ["F401"]
-"src/pywandahydra/cli/commands.py" = ["B008"]
+"src/pywandahydra/cli.py" = ["B008"]
 
 [tool.mypy]
 python_version = "3.11"

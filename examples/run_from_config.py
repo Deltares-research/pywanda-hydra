@@ -77,18 +77,12 @@ def main() -> None:
             f"{result.n_skipped} skipped"
         )
 
-        # Show individual case results if any failed
+        # Show individual case results if any failed.
         if result.n_failed > 0:
             print("\n--- Failed Cases ---")
-            for case_result in result.results:
-                if not case_result.get("success"):
-                    error_message = case_result.get("error", "Unknown error")
-                    print(f"  {case_result.get('case_id')}: {error_message}")
-
-        # Check logs
-        log_dir = plan.run_dir / "logs"
-        if log_dir.exists():
-            print(f"\nLogs available at: {log_dir}")
+            for case_result in result.cases:
+                if not case_result.success:
+                    print(f"  {case_result.case_id}: {case_result.error or 'Unknown error'}")
     except Exception as e:
         print(f"ERROR: {e}")
         import traceback

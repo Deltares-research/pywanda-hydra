@@ -18,7 +18,6 @@ def _plan(tmp_path: Path, case_id: str) -> CasePlan:
         model_spec=ModelSpecification(
             model_path=model_path,
             wanda_bin=tmp_path,
-            base_model_name="model",
         ),
         scenario=ScenarioSpecification(number=1, include=True, name=case_id),
     )

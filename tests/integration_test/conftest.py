@@ -26,10 +26,8 @@ def wanda_model_spec() -> ModelSpecification:
     return ModelSpecification(
         model_path=_WANDA_DATA_DIR / "base_model.wdi",
         wanda_bin=wanda_bin,
-        base_model_name="base_model",
         run_steady=False,
         run_unsteady=False,
-        reuse_existing_data=False,
     )
 
 
@@ -42,8 +40,6 @@ def network_model_spec() -> ModelSpecification:
     return ModelSpecification(
         model_path=_INTEGRATION_DATA_DIR / "network.wdi",
         wanda_bin=wanda_bin,
-        base_model_name="network",
         run_steady=True,
         run_unsteady=False,
-        reuse_existing_data=False,
     )

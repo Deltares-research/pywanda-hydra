@@ -67,10 +67,8 @@ class TestPreflightValidation(unittest.TestCase):
         return ModelSpecification(
             model_path=Path("base_model.wdi"),
             wanda_bin=Path("."),
-            base_model_name="base_model",
             run_steady=True,
             run_unsteady=False,
-            reuse_existing_data=True,
         )
 
     def _scenario(
@@ -239,10 +237,8 @@ class TestPreflightValidationIsolated(unittest.TestCase):
         self.model_spec = ModelSpecification(
             model_path=Path(__file__).parents[2] / "data" / "wanda" / "base_model.wdi",
             wanda_bin=wanda_bin,
-            base_model_name="base_model",
             run_steady=False,
             run_unsteady=False,
-            reuse_existing_data=True,
         )
 
     def _scenario(

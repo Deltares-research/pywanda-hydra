@@ -87,7 +87,6 @@ def simulate_case(plan: CasePlan) -> CaseResult:
                 plan.model_spec.model_path,
                 plan.case_dir,
                 plan.scenario.name,
-                reuse_existing_data=False,
             )
             with access.session(plan.model_spec, model_path) as model:
                 for change in plan.scenario.parameter_changes:

@@ -90,10 +90,8 @@ class TestScenarioLoading(unittest.TestCase):
             model_spec = ModelSpecification(
                 model_path=model_path,
                 wanda_bin=Path(r"c:\wanda\bin"),
-                base_model_name="base_model",
                 run_steady=False,
                 run_unsteady=False,
-                reuse_existing_data=False,
             )
 
             plans = build_case_plans(

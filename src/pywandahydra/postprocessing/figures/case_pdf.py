@@ -11,8 +11,8 @@ from matplotlib.backends.backend_pdf import PdfPages
 
 from ...results import ParquetResultStore
 from ...scenarios import AnalysisMeta, ScenarioSpecification
-from ..plotting.renderers.report_page import ReportMeta
 from .pdf_pages import PlotSpec, render_combined_report_pages
+from .report import ReportMeta
 from .theme import PlotTheme
 
 logger = logging.getLogger(__name__)
